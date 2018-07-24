@@ -1,0 +1,1129 @@
+* DataLab Cup 2: Image Captioning
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import os
+    import _pickle as cPickle
+    import urllib.request
+
+    import pandas as pd
+    import scipy.misc
+    import numpy as np
+
+    from keras.models import Model
+    from keras.layers import Input, Dense, Embedding, Reshape, GRU, merge
+    from keras.optimizers import RMSprop
+    from keras.models import load_model
+    from keras.utils.visualize_util import model_to_dot
+    from bokeh.plotting import figure, show
+    from bokeh.io import output_notebook
+    from IPython.display import Image, display, SVG
+
+    from pre_trained.cnn import PretrainedCNN
+
+    %matplotlib inline
+    output_notebook()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Using Theano backend.
+    Using gpu device 0: GeForce GTX 1070 (CNMeM is disabled, cuDNN 5105)
+#+END_SRC
+
+[[http://bokeh.pydata.org][]] Loading BokehJS ...
+
+<<bf458388-a8d1-4bec-8b4e-5f064373e35d>>
+
+** Task: Image Captioning[[Task:-Image-Captioning][¶]]
+
+Given a set of images, your task is to generate suitable sentences to describe
+each of the images.
+
+[[http://mscoco.cloudapp.net/static/images/captions-challenge2015.jpg]]
+
+You'll compete on the modified release of 2014 [[https://competitions.codalab.org/competitions/3221][Microsoft COCO dataset]], which is
+the standard testbed for image captioning.
+
+- 102,739 images for training set, where each images is annotated with 5
+  captions - 20,548 images for testing(you must generate 1 caption for each
+  image)
+
+** Model: Image-Captioning[[Model:-Image-Captioning][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Model:-Image-Captioning
+   :END:
+
+Given an image, in order to be able to generate descriptive sentence for
+it, our model must meet several requirements:
+
+1. the generated caption must be colsely related to that image, which
+   means our model accept image as its input
+2. the generated caption must be a sentence, which means our model must
+   be able to generate next word depending on current word
+3. length of caption may vary, which is solved by =<ED>= token
+4. since we only have images when testing, our model requires a first
+   word, which is solved by =<ST>= token
+
+A naive model looks like the following:
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def image_caption_model(vocab_size=2187, embedding_matrix=None, lang_dim=100, img_dim=256):
+        # text: current word
+        lang_input = Input(shape=(1,))
+        if embedding_matrix is not None:
+            x = Embedding(output_dim=lang_dim, input_dim=vocab_size, init='glorot_uniform', input_length=1, weights=[embedding_matrix])(lang_input)
+        else:
+            x = Embedding(output_dim=lang_dim, input_dim=vocab_size, init='glorot_uniform', input_length=1)(lang_input)
+        lang_embed = Reshape((lang_dim,))(x)
+        # img
+        img_input = Input(shape=(img_dim,))
+        # text + img => GRU
+        x = merge([img_input, lang_embed], mode='concat', concat_axis=-1)
+        x = Reshape((1, lang_dim+img_dim))(x)
+        x = GRU(128)(x)
+        # predict next word
+        out = Dense(vocab_size, activation='softmax')(x)
+        model = Model(input=[img_input, lang_input], output=out)
+        # choose objective and optimizer
+        model.compile(loss='categorical_crossentropy', optimizer=RMSprop(lr=1e-3))
+        return model
+
+    model = image_caption_model()
+    display(SVG(model_to_dot(model, show_shapes=True).create(prog='dot', format='svg')))
+#+END_SRC
+
+G 140315581342440 input\_1 (InputLayer) input: output: (None, 1) (None,
+1) 140315581343112 embedding\_1 (Embedding) input: output: (None, 1)
+(None, 1, 100) 140315581342440->140315581343112 140315580631752
+reshape\_1 (Reshape) input: output: (None, 1, 100) (None, 100)
+140315581343112->140315580631752 140315580679840 input\_2 (InputLayer)
+input: output: (None, 256) (None, 256) 140315580679168 merge\_1 (Merge)
+input: output: [(None, 256), (None, 100)] (None, 356)
+140315580679840->140315580679168 140315580631752->140315580679168
+140315580680792 reshape\_2 (Reshape) input: output: (None, 356) (None,
+1, 356) 140315580679168->140315580680792 140315580681520 gru\_1 (GRU)
+input: output: (None, 1, 356) (None, 128)
+140315580680792->140315580681520 140314838790384 dense\_1 (Dense) input:
+output: (None, 128) (None, 2187) 140315580681520->140314838790384
+
+the input and output is slightly different during training and testing:
+
+-  training: we have correct caption, and each training (input,output)
+   pair uses correct current word and image as input, and predict on
+   next word
+-  testing: we start generating caption by providing =<ST>= and image as
+   input, and must sample a word as next word, then use the sampled word
+   as input for next timestamp to generate sequential words until the
+   token =<ED>= is sampled as next word
+
+*** Preprocess: Text[[Preprocess:-Text][¶]]
+
+Dealing with raw strings is efficient, so we'll train on an encoded version of
+the captions. All necessary vocabularies is extracted in
+[[file:dataset/text/vocab.pkl]] and we'd like to represent captions by a sequence of
+integer IDs. However, since the length of captions may vary, our model must be
+able to know where to stop. Therefore, we'll append 2 special =<ST>= and =<ED>=
+token to the beginning and end of each caption. Also, the smaller the vocabulary
+size is the more efficient training will be, so we'll remove rare words by
+replacing rare words by =<RARE>= token. In summary, we'll going to
+
+-  append =<ST>= and =<ED>= token to the beginning and end of each
+   caption
+-  replace rare words by =<RARE>= token
+-  represent captions by vocabulary IDs
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    vocab = cPickle.load(open('dataset/text/vocab.pkl', 'rb'))
+    print('total {} vocabularies'.format(len(vocab)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    total 26900 vocabularies
+#+END_SRC
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def count_vocab_occurance(vocab, df):
+        voc_cnt = {v:0 for v in vocab}
+        for img_id, row in df.iterrows():
+            for w in row['caption'].split(' '):
+                voc_cnt[w] += 1
+        return voc_cnt
+
+    df_train = pd.read_csv(os.path.join('dataset', 'train.csv'))
+
+    print('count vocabulary occurances...')
+    voc_cnt = count_vocab_occurance(vocab, df_train)
+
+    # remove words appear < 100 times
+    thrhd = 100
+    x = np.array(list(voc_cnt.values()))
+    print('{} words appear >= 100 times'.format(np.sum(x[(-x).argsort()] >= thrhd)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    count vocabulary occurances...
+    2184 words appear >= 100 times
+#+END_SRC
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def build_voc_mapping(voc_cnt, thrhd):
+        """
+        enc_map: voc --encode--> id
+        dec_map: id --decode--> voc
+        """
+        def add(enc_map, dec_map, voc):
+            enc_map[voc] = len(dec_map)
+            dec_map[len(dec_map)] = voc
+            return enc_map, dec_map
+        # add <ST>, <ED>, <RARE>
+        enc_map, dec_map = {}, {}
+        for voc in ['<ST>', '<ED>', '<RARE>']:
+            enc_map, dec_map = add(enc_map, dec_map, voc)
+        for voc, cnt in voc_cnt.items():
+            if cnt < thrhd: # rare words => <RARE>
+                enc_map[voc] = enc_map['<RARE>']
+            else:
+                enc_map, dec_map = add(enc_map, dec_map, voc)
+        return enc_map, dec_map
+
+    enc_map, dec_map = build_voc_mapping(voc_cnt, thrhd)
+    # save enc/decoding map to disk
+    cPickle.dump(enc_map, open('dataset/text/enc_map.pkl', 'wb'))
+    cPickle.dump(dec_map, open('dataset/text/dec_map.pkl', 'wb'))
+    vocab_size = len(dec_map)
+#+END_SRC
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def caption_to_ids(enc_map, df):
+        img_ids, caps = [], []
+        for idx, row in df.iterrows():
+            icap = [enc_map[x] for x in row['caption'].split(' ')]
+            icap.insert(0, enc_map['<ST>'])
+            icap.append(enc_map['<ED>'])
+            img_ids.append(row['img_id'])
+            caps.append(icap)
+        return pd.DataFrame({'img_id':img_ids, 'caption':caps}).set_index(['img_id'])
+
+    enc_map = cPickle.load(open('dataset/text/enc_map.pkl', 'rb'))
+    print('[transform captions into sequences of IDs]...')
+    df_proc = caption_to_ids(enc_map, df_train)
+    df_proc.to_csv('dataset/text/train_enc_cap.csv')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [transform captions into sequences of IDs]...
+#+END_SRC
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def decode(dec_map, ids):
+        return ' '.join([dec_map[x] for x in ids])
+
+    dec_map = cPickle.load(open('dataset/text/dec_map.pkl', 'rb'))
+
+    print('And you can decode back easily to see full sentence...\n')
+    for idx, row in df_proc.iloc[:8].iterrows():
+        print('{}: {}'.format(idx, decode(dec_map, row['caption'])))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    And you can decode back easily to see full sentence...
+
+    536654.jpg: <ST> a group of three women sitting at a table sharing a cup of tea <ED>
+    536654.jpg: <ST> three women wearing hats at a table together <ED>
+    536654.jpg: <ST> three women with hats at a table having a tea party <ED>
+    536654.jpg: <ST> several woman dressed up with fancy hats at a tea party <ED>
+    536654.jpg: <ST> three women wearing large hats at a fancy tea event <ED>
+    15839.jpg: <ST> a twin door refrigerator in a kitchen next to cabinets <ED>
+    15839.jpg: <ST> a black refrigerator freezer sitting inside of a kitchen <ED>
+    15839.jpg: <ST> black refrigerator in messy kitchen of residential home <ED>
+#+END_SRC
+
+*** Preprocess: Image[[Preprocess:-Image][¶]]
+
+Since the raw image takes about 20GB and may take days to download all
+of them. It's not included in the released file. But if you'd like to
+download origin image, you can request MS-COCO on-the-fly:
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def download_image(img_dir, img_id):
+        urllib.request.urlretrieve('http://mscoco.org/images/{}'.format(img_id.split('.')[0]), os.path.join(img_dir, img_id))
+#+END_SRC
+
+*** Transfer Learning: pre-trained CNN
+
+Our task, image captioning, requires good understanding of images, like
+
+-  objects appeared in the image
+-  relative positions among objects
+-  colors, sizes, ...etc
+
+Training a good CNN from scratch is challenging and time-consuming, so we'll use
+existing pre-trained CNN model. The one we've prepared for you is the winner of
+2012-ILSVRC model - VGG-16(or OxfordNet) in [[file:pre_trained/cnn.py]].
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cnn_mdl = PretrainedCNN(mdl_name='vgg16')
+    display(SVG(model_to_dot(cnn_mdl.model, show_shapes=True).create(prog='dot', format='svg')))
+#+END_SRC
+
+G 140314838092824 input\_3 (InputLayer) input: output: (None, 3, 224,
+224) (None, 3, 224, 224) 140314839791320 block1\_conv1 (Convolution2D)
+input: output: (None, 3, 224, 224) (None, 64, 224, 224)
+140314838092824->140314839791320 140314838141416 block1\_conv2
+(Convolution2D) input: output: (None, 64, 224, 224) (None, 64, 224, 224)
+140314839791320->140314838141416 140313794315936 block1\_pool
+(MaxPooling2D) input: output: (None, 64, 224, 224) (None, 64, 112, 112)
+140314838141416->140313794315936 140313794317280 block2\_conv1
+(Convolution2D) input: output: (None, 64, 112, 112) (None, 128, 112,
+112) 140313794315936->140313794317280 140313794076624 block2\_conv2
+(Convolution2D) input: output: (None, 128, 112, 112) (None, 128, 112,
+112) 140313794317280->140313794076624 140313794033424 block2\_pool
+(MaxPooling2D) input: output: (None, 128, 112, 112) (None, 128, 56, 56)
+140313794076624->140313794033424 140313794034768 block3\_conv1
+(Convolution2D) input: output: (None, 128, 56, 56) (None, 256, 56, 56)
+140313794033424->140313794034768 140313793709840 block3\_conv2
+(Convolution2D) input: output: (None, 256, 56, 56) (None, 256, 56, 56)
+140313794034768->140313793709840 140313793727960 block3\_conv3
+(Convolution2D) input: output: (None, 256, 56, 56) (None, 256, 56, 56)
+140313793709840->140313793727960 140313793394840 block3\_pool
+(MaxPooling2D) input: output: (None, 256, 56, 56) (None, 256, 28, 28)
+140313793727960->140313793394840 140313793396184 block4\_conv1
+(Convolution2D) input: output: (None, 256, 28, 28) (None, 512, 28, 28)
+140313793394840->140313793396184 140313793441240 block4\_conv2
+(Convolution2D) input: output: (None, 512, 28, 28) (None, 512, 28, 28)
+140313793396184->140313793441240 140313793475864 block4\_conv3
+(Convolution2D) input: output: (None, 512, 28, 28) (None, 512, 28, 28)
+140313793441240->140313793475864 140313793564568 block4\_pool
+(MaxPooling2D) input: output: (None, 512, 28, 28) (None, 512, 14, 14)
+140313793475864->140313793564568 140313793578264 block5\_conv1
+(Convolution2D) input: output: (None, 512, 14, 14) (None, 512, 14, 14)
+140313793564568->140313793578264 140313793612824 block5\_conv2
+(Convolution2D) input: output: (None, 512, 14, 14) (None, 512, 14, 14)
+140313793578264->140313793612824 140313793251032 block5\_conv3
+(Convolution2D) input: output: (None, 512, 14, 14) (None, 512, 14, 14)
+140313793612824->140313793251032 140313793504984 block5\_pool
+(MaxPooling2D) input: output: (None, 512, 14, 14) (None, 512, 7, 7)
+140313793251032->140313793504984 140313793506328 flatten (Flatten)
+input: output: (None, 512, 7, 7) (None, 25088)
+140313793504984->140313793506328 140313793323416 fc1 (Dense) input:
+output: (None, 25088) (None, 4096) 140313793506328->140313793323416
+140313793325936 fc2 (Dense) input: output: (None, 4096) (None, 4096)
+140313793323416->140313793325936 140313793360280 predictions (Dense)
+input: output: (None, 4096) (None, 1000)
+140313793325936->140313793360280
+
+VGG-16 consists of 16 layers, and we'll take the output of fc2 - the last layer
+before prediction layer, as input to our image-captioning model. However, since
+we have about 120,000 images, representing each image by 4,096 dimensions will
+make training inefficient and space-consuming. Therefore, dimensionality
+reduction techniques - PCA is used to reduce image feature dimension from 4096
+to 256. In summary, for each image,
+
+-  raw image is fed into VGG-16
+-  take the output of last layer
+-  apply PCA to reduce dimension to 256
+
+We've done the tedious work for you (use functions in [[file:utils.py]]), and the
+reduced 256-dimension image feature is saved in [[file:dataset/train_img256.pkl]]
+and [[file:dataset/test_img256.pkl]].
+
+It should be enough for you to train a good image-captioning model.
+However, you're always welcome to use other CNN models to extract image
+features.
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    img_train = cPickle.load(open('dataset/train_img256.pkl', 'rb'))
+    img_test = cPickle.load(open('dataset/test_img256.pkl', 'rb'))
+#+END_SRC
+
+*** Transfer Learning: pre-trained word
+embedding[[Transfer-Learning:-pre-trained-word-embedding][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Transfer-Learning:-pre-trained-word-embedding
+    :END:
+
+Image captioning also requires good unstanding of word meaning, so it's a good
+idea to use pre-trained word embedding. We'll take advantages of the released by
+Google - [[http://nlp.stanford.edu/projects/glove][GloVe]]. As an example, we choose to use the smallest release
+[[file:pre_trained/glove.6B.100d.txt]], which is trained on 6 billion corpus of
+Wikipedia and Gigaword. Again, you're welcomed to use any pre-trained word
+embedding.
+
+First, we have to prepare the *embedding matrix* for embedding layer for our
+image-captioning model:
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def generate_embedding_matrix(w2v_path, dec_map, lang_dim=100):
+        out_vocab = []
+        embeddings_index = {}
+        f = open(w2v_path, 'r')
+        for line in f:
+            values = line.split()
+            word = values[0]
+            coefs = np.asarray(values[1:], dtype='float32')
+            embeddings_index[word] = coefs
+        f.close()
+        # prepare embedding matrix
+        embedding_matrix = np.random.rand(len(dec_map), lang_dim)
+        for idx, wd in dec_map.items():
+            if wd in embeddings_index.keys():
+                embedding_matrix[idx] = embeddings_index[wd]
+            else:
+                out_vocab.append(wd)
+        print('words: "{}" not in pre-trained vocabulary list'.format(','.join(out_vocab)))
+        return embedding_matrix
+
+    dec_map = cPickle.load(open('dataset/text/dec_map.pkl', 'rb'))
+    embedding_matrix = generate_embedding_matrix('pre_trained/glove.6B.100d.txt', dec_map)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    words: "<ST>,<ED>,<RARE>,selfie,skiis" not in pre-trained vocabulary list
+#+END_SRC
+
+** Training
+
+Since our model only accepts (image+cur\_word, next\_word) pair as training
+instances, generating all training instance would require at least $2000$
+=(vocabulary size)= $\times 10$ =(caption length)= $\times100000\times5$
+=(\#image-caption pair)= $\times32$ =(float32)= $/8$ =(byte)= $=40$ =GB= to
+store. It'll take too much space and it's impossible to fit in GPU (GTX-1070
+only has 8G) memory.
+
+Therefore, we must batchly expand image-caption pairs into training instances at
+runtime. So, first let's first prepare the batch generating function:
+
+In [12]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def generate_batch(img_map, df_cap, vocab_size, size=32):
+        imgs, curs, nxts = None, [], None
+        for idx in np.random.randint(df_cap.shape[0], size=size):
+            row = df_cap.iloc[idx]
+            cap = eval(row['caption'])
+            if row['img_id'] not in img_map.keys():
+                continue
+            img = img_map[row['img_id']]
+            for i in range(1, len(cap)):
+                nxt = np.zeros((vocab_size))
+                nxt[cap[i]] = 1
+                curs.append(cap[i-1])
+                nxts = nxt if nxts is None else np.vstack([nxts, nxt])
+                imgs = img if imgs is None else np.vstack([imgs, img])
+        return imgs, np.array(curs).reshape((-1,1)), nxts
+#+END_SRC
+
+**** Sanity Check: overfitting small data
+
+It's a good practice to test your model by overfitting small data because
+something goes wrong if your model cannot even converge on small data. Let's
+generate some training/validation examples:
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    df_cap = pd.read_csv('dataset/text/train_enc_cap.csv')
+    img1, cur1, nxt1 = generate_batch(img_train, df_cap, vocab_size, size=200)
+    img2, cur2, nxt2 = generate_batch(img_train, df_cap, vocab_size, size=50)
+#+END_SRC
+
+Create our model and load the pre-trained word embedding matrix.
+
+In [14]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    model = image_caption_model(vocab_size=vocab_size, embedding_matrix=embedding_matrix)
+#+END_SRC
+
+Start training and dump trained model and training history to disk when
+finished.
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hist = model.fit([img1, cur1], nxt1, batch_size=32, nb_epoch=200, verbose=1, 
+              validation_data=([img2, cur2], nxt2), shuffle=True)
+
+    # dump training history, model to disk
+    hist_path, mdl_path = 'model_ckpt/demo.pkl', 'model_ckpt/demo.h5'
+    cPickle.dump({'loss':hist.history['loss'], 'val_loss':hist.history['val_loss']}, open(hist_path, 'wb'))
+    model.save(mdl_path)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Train on 2244 samples, validate on 561 samples
+    Epoch 1/200
+    2244/2244 [==============================] - 0s - loss: 7.1095 - val_loss: 6.6929
+    Epoch 2/200
+    2244/2244 [==============================] - 0s - loss: 4.9784 - val_loss: 5.8795
+    Epoch 3/200
+    2244/2244 [==============================] - 0s - loss: 4.3734 - val_loss: 5.7310
+    Epoch 4/200
+    2244/2244 [==============================] - 0s - loss: 4.0146 - val_loss: 5.6969
+    Epoch 5/200
+    2244/2244 [==============================] - 0s - loss: 3.7166 - val_loss: 5.6834
+    Epoch 6/200
+    2244/2244 [==============================] - 0s - loss: 3.4785 - val_loss: 5.6705
+    Epoch 7/200
+    2244/2244 [==============================] - 0s - loss: 3.2769 - val_loss: 5.6598
+    Epoch 8/200
+    2244/2244 [==============================] - 0s - loss: 3.1050 - val_loss: 5.6673
+    Epoch 9/200
+    2244/2244 [==============================] - 0s - loss: 2.9450 - val_loss: 5.6748
+    Epoch 10/200
+    2244/2244 [==============================] - 0s - loss: 2.8167 - val_loss: 5.6719
+    Epoch 11/200
+    2244/2244 [==============================] - 0s - loss: 2.6928 - val_loss: 5.6847
+    Epoch 12/200
+    2244/2244 [==============================] - 0s - loss: 2.5759 - val_loss: 5.7026
+    Epoch 13/200
+    2244/2244 [==============================] - 0s - loss: 2.4718 - val_loss: 5.7153
+    Epoch 14/200
+    2244/2244 [==============================] - 0s - loss: 2.3758 - val_loss: 5.7292
+    Epoch 15/200
+    2244/2244 [==============================] - 0s - loss: 2.2841 - val_loss: 5.7503
+    Epoch 16/200
+    2244/2244 [==============================] - 0s - loss: 2.1977 - val_loss: 5.7750
+    Epoch 17/200
+    2244/2244 [==============================] - 0s - loss: 2.1162 - val_loss: 5.7777
+    Epoch 18/200
+    2244/2244 [==============================] - 0s - loss: 2.0354 - val_loss: 5.8120
+    Epoch 19/200
+    2244/2244 [==============================] - 0s - loss: 1.9575 - val_loss: 5.8286
+    Epoch 20/200
+    2244/2244 [==============================] - 0s - loss: 1.8852 - val_loss: 5.8191
+    Epoch 21/200
+    2244/2244 [==============================] - 0s - loss: 1.8203 - val_loss: 5.8595
+    Epoch 22/200
+    2244/2244 [==============================] - 0s - loss: 1.7521 - val_loss: 5.8954
+    Epoch 23/200
+    2244/2244 [==============================] - 0s - loss: 1.6873 - val_loss: 5.8937
+    Epoch 24/200
+    2244/2244 [==============================] - 0s - loss: 1.6288 - val_loss: 5.9064
+    Epoch 25/200
+    2244/2244 [==============================] - 0s - loss: 1.5655 - val_loss: 5.9208
+    Epoch 26/200
+    2244/2244 [==============================] - 0s - loss: 1.5062 - val_loss: 5.9566
+    Epoch 27/200
+    2244/2244 [==============================] - 0s - loss: 1.4503 - val_loss: 5.9681
+    Epoch 28/200
+    2244/2244 [==============================] - 0s - loss: 1.3940 - val_loss: 6.0028
+    Epoch 29/200
+    2244/2244 [==============================] - 0s - loss: 1.3364 - val_loss: 6.0223
+    Epoch 30/200
+    2244/2244 [==============================] - 0s - loss: 1.2918 - val_loss: 6.0304
+    Epoch 31/200
+    2244/2244 [==============================] - 0s - loss: 1.2400 - val_loss: 6.0688
+    Epoch 32/200
+    2244/2244 [==============================] - 0s - loss: 1.1849 - val_loss: 6.0883
+    Epoch 33/200
+    2244/2244 [==============================] - 0s - loss: 1.1402 - val_loss: 6.1119
+    Epoch 34/200
+    2244/2244 [==============================] - 0s - loss: 1.1006 - val_loss: 6.1309
+    Epoch 35/200
+    2244/2244 [==============================] - 0s - loss: 1.0560 - val_loss: 6.1255
+    Epoch 36/200
+    2244/2244 [==============================] - 0s - loss: 1.0133 - val_loss: 6.1867
+    Epoch 37/200
+    2244/2244 [==============================] - 0s - loss: 0.9720 - val_loss: 6.2208
+    Epoch 38/200
+    2244/2244 [==============================] - 0s - loss: 0.9318 - val_loss: 6.2402
+    Epoch 39/200
+    2244/2244 [==============================] - 0s - loss: 0.8969 - val_loss: 6.2579
+    Epoch 40/200
+    2244/2244 [==============================] - 0s - loss: 0.8624 - val_loss: 6.2735
+    Epoch 41/200
+    2244/2244 [==============================] - 0s - loss: 0.8330 - val_loss: 6.3107
+    Epoch 42/200
+    2244/2244 [==============================] - 0s - loss: 0.7995 - val_loss: 6.3305
+    Epoch 43/200
+    2244/2244 [==============================] - 0s - loss: 0.7700 - val_loss: 6.3607
+    Epoch 44/200
+    2244/2244 [==============================] - 0s - loss: 0.7392 - val_loss: 6.3781
+    Epoch 45/200
+    2244/2244 [==============================] - 0s - loss: 0.7141 - val_loss: 6.3846
+    Epoch 46/200
+    2244/2244 [==============================] - 0s - loss: 0.6892 - val_loss: 6.4003
+    Epoch 47/200
+    2244/2244 [==============================] - 0s - loss: 0.6682 - val_loss: 6.4241
+    Epoch 48/200
+    2244/2244 [==============================] - 0s - loss: 0.6418 - val_loss: 6.4498
+    Epoch 49/200
+    2244/2244 [==============================] - 0s - loss: 0.6188 - val_loss: 6.4827
+    Epoch 50/200
+    2244/2244 [==============================] - 0s - loss: 0.6004 - val_loss: 6.4994
+    Epoch 51/200
+    2244/2244 [==============================] - 0s - loss: 0.5806 - val_loss: 6.5227
+    Epoch 52/200
+    2244/2244 [==============================] - 0s - loss: 0.5632 - val_loss: 6.5278
+    Epoch 53/200
+    2244/2244 [==============================] - 0s - loss: 0.5447 - val_loss: 6.5550
+    Epoch 54/200
+    2244/2244 [==============================] - 0s - loss: 0.5281 - val_loss: 6.5922
+    Epoch 55/200
+    2244/2244 [==============================] - 0s - loss: 0.5122 - val_loss: 6.6008
+    Epoch 56/200
+    2244/2244 [==============================] - 0s - loss: 0.4955 - val_loss: 6.6521
+    Epoch 57/200
+    2244/2244 [==============================] - 0s - loss: 0.4869 - val_loss: 6.6511
+    Epoch 58/200
+    2244/2244 [==============================] - 0s - loss: 0.4663 - val_loss: 6.6745
+    Epoch 59/200
+    2244/2244 [==============================] - 0s - loss: 0.4571 - val_loss: 6.7069
+    Epoch 60/200
+    2244/2244 [==============================] - 0s - loss: 0.4423 - val_loss: 6.7107
+    Epoch 61/200
+    2244/2244 [==============================] - 0s - loss: 0.4324 - val_loss: 6.7451
+    Epoch 62/200
+    2244/2244 [==============================] - 0s - loss: 0.4187 - val_loss: 6.7567
+    Epoch 63/200
+    2244/2244 [==============================] - 0s - loss: 0.4102 - val_loss: 6.7669
+    Epoch 64/200
+    2244/2244 [==============================] - 0s - loss: 0.4000 - val_loss: 6.7960
+    Epoch 65/200
+    2244/2244 [==============================] - 0s - loss: 0.3909 - val_loss: 6.8154
+    Epoch 66/200
+    2244/2244 [==============================] - 0s - loss: 0.3863 - val_loss: 6.8339
+    Epoch 67/200
+    2244/2244 [==============================] - 0s - loss: 0.3715 - val_loss: 6.8342
+    Epoch 68/200
+    2244/2244 [==============================] - 0s - loss: 0.3691 - val_loss: 6.8523
+    Epoch 69/200
+    2244/2244 [==============================] - 0s - loss: 0.3587 - val_loss: 6.8691
+    Epoch 70/200
+    2244/2244 [==============================] - 0s - loss: 0.3513 - val_loss: 6.8875
+    Epoch 71/200
+    2244/2244 [==============================] - 0s - loss: 0.3459 - val_loss: 6.8992
+    Epoch 72/200
+    2244/2244 [==============================] - 0s - loss: 0.3377 - val_loss: 6.9250
+    Epoch 73/200
+    2244/2244 [==============================] - 0s - loss: 0.3317 - val_loss: 6.9247
+    Epoch 74/200
+    2244/2244 [==============================] - 0s - loss: 0.3270 - val_loss: 6.9400
+    Epoch 75/200
+    2244/2244 [==============================] - 0s - loss: 0.3211 - val_loss: 6.9598
+    Epoch 76/200
+    2244/2244 [==============================] - 0s - loss: 0.3160 - val_loss: 6.9840
+    Epoch 77/200
+    2244/2244 [==============================] - 0s - loss: 0.3129 - val_loss: 7.0053
+    Epoch 78/200
+    2244/2244 [==============================] - 0s - loss: 0.3062 - val_loss: 7.0177
+    Epoch 79/200
+    2244/2244 [==============================] - 0s - loss: 0.3031 - val_loss: 7.0386
+    Epoch 80/200
+    2244/2244 [==============================] - 0s - loss: 0.3015 - val_loss: 7.0488
+    Epoch 81/200
+    2244/2244 [==============================] - 0s - loss: 0.2968 - val_loss: 7.0610
+    Epoch 82/200
+    2244/2244 [==============================] - 0s - loss: 0.2911 - val_loss: 7.0680
+    Epoch 83/200
+    2244/2244 [==============================] - 0s - loss: 0.2879 - val_loss: 7.0731
+    Epoch 84/200
+    2244/2244 [==============================] - 0s - loss: 0.2864 - val_loss: 7.0967
+    Epoch 85/200
+    2244/2244 [==============================] - 0s - loss: 0.2823 - val_loss: 7.0983
+    Epoch 86/200
+    2244/2244 [==============================] - 0s - loss: 0.2798 - val_loss: 7.1196
+    Epoch 87/200
+    2244/2244 [==============================] - 0s - loss: 0.2748 - val_loss: 7.1257
+    Epoch 88/200
+    2244/2244 [==============================] - 0s - loss: 0.2713 - val_loss: 7.1567
+    Epoch 89/200
+    2244/2244 [==============================] - 0s - loss: 0.2679 - val_loss: 7.1644
+    Epoch 90/200
+    2244/2244 [==============================] - 0s - loss: 0.2658 - val_loss: 7.1741
+    Epoch 91/200
+    2244/2244 [==============================] - 0s - loss: 0.2636 - val_loss: 7.2036
+    Epoch 92/200
+    2244/2244 [==============================] - 0s - loss: 0.2627 - val_loss: 7.2197
+    Epoch 93/200
+    2244/2244 [==============================] - 0s - loss: 0.2594 - val_loss: 7.2232
+    Epoch 94/200
+    2244/2244 [==============================] - 0s - loss: 0.2591 - val_loss: 7.2438
+    Epoch 95/200
+    2244/2244 [==============================] - 0s - loss: 0.2569 - val_loss: 7.2682
+    Epoch 96/200
+    2244/2244 [==============================] - 0s - loss: 0.2528 - val_loss: 7.2682
+    Epoch 97/200
+    2244/2244 [==============================] - 0s - loss: 0.2522 - val_loss: 7.2806
+    Epoch 98/200
+    2244/2244 [==============================] - 0s - loss: 0.2487 - val_loss: 7.3037
+    Epoch 99/200
+    2244/2244 [==============================] - 0s - loss: 0.2450 - val_loss: 7.3225
+    Epoch 100/200
+    2244/2244 [==============================] - 0s - loss: 0.2473 - val_loss: 7.3363
+    Epoch 101/200
+    2244/2244 [==============================] - 0s - loss: 0.2458 - val_loss: 7.3416
+    Epoch 102/200
+    2244/2244 [==============================] - 0s - loss: 0.2432 - val_loss: 7.3611
+    Epoch 103/200
+    2244/2244 [==============================] - 0s - loss: 0.2423 - val_loss: 7.3887
+    Epoch 104/200
+    2244/2244 [==============================] - 0s - loss: 0.2414 - val_loss: 7.4019
+    Epoch 105/200
+    2244/2244 [==============================] - 0s - loss: 0.2399 - val_loss: 7.4145
+    Epoch 106/200
+    2244/2244 [==============================] - 0s - loss: 0.2375 - val_loss: 7.4244
+    Epoch 107/200
+    2244/2244 [==============================] - 0s - loss: 0.2375 - val_loss: 7.4503
+    Epoch 108/200
+    2244/2244 [==============================] - 0s - loss: 0.2358 - val_loss: 7.4471
+    Epoch 109/200
+    2244/2244 [==============================] - 0s - loss: 0.2342 - val_loss: 7.4637
+    Epoch 110/200
+    2244/2244 [==============================] - 0s - loss: 0.2318 - val_loss: 7.4756
+    Epoch 111/200
+    2244/2244 [==============================] - 0s - loss: 0.2341 - val_loss: 7.4876
+    Epoch 112/200
+    2244/2244 [==============================] - 0s - loss: 0.2349 - val_loss: 7.4926
+    Epoch 113/200
+    2244/2244 [==============================] - 0s - loss: 0.2307 - val_loss: 7.5122
+    Epoch 114/200
+    2244/2244 [==============================] - 0s - loss: 0.2306 - val_loss: 7.5445
+    Epoch 115/200
+    2244/2244 [==============================] - 0s - loss: 0.2310 - val_loss: 7.5574
+    Epoch 116/200
+    2244/2244 [==============================] - 0s - loss: 0.2281 - val_loss: 7.5496
+    Epoch 117/200
+    2244/2244 [==============================] - 0s - loss: 0.2296 - val_loss: 7.5710
+    Epoch 118/200
+    2244/2244 [==============================] - 0s - loss: 0.2307 - val_loss: 7.5940
+    Epoch 119/200
+    2244/2244 [==============================] - 0s - loss: 0.2276 - val_loss: 7.6222
+    Epoch 120/200
+    2244/2244 [==============================] - 0s - loss: 0.2302 - val_loss: 7.6148
+    Epoch 121/200
+    2244/2244 [==============================] - 0s - loss: 0.2267 - val_loss: 7.6449
+    Epoch 122/200
+    2244/2244 [==============================] - 0s - loss: 0.2270 - val_loss: 7.6607
+    Epoch 123/200
+    2244/2244 [==============================] - 0s - loss: 0.2258 - val_loss: 7.6705
+    Epoch 124/200
+    2244/2244 [==============================] - 0s - loss: 0.2236 - val_loss: 7.7034
+    Epoch 125/200
+    2244/2244 [==============================] - 0s - loss: 0.2232 - val_loss: 7.7241
+    Epoch 126/200
+    2244/2244 [==============================] - 0s - loss: 0.2228 - val_loss: 7.7433
+    Epoch 127/200
+    2244/2244 [==============================] - 0s - loss: 0.2226 - val_loss: 7.7671
+    Epoch 128/200
+    2244/2244 [==============================] - 0s - loss: 0.2216 - val_loss: 7.7584
+    Epoch 129/200
+    2244/2244 [==============================] - 0s - loss: 0.2209 - val_loss: 7.7747
+    Epoch 130/200
+    2244/2244 [==============================] - 0s - loss: 0.2222 - val_loss: 7.7820
+    Epoch 131/200
+    2244/2244 [==============================] - 0s - loss: 0.2193 - val_loss: 7.8122
+    Epoch 132/200
+    2244/2244 [==============================] - 0s - loss: 0.2218 - val_loss: 7.8350
+    Epoch 133/200
+    2244/2244 [==============================] - 0s - loss: 0.2187 - val_loss: 7.8514
+    Epoch 134/200
+    2244/2244 [==============================] - 0s - loss: 0.2195 - val_loss: 7.8592
+    Epoch 135/200
+    2244/2244 [==============================] - 0s - loss: 0.2208 - val_loss: 7.8928
+    Epoch 136/200
+    2244/2244 [==============================] - 0s - loss: 0.2178 - val_loss: 7.9050
+    Epoch 137/200
+    2244/2244 [==============================] - 0s - loss: 0.2166 - val_loss: 7.9225
+    Epoch 138/200
+    2244/2244 [==============================] - 0s - loss: 0.2194 - val_loss: 7.9405
+    Epoch 139/200
+    2244/2244 [==============================] - 0s - loss: 0.2189 - val_loss: 7.9596
+    Epoch 140/200
+    2244/2244 [==============================] - 0s - loss: 0.2175 - val_loss: 7.9812
+    Epoch 141/200
+    2244/2244 [==============================] - 0s - loss: 0.2160 - val_loss: 7.9983
+    Epoch 142/200
+    2244/2244 [==============================] - 0s - loss: 0.2180 - val_loss: 8.0076
+    Epoch 143/200
+    2244/2244 [==============================] - 0s - loss: 0.2153 - val_loss: 8.0292
+    Epoch 144/200
+    2244/2244 [==============================] - 0s - loss: 0.2155 - val_loss: 8.0541
+    Epoch 145/200
+    2244/2244 [==============================] - 0s - loss: 0.2148 - val_loss: 8.0668
+    Epoch 146/200
+    2244/2244 [==============================] - 0s - loss: 0.2135 - val_loss: 8.0919
+    Epoch 147/200
+    2244/2244 [==============================] - 0s - loss: 0.2135 - val_loss: 8.1117
+    Epoch 148/200
+    2244/2244 [==============================] - 0s - loss: 0.2156 - val_loss: 8.1213
+    Epoch 149/200
+    2244/2244 [==============================] - 0s - loss: 0.2159 - val_loss: 8.1336
+    Epoch 150/200
+    2244/2244 [==============================] - 0s - loss: 0.2152 - val_loss: 8.1502
+    Epoch 151/200
+    2244/2244 [==============================] - 0s - loss: 0.2153 - val_loss: 8.1863
+    Epoch 152/200
+    2244/2244 [==============================] - 0s - loss: 0.2152 - val_loss: 8.2097
+    Epoch 153/200
+    2244/2244 [==============================] - 0s - loss: 0.2157 - val_loss: 8.2133
+    Epoch 154/200
+    2244/2244 [==============================] - 0s - loss: 0.2142 - val_loss: 8.2407
+    Epoch 155/200
+    2244/2244 [==============================] - 0s - loss: 0.2153 - val_loss: 8.2391
+    Epoch 156/200
+    2244/2244 [==============================] - 0s - loss: 0.2145 - val_loss: 8.2514
+    Epoch 157/200
+    2244/2244 [==============================] - 0s - loss: 0.2129 - val_loss: 8.2776
+    Epoch 158/200
+    2244/2244 [==============================] - 0s - loss: 0.2136 - val_loss: 8.2858
+    Epoch 159/200
+    2244/2244 [==============================] - 0s - loss: 0.2107 - val_loss: 8.3296
+    Epoch 160/200
+    2244/2244 [==============================] - 0s - loss: 0.2124 - val_loss: 8.3470
+    Epoch 161/200
+    2244/2244 [==============================] - 0s - loss: 0.2124 - val_loss: 8.3673
+    Epoch 162/200
+    2244/2244 [==============================] - 0s - loss: 0.2116 - val_loss: 8.3651
+    Epoch 163/200
+    2244/2244 [==============================] - 0s - loss: 0.2100 - val_loss: 8.3928
+    Epoch 164/200
+    2244/2244 [==============================] - 0s - loss: 0.2095 - val_loss: 8.4090
+    Epoch 165/200
+    2244/2244 [==============================] - 0s - loss: 0.2110 - val_loss: 8.4220
+    Epoch 166/200
+    2244/2244 [==============================] - 0s - loss: 0.2110 - val_loss: 8.4461
+    Epoch 167/200
+    2244/2244 [==============================] - 0s - loss: 0.2105 - val_loss: 8.4634
+    Epoch 168/200
+    2244/2244 [==============================] - 0s - loss: 0.2104 - val_loss: 8.4874
+    Epoch 169/200
+    2244/2244 [==============================] - 0s - loss: 0.2110 - val_loss: 8.4824
+    Epoch 170/200
+    2244/2244 [==============================] - 0s - loss: 0.2096 - val_loss: 8.5009
+    Epoch 171/200
+    2244/2244 [==============================] - 0s - loss: 0.2099 - val_loss: 8.5258
+    Epoch 172/200
+    2244/2244 [==============================] - 0s - loss: 0.2116 - val_loss: 8.5460
+    Epoch 173/200
+    2244/2244 [==============================] - 0s - loss: 0.2134 - val_loss: 8.5639
+    Epoch 174/200
+    2244/2244 [==============================] - 0s - loss: 0.2106 - val_loss: 8.5916
+    Epoch 175/200
+    2244/2244 [==============================] - 0s - loss: 0.2099 - val_loss: 8.6004
+    Epoch 176/200
+    2244/2244 [==============================] - 0s - loss: 0.2082 - val_loss: 8.6212
+    Epoch 177/200
+    2244/2244 [==============================] - 0s - loss: 0.2096 - val_loss: 8.6451
+    Epoch 178/200
+    2244/2244 [==============================] - 0s - loss: 0.2109 - val_loss: 8.6640
+    Epoch 179/200
+    2244/2244 [==============================] - 0s - loss: 0.2107 - val_loss: 8.6802
+    Epoch 180/200
+    2244/2244 [==============================] - 0s - loss: 0.2091 - val_loss: 8.6802
+    Epoch 181/200
+    2244/2244 [==============================] - 0s - loss: 0.2099 - val_loss: 8.6883
+    Epoch 182/200
+    2244/2244 [==============================] - 0s - loss: 0.2092 - val_loss: 8.7100
+    Epoch 183/200
+    2244/2244 [==============================] - 0s - loss: 0.2075 - val_loss: 8.7447
+    Epoch 184/200
+    2244/2244 [==============================] - 0s - loss: 0.2084 - val_loss: 8.7607
+    Epoch 185/200
+    2244/2244 [==============================] - 0s - loss: 0.2090 - val_loss: 8.7671
+    Epoch 186/200
+    2244/2244 [==============================] - 0s - loss: 0.2092 - val_loss: 8.7950
+    Epoch 187/200
+    2244/2244 [==============================] - 0s - loss: 0.2097 - val_loss: 8.8104
+    Epoch 188/200
+    2244/2244 [==============================] - 0s - loss: 0.2094 - val_loss: 8.8227
+    Epoch 189/200
+    2244/2244 [==============================] - 0s - loss: 0.2089 - val_loss: 8.8354
+    Epoch 190/200
+    2244/2244 [==============================] - 0s - loss: 0.2079 - val_loss: 8.8587
+    Epoch 191/200
+    2244/2244 [==============================] - 0s - loss: 0.2103 - val_loss: 8.8801
+    Epoch 192/200
+    2244/2244 [==============================] - 0s - loss: 0.2070 - val_loss: 8.9046
+    Epoch 193/200
+    2244/2244 [==============================] - 0s - loss: 0.2092 - val_loss: 8.9270
+    Epoch 194/200
+    2244/2244 [==============================] - 0s - loss: 0.2088 - val_loss: 8.9576
+    Epoch 195/200
+    2244/2244 [==============================] - 0s - loss: 0.2082 - val_loss: 8.9688
+    Epoch 196/200
+    2244/2244 [==============================] - 0s - loss: 0.2058 - val_loss: 8.9882
+    Epoch 197/200
+    2244/2244 [==============================] - 0s - loss: 0.2082 - val_loss: 8.9895
+    Epoch 198/200
+    2244/2244 [==============================] - 0s - loss: 0.2062 - val_loss: 9.0147
+    Epoch 199/200
+    2244/2244 [==============================] - 0s - loss: 0.2057 - val_loss: 9.0293
+    Epoch 200/200
+    2244/2244 [==============================] - 1s - loss: 0.2060 - val_loss: 9.0766
+#+END_SRC
+
+**** Quick Visualization
+
+Within a few minites, you should be able to generate some grammatically correct
+captions, though it may not related to image well. Let's sample some training
+images and see what our model will say.
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def generate_caption(model, enc_map, dec_map, img, max_len=10):
+        gen = []
+        st, ed = enc_map['<ST>'], enc_map['<ED>']
+        cur = st
+        while len(gen) < max_len:
+            X = [np.array([img]), np.array([cur])]
+            cur = np.argmax(model.predict(X)[0])
+            if cur != ed:
+                gen.append(dec_map[cur])
+            else:
+                break
+        return ' '.join(gen)
+
+    def eval_human(model, img_map, df_cap, enc_map, dec_map, img_dir, size=1):
+        for idx in np.random.randint(df_cap.shape[0], size=size):
+            row = df_cap.iloc[idx]
+            cap = eval(row['caption'])
+            img_id = row['img_id']
+            img = img_map[img_id]
+            img_path = os.path.join(img_dir, img_id)
+            # download image on-the-fly
+            if not os.path.exists(img_path):
+                download_image(img_dir, img_id)
+            # show image
+            display(Image(filename=img_path))
+            # generated caption
+            gen = generate_caption(model, enc_map, dec_map, img)
+            print('[generated] {}'.format(gen))
+            # groundtruth caption
+            print('[groundtruth] {}'.format(' '.join([dec_map[cap[i]] for i in range(1,len(cap)-1)])))
+    def eval_plot(mdl_path, hist_path, img_path, img_map, df_cap, enc_map, dec_map, size):
+        # plot history
+        hist = cPickle.load(open(hist_path, 'rb'))
+        fig = figure()
+        fig.line(range(1,len(hist['loss'])+1), hist['loss'], color='red', legend='training loss')
+        fig.line(range(1,len(hist['val_loss'])+1), hist['val_loss'], color='blue', legend='valid loss')
+        fig.xaxis.axis_label, fig.yaxis.axis_label = '#batch', 'categorical-loss'
+        show(fig)
+        # eval captioning
+        model = load_model(mdl_path)
+        eval_human(model, img_map, df_cap, enc_map, dec_map, img_path, size=size)
+#+END_SRC
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    enc_map = cPickle.load(open('dataset/text/enc_map.pkl', 'rb'))
+    dec_map = cPickle.load(open('dataset/text/dec_map.pkl', 'rb'))
+
+    eval_plot(mdl_path, hist_path, 'dataset/image', img_train, df_cap, enc_map, dec_map, 5)
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [generated] a small with a small with a small with a
+    [groundtruth] an image of several planes flying in the air
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [generated] a black cutting two young open
+    [groundtruth] these men are playing a sport in a field
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [generated] a <RARE>
+    [groundtruth] a bunch of bananas is displayed on a counter top
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [generated] a toilet
+    [groundtruth] large whole pizza pie with cheese and <RARE> toppings
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [generated] purple shelf shelf shelf shelf shelf shelf shelf shelf shelf
+    [groundtruth] a frosted <RARE> cake with horse cake <RARE>
+#+END_SRC
+
+**** Diagnose Your Model: Learning-Curve
+
+If you observed explosion of validation loss, that means we should stop training
+earlier. Please make good use of [[https://keras.io/callbacks][keras.callbacks]], such as EarlyStopping,
+ModelCheckPoint, or you may reduce learning rate when validation loss stops
+decreasing ...etc.
+
+** Evaluation Metric: CIDEr-D
+
+[[http://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Vedantam_CIDEr_Consensus-Based_Image_2015_CVPR_paper.pdf][CIDEr-D]] is proposed on 2015 CVPR and is designed for image captioning task,
+which is adopted as one of evaluation metrics in MS-COCO competition.
+
+To automatically evaluate quality of a caption, there're 2 main goals:
+
+1. evaluate correct keywords related to that image
+2. evalute the grammar quality of generated caption
+
+Basically, CIDEr-D achieves the goals by first, construct the n-gram token
+dictionary (without stemming), and then compare the similarity of TF-IDF score
+between ground-truth caption and generated caption. The order is consider by
+using larger n of n-gram, it's practical since our caption is only a sentence.
+
+However, since Kaggle-InClass donnot accept custom evaluation metric, we require
+you to compute your CIDEr-D score locally and submit to our competition page.
+Please run the executable - [[file:CIDErD/gen_score][=CIDErD/gen_score=]] to generate CIDEr-D score. The
+followings are example steps to generate your submission:
+
+**** 1. Generate All Captions of Testing Image
+
+In [18]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def generate_captions(model, enc_map, dec_map, img_test, max_len=10):
+        img_ids, caps = [], []
+        for img_id, img in img_test.items():
+            img_ids.append(img_id)
+            caps.append(generate_caption(model, enc_map, dec_map, img, max_len=max_len))
+        return pd.DataFrame({'img_id':img_ids, 'caption':caps}).set_index(['img_id'])
+#+END_SRC
+
+In [19]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # generate caption to csv file
+    df_predict = generate_captions(model, enc_map, dec_map, img_test)
+    df_predict.to_csv('generated/demo.csv')
+#+END_SRC
+
+You can quickly take a look at the generated caption
+[[file:generated/demo.csv]] to see how models learns about grammars,
+semantics, ...etc. However, please strictly follow our rule: it's
+*forbidden to do any manual modification to generated captions*.
+
+**** 2. Execute CIDEr-D executable to generate score.csv
+
+Important: because some path depandence issue, you must change your directory to
+[[file:CIDErD/][CIDErD]], then execute =./gen_score=.
+
+-  =-i=: your generated captions in csv format
+-  =-r=: your evaluated CIDErD score, submit this to Kaggle-InClass
+
+You can see help manual by argument =-h=, for example, =./gen_score -h=.
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    os.system('cd CIDErD && ./gen_score -i ../generated/demo.csv -r ../generated/demo_score.csv')
+#+END_SRC
+
+Out[20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    0
+#+END_SRC
+
+**** 3. Submit generated score.csv to Kaggle-InClass
+
+The CIDEr-D score will be compared and showed on leaderboard.
+
+Important: we'll re-score your generated captions after the competition, it's no
+use to cheat on your CIDEr-D score.
+
+** Hints
+
+You might quickly find that generating batches takes a lot of time! Expanding
+just $500$ image-caption pairs by =generate_batch= function takes over $10$
+minutes. This is unacceptable since we have $102,739\times5$ image-caption pairs
+in total. Therefore, we give you some direction to speedup your training:
+
+-  =[CS-student-basis]= means that it'll work and easy to implement for a CS
+  student
+-  =[research-oriented]= means that the idea sounds reasonable, it may work but
+  implement it might require a lot of effort or failed at the end or under some
+  unknown cases(this is why it called research-oriented). However, you might
+  learn a lot more, and even find interesting directions for your
+  research(maybe).
+
+**** =[CS-student-basic]= parallelly generating training batches
+
+You can use multiple thread/process to generate the batch and then collect
+periodically to train your model. You can use [[https://docs.python.org/3.5/library/multiprocessing.html][multiprocessing]] module to spawn
+multiple processes or you can choose to use the embarrassingly parallism module
+[[https://pythonhosted.org/joblib/parallel.html][joblib]]. As a CS student, writing simple parallel code not a problem, right?
+
+**** =[CS-student-basic]= beam search
+
+The example code to generate caption is a locally greedy algorithm by taking
+only the word with highest probability at each timestep. However, it doesn't
+necessarily going to give the best caption. The ideal caption should maximize
+the *joint* probability of all words at each timestep.
+$$\displaystyle\arg\max\_{w\_1,\cdots,w\_n} P(|w\_1)P(,w\_1|w\_2)\cdots
+P(,w\_1\cdots,w\_n|)$$ There's a commonly trick, called *beam search*, which is
+empirically observed to improve testing performance by doing
+*Breadth-First-Search over top k possible next word at each timestep*, where $k$
+is called /beam-size/. We could rank these possible captions by taking negative
+log likelihood(NLL) of joint probability of all words, then the above objective
+becomes
+$$=\arg\min\_{w\_1,\cdots,w\_n}\left(-\sum\_{t=1}\^n\log(P(,w\_1,\cdots,w\_{t-1}|w\_t)\right)$$,
+which can be easily summed up by taking negative log of softmax score at each
+timestep. After generating several possible captions, we could choose the one
+with least NLL as our final caption.
+
+**** =[research-oriented]= teacher forcing
+
+The core reason why the training of our image-caption model is so slow is the
+/architecture/ - our model recurrents on the hidden state, which is a normal
+RNN, as illustrated by (a) in the following table. Normal RNN requires forward
+propagation from the beginning all the way to current timestep. The dependence
+of hidden-state calculation prevents parallel training of different timesteps.
+
+- (a)[[https://drive.google.com/a/datalab.cs.nthu.edu.tw/uc?id=0BxGBu16r86Q0c0lMenFxbUFabDA]]
+
+- (b)[[https://drive.google.com/a/datalab.cs.nthu.edu.tw/uc?id=0BxGBu16r86Q0Z1lyajZJdEJsX3M]]
+
+In fact, there's another with greater parallelism but less powerful
+architecture, as (b) shown above. Rather than recurrent on the hidden state as
+normal RNN does, the architecture has the recurrent connection from the *output*
+to hidden-state. You can easily realize why (b) is less powerful than (a).
+Because the output units(softmax) are trained to match the target, they are less
+likely to capture hidden sequential pattern of the /input/.
+
+But the good news is - since now we're recurrent on the /output/, the fixed
+dataset target, we can train each timestamp directly from the training set. The
+gradients of each timestep can also be computed in isolation. However, the
+training is more complex. *Teacher forcing* is a technique to train (b)-typed
+models(with recurrent connections from output to model).
+
+-  see [[http://www.deeplearningbook.org/contents/rnn.html][ch10 of DeepLearning book]] for more detailed tutorial
+-  see [[https://github.com/farizrahman4u/seq2seq][teacher forcing implementation]] for Keras implementation, but it's for
+  seq2seq, so it requires some adaptation to fit into our task
+
+**** =[research-oriented]= attention
+
+Add a special attention layer to enable the network to focus on more important
+objects. See the paper published on 2015 ICML written by Yoshua Bengio team -
+[[https://github.com/kelvinxu/arctic-captions][Show, Attend, and Tell: Neural Image Caption Generation with Visual Attention.]]

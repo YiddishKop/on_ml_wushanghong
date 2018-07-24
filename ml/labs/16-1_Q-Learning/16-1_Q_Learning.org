@@ -1,0 +1,966 @@
+* Q-Learning
+
+In this lab, we will introduce temporal-difference learning and then use
+Q-learning to train an agent to play "Flappy Bird" game.
+
+[[file:img/flappybird.gif]]
+
+** Temporal-Difference learning
+   :PROPERTIES:
+   :CUSTOM_ID: Temporal-Difference-learning
+   :END:
+
+In value-based method, a state-value $V\_\pi(s)$ is expected cumulated
+rewards $G$ when started at state s, that's:
+
+$$ \begin{align}
+V\_{\pi}(s)~ &= ~\mathbb{E}\_{\pi, P}[G\^{(t)}~|~S\^{(t)}~=~s] \\ &=
+~\mathbb{E}\_{\pi, P}[\sum\limits\_{k=0}\^{\infty}
+\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s] \end{align} $$ We can divide it
+into sum of reward and state-value of next state: $$ \begin{align}
+V\_{\pi}(s)~ &= ~\mathbb{E}\_{\pi, P}[\sum\limits\_{k=0}\^{\infty}
+\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s] \\ &= ~\mathbb{E}\_{\pi,
+P}[R\^{(t+1)}+\gamma\sum\limits\_{k=0}\^{\infty}
+\gamma\^{k}R\^{(t+k+2)}~|~S\^{(t)}~=~s] \\ &= ~\mathbb{E}\_{\pi,
+P}[R\^{(t+1)}+\gamma V\_{\pi}(S\^{(t+1)})~|~S\^{(t)}~=~s] \end{align} $$
+
+Recall in the class, a state-value can be approached by:
+$$V(S\^{(t)})\leftarrow V(S\^{(t)})+\eta[G\^{(t)}-V(S\^{(t)})]$$ Replace
+$G\_{t}$ by $R\_{t+1}+\gamma V\_{\pi}(S\_{t+1})$, we get:
+$$V(S\^{(t)})\leftarrow V(S\^{(t)})+\eta[R\^{(t+1)}+\gamma
+V\_{\pi}(S\^{(t+1)})-V(S\^{(t)})]$$
+
+These can also be apply to action-value function: $$ \begin{align}
+Q\_{\pi}(s,a)~ &= ~\mathbb{E}\_{\pi,
+P}[G\^{(t)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &= ~\mathbb{E}\_{\pi,
+P}[\sum\limits\_{k=0}\^{\infty}
+\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &=
+~\mathbb{E}\_{\pi, P}[R\_{t+1}+\gamma\sum\limits\_{k=0}\^{\infty}
+\gamma\^{k}R\^{(t+k+2)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &=
+~\mathbb{E}\_{\pi, P}[R\_{t+1}+\gamma
+Q\_{\pi}(S\^{(t+1)},A\^{(t+1)})~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \end{align}
+$$ $$Q(S\^{(t)},A\^{(t)})\leftarrow
+Q(S\^{(t)},A\^{(t)})+\eta[R\^{(t+1)}+\gamma
+Q(S\^{(t+1)},A\^{(t+1)})-Q(S\^{(t)},A\^{(t)})]$$ This becomes update
+rule of SARSA.
+
+
+[[file:img/sarsa.png]]
+
+image come from [[http://ufal.mff.cuni.cz/~straka/courses/npfl114/2016/sutton-bookdraft2016sep.pdf][Reinforcement Learning: An Introduction]]
+
+*** Q-learning
+
+like SARSA, but in a greedy way, the update rule become:
+$$Q(S\^{(t)},A\^{(t)})\leftarrow
+Q(S\^{(t)},A\^{(t)})+\eta[R\^{(t+1)}+\gamma
+~maxQ(S',A')-Q(S\^{(t)},A\^{(t)})]$$ The difference is that SARSA use
+expectation of $Q$ value of next state to chase $Q\_{\pi\^{*}}$, while
+Q-learning use best $Q$ value of next state to chase $Q\_{\pi\^{*}}$. In
+fact, if policy of SARSA is greedy, it become Q-learning.
+
+[[file:img/q_learning.png]]
+
+image come from [[http://ufal.mff.cuni.cz/~straka/courses/npfl114/2016/sutton-bookdraft2016sep.pdf][Reinforcement Learning: An Introduction]]
+
+In this following, we use [[http://pygame-learning-environment.readthedocs.io/en/latest/user/home.html][pygame learning environment]] which provide environment
+to train an agent. Please install it before going through.
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # import package needed
+    %matplotlib inline
+    import matplotlib.pyplot as plt
+    import os
+    os.environ["SDL_VIDEODRIVER"] = "dummy"  # this line make pop-out window not appear
+    import numpy as np
+    from ple.games.flappybird import FlappyBird
+    from ple import PLE
+
+    game = FlappyBird()
+    env = PLE(game, fps=30, display_screen=False)  # environment interface to game
+    env.reset_game()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    couldn't import doomish
+    Couldn't import doom
+#+END_SRC
+
+in the following, we see how many action in the environment.
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # return a dictionary whose key is action description and value is action index
+    print(game.actions)
+    # return a list of action index (include None)
+    print(env.getActionSet())
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    {'up': 119}
+    [119, None]
+#+END_SRC
+
+From above we can see that action indexed at 0 means "jump up" and action
+indexed at 1 means "no-opearation". Now we see what features are in a state.
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    game.getGameState()  # a dictionary describe state
+#+END_SRC
+
+Out[3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    {'next_next_pipe_bottom_y': 260,
+     'next_next_pipe_dist_to_player': 427.0,
+     'next_next_pipe_top_y': 160,
+     'next_pipe_bottom_y': 244,
+     'next_pipe_dist_to_player': 283,
+     'next_pipe_top_y': 144,
+     'player_vel': 0,
+     'player_y': 256}
+#+END_SRC
+
+What we see above are features in a state such as distance to next pipe and next
+next pipe, etc. We will use these features to train an agent to play game.
+
+[[file:img/flappybird.jpg]]
+
+**** Build Agnet
+
+In the following, we define functions for agent.
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import math
+    import copy
+    from collections import defaultdict
+    MIN_EXPLORING_RATE = 0.01
+    MIN_LEARNING_RATE = 0.5
+
+    class Agent:
+
+      def __init__(self,
+                   bucket_range_per_feature,
+                   num_action,
+                   t=0,
+                   discount_factor=0.99):
+        self.update_parameters(t)  # init explore rate and learning rate
+        self.q_table = defaultdict(lambda: np.zeros(num_action))
+        self.discount_factor = discount_factor
+        self.num_action = num_action
+
+        # how to discretize each feature in a state
+        # the higher each value, less time to train but with worser performance
+        # e.g. if range = 2, feature with value 1 is equal to feature with value 0 bacause int(1/2) = int(0/2)
+        self.bucket_range_per_feature = bucket_range_per_feature
+
+      def select_action(self, state):
+        # epsilon-greedy
+        state_idx = self.get_state_idx(state)
+        if np.random.rand() < self.exploring_rate:
+          action = np.random.choice(num_action)  # Select a random action
+        else:
+          action = np.argmax(
+              self.q_table[state_idx])  # Select the action with the highest q
+        return action
+
+      def update_policy(self, state, action, reward, state_prime):
+        state_idx = self.get_state_idx(state)
+        state_prime_idx = self.get_state_idx(state_prime)
+        # Update Q_value using Q-learning update rule
+        best_q = np.max(self.q_table[state_prime_idx])
+        self.q_table[state_idx][action] += self.learning_rate * (
+            reward + self.discount_factor * best_q - self.q_table[state_idx][action])
+
+      def get_state_idx(self, state):
+        # instead of using absolute position of pipe, use relative position
+        state = copy.deepcopy(state)
+        state['next_next_pipe_bottom_y'] -= state['player_y']
+        state['next_next_pipe_top_y'] -= state['player_y']
+        state['next_pipe_bottom_y'] -= state['player_y']
+        state['next_pipe_top_y'] -= state['player_y']
+
+        # sort to make list converted from dict ordered in alphabet order
+        state_key = [k for k, v in sorted(state.items())]
+
+        # do bucketing to decrease state space to speed up training
+        state_idx = []
+        for key in state_key:
+          state_idx.append(int(state[key] / self.bucket_range_per_feature[key]))
+        return tuple(state_idx)
+
+      def update_parameters(self, episode):
+        self.exploring_rate = max(MIN_EXPLORING_RATE,
+                                  min(0.5, 0.99**((episode) / 30)))
+        self.learning_rate = max(MIN_LEARNING_RATE, min(0.5, 0.99
+                                                        **((episode) / 30)))
+
+      def shutdown_explore(self):
+        # make action selection greedy
+        self.exploring_rate = 0
+#+END_SRC
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    num_action = len(env.getActionSet())
+    bucket_range_per_feature = {
+      'next_next_pipe_bottom_y': 40,
+      'next_next_pipe_dist_to_player': 512,
+      'next_next_pipe_top_y': 40,
+      'next_pipe_bottom_y': 20,
+      'next_pipe_dist_to_player': 20,
+      'next_pipe_top_y': 20,
+      'player_vel': 4,
+      'player_y': 16
+    }
+    # init agent
+    agent = Agent(bucket_range_per_feature, num_action)
+#+END_SRC
+
+utility function for showing video.
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def make_anim(images, fps=60, true_image=False):
+      duration = len(images) / fps
+      import moviepy.editor as mpy
+
+      def make_frame(t):
+        try:
+          x = images[int(len(images) / duration * t)]
+        except:
+          x = images[-1]
+
+        if true_image:
+          return x.astype(np.uint8)
+        else:
+          return ((x + 1) / 2 * 255).astype(np.uint8)
+
+      clip = mpy.VideoClip(make_frame, duration=duration)
+      clip.fps = fps
+      return clip
+#+END_SRC
+
+now we have implemented agent and it is time to implement training algorithm.
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from IPython.display import Image, display
+
+    reward_per_epoch = []
+    lifetime_per_epoch = []
+    exploring_rates = []
+    learning_rates = []
+    print_every_episode = 500
+    show_gif_every_episode = 5000
+    NUM_EPISODE = 50000
+    for episode in range(0, NUM_EPISODE):
+
+      # Reset the environment
+      env.reset_game()
+
+      # record frame
+      frames = [env.getScreenRGB()]
+
+      # for every 500 episodes, shutdown exploration to see performance of greedy action
+      if episode % print_every_episode == 0:
+        agent.shutdown_explore()
+
+      # the initial state
+      state = game.getGameState()
+      cum_reward = 0  # cumulate reward for this episode
+      t = 0
+
+      while not env.game_over():
+
+        # select an action
+        action = agent.select_action(state)
+
+        # execute the action and get reward
+        reward = env.act(
+            env.getActionSet()[action])  # reward = +1 when pass a pipe, -5 when die
+
+        frames.append(env.getScreenRGB())
+
+        # cumulate reward
+        cum_reward += reward
+
+        # observe the result
+        state_prime = game.getGameState()  # get next state
+
+        # update agent
+        agent.update_policy(state, action, reward, state_prime)
+
+        # Setting up for the next iteration
+        state = state_prime
+        t += 1
+
+      # update exploring_rate and learning_rate
+      agent.update_parameters(episode)
+
+      if episode % print_every_episode == 0:
+        print("Episode %d finished after %f time steps" % (episode, t))
+        print("cumulated reward: %f" % cum_reward)
+        print("exploring rate %f" % agent.exploring_rate)
+        print("learning rate %f" % agent.learning_rate)
+        reward_per_epoch.append(cum_reward)
+        exploring_rates.append(agent.exploring_rate)
+        learning_rates.append(agent.learning_rate)
+        lifetime_per_epoch.append(t)
+
+      # for every 5000 episode, record an animation
+      if episode % show_gif_every_episode == 0:
+        print("len frames:", len(frames))
+        clip = make_anim(frames, fps=60, true_image=True).rotate(-90)
+        display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 0 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.500000
+    learning rate 0.500000
+    len frames: 63
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     98%|█████████▊| 63/64 [00:00<00:00, 82.42it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.500000
+    learning rate 0.500000
+    Episode 1000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.500000
+    learning rate 0.500000
+    Episode 1500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.500000
+    learning rate 0.500000
+    Episode 2000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.500000
+    learning rate 0.500000
+    Episode 2500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.432779
+    learning rate 0.500000
+    Episode 3000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.366032
+    learning rate 0.500000
+    Episode 3500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.309580
+    learning rate 0.500000
+    Episode 4000 finished after 59.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.261834
+    learning rate 0.500000
+    Episode 4500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.221452
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      8%|▊         | 5/64 [00:00<00:01, 48.27it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 5000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.187298
+    learning rate 0.500000
+    len frames: 63
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     98%|█████████▊| 63/64 [00:00<00:00, 79.99it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 5500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.158411
+    learning rate 0.500000
+    Episode 6000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.133980
+    learning rate 0.500000
+    Episode 6500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.113316
+    learning rate 0.500000
+    Episode 7000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.095840
+    learning rate 0.500000
+    Episode 7500 finished after 61.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.081059
+    learning rate 0.500000
+    Episode 8000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.068557
+    learning rate 0.500000
+    Episode 8500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.057984
+    learning rate 0.500000
+    Episode 9000 finished after 59.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.049041
+    learning rate 0.500000
+    Episode 9500 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.041477
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      8%|▊         | 8/100 [00:00<00:01, 79.60it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 10000 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.035080
+    learning rate 0.500000
+    len frames: 99
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     99%|█████████▉| 99/100 [00:01<00:00, 77.23it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 10500 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.029670
+    learning rate 0.500000
+    Episode 11000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.025094
+    learning rate 0.500000
+    Episode 11500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.021224
+    learning rate 0.500000
+    Episode 12000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.017951
+    learning rate 0.500000
+    Episode 12500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.015182
+    learning rate 0.500000
+    Episode 13000 finished after 74.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.012841
+    learning rate 0.500000
+    Episode 13500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010860
+    learning rate 0.500000
+    Episode 14000 finished after 77.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 14500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     12%|█▎        | 8/64 [00:00<00:00, 78.65it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 15000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 63
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     98%|█████████▊| 63/64 [00:00<00:00, 86.60it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 15500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 16000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 16500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 17000 finished after 111.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 17500 finished after 130.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 18000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 18500 finished after 218.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 19000 finished after 75.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 19500 finished after 69.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      3%|▎         | 4/149 [00:00<00:03, 39.44it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 20000 finished after 147.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 148
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     99%|█████████▉| 148/149 [00:01<00:00, 94.73it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 20500 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 21000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 21500 finished after 73.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 22000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 22500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 23000 finished after 147.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 23500 finished after 177.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 24000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 24500 finished after 114.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      8%|▊         | 9/116 [00:00<00:01, 83.63it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 25000 finished after 114.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 115
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     99%|█████████▉| 115/116 [00:01<00:00, 73.80it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 25500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 26000 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 26500 finished after 247.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 27000 finished after 366.000000 time steps
+    cumulated reward: 4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 27500 finished after 175.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 28000 finished after 402.000000 time steps
+    cumulated reward: 4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 28500 finished after 179.000000 time steps
+    cumulated reward: -1.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 29000 finished after 78.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 29500 finished after 324.000000 time steps
+    cumulated reward: 2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      2%|▏         | 3/136 [00:00<00:04, 28.47it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 30000 finished after 134.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 135
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     99%|█████████▉| 135/136 [00:01<00:00, 71.30it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 30500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 31000 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 31500 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 32000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 32500 finished after 444.000000 time steps
+    cumulated reward: 6.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 33000 finished after 75.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 33500 finished after 374.000000 time steps
+    cumulated reward: 4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 34000 finished after 106.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 34500 finished after 175.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      0%|          | 2/855 [00:00<00:45, 18.90it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 35000 finished after 853.000000 time steps
+    cumulated reward: 16.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 854
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    100%|█████████▉| 854/855 [00:13<00:00, 62.69it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 35500 finished after 213.000000 time steps
+    cumulated reward: -1.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 36000 finished after 247.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 36500 finished after 149.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 37000 finished after 134.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 37500 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 38000 finished after 223.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 38500 finished after 583.000000 time steps
+    cumulated reward: 9.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 39000 finished after 135.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 39500 finished after 146.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     19%|█▉        | 12/64 [00:00<00:00, 119.87it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 40000 finished after 62.000000 time steps
+    cumulated reward: -5.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 63
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     98%|█████████▊| 63/64 [00:00<00:00, 184.94it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 40500 finished after 131.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 41000 finished after 134.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 41500 finished after 247.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 42000 finished after 114.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 42500 finished after 226.000000 time steps
+    cumulated reward: 0.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 43000 finished after 281.000000 time steps
+    cumulated reward: 1.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 43500 finished after 137.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 44000 finished after 147.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 44500 finished after 114.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     19%|█▉        | 15/79 [00:00<00:00, 148.13it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 45000 finished after 77.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    len frames: 78
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+     99%|█████████▊| 78/79 [00:00<00:00, 200.74it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Episode 45500 finished after 190.000000 time steps
+    cumulated reward: -1.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 46000 finished after 98.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 46500 finished after 150.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 47000 finished after 303.000000 time steps
+    cumulated reward: 2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 47500 finished after 189.000000 time steps
+    cumulated reward: -1.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 48000 finished after 134.000000 time steps
+    cumulated reward: -3.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 48500 finished after 73.000000 time steps
+    cumulated reward: -4.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 49000 finished after 166.000000 time steps
+    cumulated reward: -2.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+    Episode 49500 finished after 627.000000 time steps
+    cumulated reward: 10.000000
+    exploring rate 0.010000
+    learning rate 0.500000
+#+END_SRC
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def demo():
+      # Reset the environment
+      env.reset_game()
+
+      # record frame
+      frames = [env.getScreenRGB()]
+
+      # for every 500 episodes, shutdown exploration to see performance of greedy action
+      agent.shutdown_explore()
+
+      # the initial state
+      state = game.getGameState()
+
+      while not env.game_over():
+        # select an action
+        action = agent.select_action(state)
+
+        # execute the action and get reward
+        reward = env.act(env.getActionSet()[action])
+
+        frames.append(env.getScreenRGB())
+
+        # observe the result
+        state_prime = game.getGameState()  # get next state
+
+        # Setting up for the next iteration
+        state = state_prime
+
+      clip = make_anim(frames, fps=60, true_image=True).rotate(-90)
+      display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+    demo()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    100%|█████████▉| 528/529 [00:05<00:00, 94.41it/s]
+#+END_SRC
+
+Sorry, seems like your browser doesn't support HTML5 audio/video
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # plot life time against training episodes
+    fig, ax1 = plt.subplots(figsize=(20, 5))
+    plt.plot(range(len(lifetime_per_epoch)), lifetime_per_epoch)
+    fig.tight_layout()
+    plt.show()
+#+END_SRC
+
+
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # plot reward against training episodes
+    import matplotlib.pyplot as plt
+    fig, ax1 = plt.subplots(figsize=(20, 5))
+    plt.plot(range(len(reward_per_epoch)), reward_per_epoch)
+    plt.show()
+#+END_SRC
+
+From life time and reward plot, we can see that agent actually learn to play
+games.
+
+* Assignment
+
+-  change update rule from Q-learning to SARSA and discuss the result.
+-  Submit notebook on iLMS (ex: Lab15-1\_studentID.ipynb)
+-  deadline: 2018/1/4 23:59
+

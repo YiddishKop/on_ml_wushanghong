@@ -1,0 +1,870 @@
+
+
+* DataLab Cup 1: Predicting News Popularity
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    %matplotlib inline
+#+END_SRC
+
+* Competition Info[[Competition-Info][¶]]
+  :PROPERTIES:
+  :CUSTOM_ID: Competition-Info
+  :END:
+
+In this competition, you are provided with a supervised dataset $\mathbb{X}$
+consisting of the *raw content* of news articles and the binary *popularity*
+(where $1$ means "popular" and $-1$ not, calculated based on the number of
+shares in online social networking services) of these articles as labels. Your
+goal is to learn a function $f$ from $\mathbb{X}$ that is able to predict the
+popularity of an unseen news article.
+
+*** Dataset Format[[Dataset-Format][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Dataset-Format
+    :END:
+
+-  =train.csv= contains 27643 data points (news articles) with
+   attributes =Id=, =Page content=, and binary labels =Popularity=
+-  =test.csv= contains 11848 data points with the only the attributes.
+
+*** How to Submit Results?[[How-to-Submit-Results?][¶]]
+
+You have to predict the correct labels of data points in =test.csv= and submit
+your predictions to the [[https://inclass.kaggle.com/c/datalabcup-2016-news-popularity][Kaggle-In-class]] online judge system to get scores.
+Following are some example actions:
+
+*** Panel Action Description
+[[https://drive.google.com/a/datalab.cs.nthu.edu.tw/uc?id=0BxGBu16r86Q0cF95TndSaGExSFE]]
+Data Get the dataset $\mathbb{X}$ here. Make a Submission Your testing
+performance will be evaluated immediately and shown on the leaderboard.
+Leaderboard The current ranking of participants. Note that this ranking only
+reflects the performance on part of the testset and may not equal to the final
+ranking (see below). Forum You can ask questions or share findings here. Kernels
+You can create your jupyter notebook, run it, and keep it as private or public
+here.
+
+*** Scoring
+
+The evaluation metric is AUC. The ranking shown on the leaderboard before the
+end of competition reflects only the AUC performance over *part of* =test.csv=.
+However, this is *not* how we evaluate your final scores. After the competition,
+we calculate AUC over the entire =test.csv= and report the final ranking
+thereby.
+
+There will be two baseline results, namely, =Benchmark-60= and =Benchmark-80=.
+You have to outperform =Benchmark-60= to get 60 points, and =Benchmark-80= to
+get 80. Meanwhile, the higher AUC you achieve, the higher the final score you
+will get.
+
+*** Rules (Subject to Change)
+What you can do:
+
+-  Use untaught APIs: you can use any machine learning tools you like as
+   well as models/techniques that are not taught in the class.
+
+What you *can't* do:
+
+-  Attempt to make predictions by means other than "learning" from the
+   given dataset $\mathbb{X}$ or related sources. For example, you
+   cannot hard code decision rules in your submission, but you can use a
+   =DecisionTreeClassifier= that learns rules from data.
+
+Violation of any prohibited rule will be considered as cheating and
+results in *0 final score*.
+
+*** Important Dates
+
+-  11/1/2016 (Tue) - competition starts;
+-  11/15/2016 (Tue) 23:59pm - competition ends, final score
+   announcement;
+-  11/16/2016 (Wed) 23:59pm - report submission (to iLMS);
+-  11/17/2016 (Thu) - winner presentation (top-3 teams, 15 min each).
+
+*** Report
+
+After the competition, *each team have to hand in a report* in Jupyter
+notebook format via the iLMS system. You report should include:
+
+-  Student ID, name of each team member
+-  How did you preprocess data (cleaning, feature engineering, etc)?
+-  How did you build the classifier (model, training algorithm, special
+   techniques,etc.)?
+-  Conclusions (interesting findings, pitfalls, takeaway lessons, etc.)?
+
+The file name of your report must be: =LSML-{Your Team number}-report.ipynb=.
+
+* Hint 1: Feature Engineering is More Important Then You Expected
+
+So far, we learn various machine learning techniques based on datasets where the
+date features are predefined. In many real-world applications, including this
+competition, we only get raw data and have to define the features ourself.
+*Feature engineering* is the process of using domain knowledge to create
+features that make machine learning algorithms work. While good modeling and
+training techniques help you make better predictions, feature engineering
+usually determines whether your task is "learnable".
+
+To demonstrate the importance of feature engineering, let's use the [[http://ai.stanford.edu/~amaas/data/sentiment/][IMDB review
+dataset]] to show how to extract meaningful information from a subset of these
+movie reviews to build a machine learning model that can predict whether a
+certain reviewer liked or disliked a movie.
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import pandas as pd
+
+    df = pd.read_csv('datasets/train.csv')
+    print(df.head(5))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+                                                  review  sentiment
+    0  I know that Chill Wills usually played lovable...          1
+    1  The arrival of an world famous conductor sets ...          1
+    2  This documentary is such a wonderful example o...          1
+    3  I really tried to like this movie but in the e...          0
+    4  Not one of Monogram's better(not trying to be ...          0
+#+END_SRC
+
+We get movie reviews in its raw content---there is only one feature called
+=review=. If the review is positive comment, then the label field =sentiment=
+equals to 1; otherwise 0. To be able to predict from text, we have to go through
+several preprocessing steps first.
+
+*** Preprocessing: Data Cleaning
+
+Data cleaning is the process of detecting and correcting (or removing) corrupt
+or inaccurate pieces of information in the dataset. Let's print a review and see
+if we need to clean up the raw text:
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(df.loc[0,'review'])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    I know that Chill Wills usually played lovable old sorts in Westerns. But his role in this segment is something I've remembered for a long time. Wills could be a first rate villain. Yes, Burgess Meredith's Fall was correct! That look in Hepplewhite's eye! It expressed porcine greed, ignorance, and the threat of violence all at once. Quite a performance, I think.<br /><br />The segment itself was a good one, too. Question: couldn't the little black bag cure alcoholism? I guess it did, sort of, with Fall. But the doctor would have been wise to apply the cure, if he had it, as quickly as possible to Hepplewhite.<br /><br />There is one moment that was annoying but also necessary. And it is something that appears to recur in these Night Gallery segments. It's Serling's constant need to sermonize. For that's what we got, one more time, with Dr. Fall. I don't know what was more frustrating, losing the black bag and all its miracles or not being to stop Fall from preaching about the bag's benefit for humanity, all while rubbing Hepplewhite's greedy face in the mud, and, therefore, all but begging for Hepplewhite to strike out at him. But as I say, it was necessary. At least it was for me. Otherwise, we wouldn't have been able to see Wills' performance discussed above. All done without moving a muscle or speaking a word.
+#+END_SRC
+
+As we can see here, the text contains HTML markup as well as punctuation and
+other non-letter characters. Since we care only about the semantics, we remove
+the HTML markup as it does not contain much useful semantics. Also, although
+punctuation marks might be useful in certain NLP contexts, we remove all
+punctuation marks for simplicity. One exception is the emoticon characters such
+as ":)" since they are certainly useful for sentiment analysis. Furthermore, we
+convert all text to lowercase since it doesn't matter if reviews are in upper or
+lower case.
+
+In summary, we clean up the text by:
+
+-  removing all HTML tags;
+-  removing punctuation marks but emoticons;
+-  converting all characters to lowercase.
+
+To accomplish this task, we use Python's regular expression (=re=) library, and
+a powerful HTML parsing tool [[https://www.crummy.com/software/BeautifulSoup/bs4/doc/][BeautifulSoup4]]. If you don't have BeautifulSoup4
+yet, you can install it via Anaconda:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda install beautifulsoup4
+#+END_SRC
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import re
+    from bs4 import BeautifulSoup
+
+    def preprocessor(text):
+        # remove HTML tags
+        text = BeautifulSoup(text, 'html.parser').get_text()
+        
+        # regex for matching emoticons, keep emoticons, ex: :), :-P, :-D
+        r = '(?::|;|=|X)(?:-)?(?:\)|\(|D|P)'
+        emoticons = re.findall(r, text)
+        text = re.sub(r, '', text)
+        
+        # convert to lowercase and append all emoticons behind (with space in between)
+        # replace('-','') removes nose of emoticons
+        text = re.sub('[\W]+', ' ', text.lower()) + ' ' + ' '.join(emoticons).replace('-','')
+        return text
+#+END_SRC
+
+By calling =BeautifulSoup(text, 'html.parser')=, we constructs a BeautifulSoup
+object, which represents the document as a nested data structure, and you can
+navigate the tree easily, like selecting a tag or querying tags with some regex
+pattern (see more on [[https://www.crummy.com/software/BeautifulSoup/bs4/doc/#navigating-the-tree][BeautifulSoup website]]). For this example, we simply remove
+all HTML tags (including the tag properties) and keep only the raw texts between
+tags by calling the method =get_text()=. After we remove the HTML markup, we
+used a slightly more complex regex to find emoticons, which we temporarily
+stored as emoticons. Next we remove all non-word characters from the text via
+the regex "[\W]+", convert the text into lowercase characters, and add the
+temporarily stored emoticons to the end of the text. Additionally, we removed
+the nose character (-) from the emoticons for consistency.
+
+Let's do a sanity check:
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(preprocessor('<a href="example.com">Hello, This :-( is a sanity check ;P!</a>'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello this is a sanity check  :( ;P
+#+END_SRC
+
+Our cleaning preprocessor seems to work correctly. That's great!
+
+Now, we need to think about how to split the text corpora into individual
+elements. This is called *tokenization*. One way to tokenize documents is to
+split them into individual words by splitting the cleaned document at its
+whitespace characters.
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def tokenizer(text):
+        return re.split('\s+', text.strip())
+
+    print(tokenizer('runners like running and thus they run'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ['runners', 'like', 'running', 'and', 'thus', 'they', 'run']
+#+END_SRC
+
+The example sentence is now split into tokens. However, we see a problem here:
+the token "running" and "run" only differs in verb tense. It is not a good idea
+to keep them as different tokens as this introduces unnecessary redundancy in
+the vector representation. Let's merge them using a technique called *word
+stemming*.
+
+*** Preprocessing: Word Stemming
+
+*Word stemming* is a process that transforms words into their root forms and
+allows us to map related words to the same stem. The original stemming algorithm
+was developed by Martin F. Porter in 1979 and is hence known as the *Porter
+stemming* algorithm. The [[http://www.nltk.org][Natural Language Toolkit for Python]] implements the
+Porter stemming algorithm, which we use here. In order to install the NLTK, you
+can simply execute:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda install nltk
+#+END_SRC
+
+NOTE: NLTK module provides powerful tools for various NLP tasks, such as
+the sentiment polarity scoring, common stop words, POS tagging, etc.,
+which you may find useful for this competition.
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from nltk.stem.porter import PorterStemmer
+
+    def tokenizer_stem(text):
+        porter = PorterStemmer()
+        return [porter.stem(word) for word in re.split('\s+', text.strip())]
+
+    print(tokenizer_stem('runners like running and thus they run'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ['runner', 'like', 'run', 'and', 'thu', 'they', 'run']
+#+END_SRC
+
+As we can see, the word "running" is now reduced to its root form "run".
+
+NOTE: words stemming just heuristically strips outs prefix or suffix of words.
+Therefore, it'll produce strange result for some words, ex: the word "boring"
+will be wrongly reduced into non-existing word "bor". To overcome this, there's
+another technique, called *lemmatization*, which *grammatically* transforms
+words back to root form. Lemmatization is also implemented by NLTK in [[http://www.nltk.org/api/nltk.stem.html][nltk.stem]].
+Empirically, there is no much difference in performance between the two
+techniques.
+
+*** Preprocessing: Stop-Word Removal
+
+*Stop-words* are simply words that are extremely common in all sorts of
+texts thus contain little useful information that can be used to
+distinguish between different classes of documents. Example stop-words
+are "is," "and," "has," and "the." Removing stop-words can be useful if
+we are working with raw or normalized term frequencies such as BoW and
+Feature Hashing but not for TF-IDF which already downweight frequently
+occurring words. The BoW, feature hashing, and TF-IDF will be explained
+in the next sections.
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import nltk
+    from nltk.corpus import stopwords
+    from nltk.stem.porter import PorterStemmer
+
+    nltk.download('stopwords')
+    stop = stopwords.words('english')
+
+    def tokenizer_stem_nostop(text):
+        porter = PorterStemmer()
+        return [porter.stem(w) for w in re.split('\s+', text.strip()) \
+                if w not in stop and re.match('[a-zA-Z]+', w)]
+
+    print(tokenizer_stem_nostop('runners like running and thus they run'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [nltk_data] Downloading package stopwords to
+    [nltk_data]     /Users/brandonwu/nltk_data...
+    [nltk_data]   Package stopwords is already up-to-date!
+    ['runner', 'like', 'run', 'thu', 'run']
+#+END_SRC
+
+Since machine learning models only accept numerical features, we must
+convert categorical features, such as tokens into a numerical form. In
+the next section, we introduce several commonly used models, including
+*BoW*, *TF-IDF*, and *Feature Hashing* that allows us to represent text
+as numerical feature vectors.
+
+*** Doc2Vec: BoW (Bag-Of-Words)
+
+The idea behind bag-of-words model is to represent each document by
+occurrence of words, which can be summarized as the following steps:
+
+1. Build vocabulary dictionary by unique token from the entire set of
+   documents;
+2. Represent each document by a vector, where each position corresponds
+   to the occurrence of a vocabulary in dictionary.
+
+Each vocabulary in BoW can be a single word (1-gram) or a sequence of
+$n$ continuous words (n-gram). It has been shown empirically that 3-gram
+or 4-gram BoW models yield good performance in anti-spam email filtering
+application.
+
+Here, we use Scikit-learn's implementation [[http://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html][CountVectorizer]] to construct the BoW
+model:
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    import scipy as sp
+    from sklearn.feature_extraction.text import CountVectorizer
+
+    doc_dummy = ["Study hard, then you will be happy and I will be happy", 
+               "\"I'm not happy :(\" \", because you don't study hard"]
+    print('[example documents]\n{}\n'.format('\n'.join(doc_dummy)))
+
+    # ngram_range=(min,max), default: 1-gram => (1,1)
+    count = CountVectorizer(ngram_range=(1, 1),
+                            preprocessor=preprocessor,
+                            tokenizer=tokenizer_stem_nostop)
+
+    count.fit(doc_dummy)
+    # dictionary is stored in vocabulary_
+    BoW = count.vocabulary_
+    print('[vocabulary]\n{}'.format(BoW))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [example documents]
+    Study hard, then you will be happy and I will be happy
+    "I'm not happy :(" ", because you don't study hard
+
+    [vocabulary]
+    {'studi': 2, 'happi': 0, 'hard': 1}
+#+END_SRC
+
+The parameter =ngram_range=(min-length, max-length)= in =CountVectorizer=
+specifies the vocabulary to be ={min-length}=-gram to ={max-length}=-gram. For
+example =ngram_range=(1, 2)= will use both 1-gram and 2-gram as vocabularies.
+After constructing BoW model by calling =fit()=, you can access BoW vocabularies
+in its attribute =vocubalary_=, which is stored as Python dictionary that maps
+vocabulary to an integer index.
+
+Let's transform the example documents into feature vectors:
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # get matrix (doc_id, vocabulary_id) --> tf
+    doc_bag = count.transform(doc_dummy)
+    print('(did, vid)\ttf')
+    print(doc_bag)
+
+    print('\nIs document-term matrix a scipy.sparse matrix? {}'.format(sp.sparse.issparse(doc_bag)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (did, vid) tf
+      (0, 0)    2
+      (0, 1)    1
+      (0, 2)    1
+      (1, 0)    1
+      (1, 1)    1
+      (1, 2)    1
+
+    Is document-term matrix a scipy.sparse matrix? True
+#+END_SRC
+
+Since each document contains only a small subset of vocabularies,
+=CountVectorizer.transform()= stores feature vectors as =scipy.sparse= matrix,
+where entry index is =(document-index, vocabulary-index)= pair, and the value is
+the *term frequency*---the number of times a vocabulary (term) occurs in a
+document. For example, =(0,0) 2= means the 1st term "happy" appears twice in the
+1st document.
+
+Unfortunately, many Scikit-learn classifiers do not support input as sparse
+matrix now. We can convert =doc_bag= into a Numpy dense matrix:
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    doc_bag = doc_bag.toarray()
+    print(doc_bag)
+
+    print('\nAfter calling .toarray(), is it a scipy.sparse matrix? {}'.format(sp.sparse.issparse(doc_bag)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[2 1 1]
+     [1 1 1]]
+
+    After calling .toarray(), is it a scipy.sparse matrix? False
+#+END_SRC
+
+Let's convert part of our movie review into BoW vectors and see what are the
+most frequent words.
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    doc = df['review'].iloc[:100]
+    doc_bag = count.fit_transform(doc).toarray()
+
+    print("[most frequent vocabularies]")
+    bag_cnts = np.sum(doc_bag, axis=0)
+    top = 10
+    # [::-1] reverses a list since sort is in ascending order
+    for tok, v in zip(count.inverse_transform(bag_cnts.argsort()[::-1])[0][:top], \
+                            np.sort(bag_cnts)[::-1][:top]):
+        print('{}: {}'.format(tok, v))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [most frequent vocabularies]
+    abandon: 230
+    abc: 186
+    abil: 113
+    abl: 94
+    abrupt: 69
+    absenc: 68
+    absolut: 64
+    absorb: 59
+    absurd: 55
+    academ: 55
+#+END_SRC
+
+To find out most frequent words among documents, we first sum up vocabulary
+counts in documents, where =axis=0= is the document index. Then, we sort the
+summed vocabulary count array in ascending order and get the sorted index by
+=argsort()=. Next, we revert the sorted list by =[::-1]=, and feed into
+=inverse_transform()= to get corresponding vocabularies. Finally, we show the 20
+most frequent vocabularies with their occurrence counts.
+
+You can observe that some stemmed words like "abandon" are not stop-words, but
+they appear in most documents such that their occurrences become unhelpful to a
+learning task. Next, we introduce the *TF-IDF* model that *downweights
+frequently occurring words* among the input documents.
+
+*** Doc2Vec: TF-IDF (Term-Frequency & Inverse-Document-Frequency)
+
+TF-IDF model calculates not only the term-frequency (TF) as BoW model does, but
+also the *document-frequency* (DF) of a term, which refers to the number of
+documents that contain this term. The TF-IDF score for a term is defined as
+
+$$TF\text{-}IDF=TF\cdot\left(\log\left(\frac{1+N\_\text{doc}}{1+DF}\right)+1\right),$$
+where the $\log()$ term is called the *inverse-document-frequency* (IDF)
+and $N\_\text{doc}$ is the total number of documents. The idea behind
+TF-IDF is to downweight the TF of a word if it appears in many
+documents. For example, if a word appears in every document, the second
+term become $\log(1)+1=1$, which will be smaller than any other word
+appearing in only a part of documents.
+
+NOTE: we add $1$ to both the numerator and denominator inside the
+$\log()$ in the above definition so to avoid the numeric issue of
+dividing by $0$.
+
+Let's create the TF-IDF feature representation:
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    tfidf = TfidfVectorizer(ngram_range=(1,1),
+                            preprocessor=preprocessor,
+                            tokenizer=tokenizer_stem_nostop)
+
+    tfidf.fit(doc)
+
+    top = 10
+    # get idf score of vocabularies
+    idf = tfidf.idf_
+    print('[vocabularies with smallest idf scores]')
+    sorted_idx = idf.argsort()
+    for i in range(top):
+        print('%s: %.2f' %(tfidf.get_feature_names()[i], idf[sorted_idx[i]]))
+
+    doc_tfidf = tfidf.transform(doc).toarray()
+    tfidf_sum = np.sum(doc_tfidf, axis=0)
+    print("\n[vocabularies with highest tf-idf scores]")
+    for tok, v in zip(tfidf.inverse_transform(tfidf_sum.argsort()[::-1])[0][:top], \
+                            np.sort(tfidf_sum)[::-1][:top]):
+        print('{}: {}'.format(tok, v))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [vocabularies with smallest idf scores]
+    abandon: 1.31
+    abc: 1.47
+    abil: 1.49
+    abl: 1.66
+    abrupt: 1.85
+    absenc: 1.90
+    absolut: 1.90
+    absorb: 1.90
+    absurd: 1.95
+    academ: 2.00
+
+    [vocabularies with highest tf-idf scores]
+    abandon: 7.066901709415235
+    abc: 6.299966884557826
+    abil: 3.4356531496083536
+    abl: 3.4259334935066805
+    abrupt: 3.0908848923824195
+    absenc: 2.9145931936069243
+    absolut: 2.6096711446618777
+    absorb: 2.533831399982588
+    absurd: 2.303352832004743
+    academ: 2.2474055126830565
+#+END_SRC
+
+We can see that the words like "abandon" now have downweighted values that are
+less distant from other words such as "accept" not appearing in most documents.
+
+Now we have a problem, the number of features that we have created in
+=doc_tfidf= is huge:
+
+In [14]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(doc_tfidf.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (100, 3248)
+#+END_SRC
+
+There are more than 3000 features for merely 100 documents. In practice,
+this may lead to too much memory consumption (even with sparse matrix
+representation) if we have a large number of vocabularies.
+
+*** Doc2Vec: Feature Hashing
+
+    *Feature hashing* reduces the dimension vocabulary space by hashing each
+     vocabulary into a hash table with a fixed number of buckets. As compared to
+     BoW, feature hashing has the following pros and cons:
+
+-  (+) no need to store vocabulary dictionary in memory anymore
+-  (-) no way to map token index back to token via =inverse_transform()=
+-  (-) no IDF weighting
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    import scipy as sp
+    from sklearn.feature_extraction.text import HashingVectorizer
+
+    print('[example documents]\n{}\n'.format('\n'.join(doc_dummy)))
+
+    # hash words to 1024 buckets
+    hashvec = HashingVectorizer(n_features=2**10,
+                                preprocessor=preprocessor,
+                                tokenizer=tokenizer_stem_nostop)
+
+    # no .fit needed for HashingVectorizer, since it's defined by the hash function
+
+    # transform sentences to vectors of dimension 1024
+    doc_hash = hashvec.transform(doc_dummy)
+    print(doc_hash.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [example documents]
+    Study hard, then you will be happy and I will be happy
+    "I'm not happy :(" ", because you don't study hard
+
+    (2, 1024)
+#+END_SRC
+
+Ok, now we can transform raw text to feature vectors. Let's do the sentiment
+classification.
+
+*** Sentiment Classification
+Pipeline[[Sentiment-Classification-Pipeline][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Sentiment-Classification-Pipeline
+    :END:
+
+Let's use the =LogisticRegression= model to classify the movie reviews into
+positive and negative classes. As discussed in previous sections, there are
+several preprocessing steps to do before, so the workflow will be:
+
+1. Preprocessing: clean the text, and remove stop words;
+2. Doc2vec: extract feature vectors from the raw review text;
+3. Classification: train a =LogisticRegression= model to do sentiment
+   classification;
+4. Evaluate: we'll do 10-fold cross-validation to evaluate general
+   performance.
+
+In order to evaluate general performance of our model by 10-fold CV, which
+trains and evaluates the model 10 times, each on different split of the training
+and testing sets. It's a tedious task if we repeat steps 1 to 3 for each split
+ourself, thus we'll use the [[http://scikit-learn.org/stable/modules/generated/sklearn.pipeline.Pipeline.html][Pipeline]] in Scikit-learn to wrap these steps 1 to 3.
+
+To emphasize the importance of data preprocessing, we compare the performance of
+pipelines with/withoud data preprocessing.
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.pipeline import Pipeline
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.feature_extraction.text import CountVectorizer
+    from sklearn.model_selection import cross_val_score
+
+    # randomly sample 1000 examples
+    df_small = df.sample(n=1000, random_state=0)
+
+    names = ['LogisticRegression', 
+             'LogisticRegression+(1,2)gram',
+             'LogisticRegression+preprocess',
+             'LogisticRegression+preprocess+hash']
+    # without preprocessing
+    pipe1 = Pipeline([('vect', CountVectorizer()), 
+                      ('clf', LogisticRegression())])
+    # without preprocessing, use larger ngram range
+    pipe2 = Pipeline([('vect', CountVectorizer(ngram_range=(1,3))), 
+                      ('clf', LogisticRegression())])
+    # with preprocessing
+    pipe3 = Pipeline([('vect', TfidfVectorizer(preprocessor=preprocessor, 
+                                               tokenizer=tokenizer_stem_nostop)), 
+                      ('clf', LogisticRegression())])
+    # with preprocessing and hasing
+    pipe4 = Pipeline([('vect', HashingVectorizer(n_features=2**10,
+                                                 preprocessor=preprocessor, 
+                                                 tokenizer=tokenizer_stem_nostop)), 
+                      ('clf', LogisticRegression())])
+    # CV
+    print('[auc (10-fold cv)]')
+    for name, clf in zip(names, [pipe1, pipe2, pipe3, pipe4]):
+        scores = cross_val_score(estimator=clf, X=df_small['review'], y=df_small['sentiment'], \
+                             cv=10, scoring='roc_auc')
+        print('%s: %.3f (+/-%.3f)' % (name, scores.mean(), scores.std()))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [auc (10-fold cv)]
+    LogisticRegression: 0.881 (+/-0.041)
+    LogisticRegression+(1,2)gram: 0.871 (+/-0.046)
+    LogisticRegression+preprocess: 0.908 (+/-0.031)
+    LogisticRegression+preprocess+hash: 0.856 (+/-0.037)
+#+END_SRC
+
+As we can see, the AUC is improved with preprocessing. Furthermore, the feature
+hashing reduces space consumption at the cost of degraded performance.
+
+*** More Creative Features
+
+Now, you can go create your basic set of features for the text in competition.
+But *don't stop from here*. If you do aware the power of feature engineering,
+use your creativity to extract more features from the raw text. The more
+meaningful features you create, the more likely you will get a better score and
+win.
+
+Here are few examples for inspiration:
+
+-  Weekday on which a news article get published: a news might be more
+   popular if published on weekdays (or weekends);
+-  Channel: sports channel might be more popular than financial channel;
+-  Number of images/links: news might be more attractive if it contains
+   more figures or links;
+
+There are lots of other directions you can explore, such as NLP features, length
+of news, etc.
+
+* Hint 2: Use Out-of-Core Learning If You Don't Have Enough Memory
+
+The size of dataset in the competition (300MB in raw text) is much larger than
+the example IMDB dataset (80MB in raw text). The dataset, after being
+represented as feature vectors, may become much larger, and you are unlikely to
+store all of them in memory. Next, we introduce another training technique
+called the *Out of Core Learning* to help you train a model using *data
+streaming*.
+
+The idea of Out of Core Learning is similar to the stochastic gradient descent,
+which updates the model when seeing a minibatch, except that each minibatch is
+loaded from disk via a data stream. Since we only see a part of the dataset at a
+time, we can only use the =HashingVectorizer= to transform text into feature
+vectors because the =HashingVectorizer= does not require knowing the vocabulary
+space in advance.
+
+Let's create a stream to read a chunk of CSV file at a time using the Pandas I/O
+API:
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def get_stream(path, size):
+        for chunk in pd.read_csv(path, chunksize=size):
+            yield chunk
+
+    print(next(get_stream(path='datasets/train.csv', size=10)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+                                                  review  sentiment
+    0  I know that Chill Wills usually played lovable...          1
+    1  The arrival of an world famous conductor sets ...          1
+    2  This documentary is such a wonderful example o...          1
+    3  I really tried to like this movie but in the e...          0
+    4  Not one of Monogram's better(not trying to be ...          0
+    5  Don't get me wrong, I assumed this movie would...          0
+    6  The `plot' of this film contains a few holes y...          0
+    7  The best of the seven Sam Fuller movies that I...          1
+    8  A gritty Australian film, with all the element...          1
+    9  There are very few performers today who can ke...          1
+#+END_SRC
+
+Good. Our stream works correctly.
+
+For out-of core learning, we have to use models that can train and
+update the model's weight iteratively. Here, we use the =SGDClassifier=
+to train a =LogisticRegressor= using the stochastic gradient descent. We
+can partial update =SGDClassifier= by calling the =partial_fit()=
+method. Our workflow now becomes:
+
+1. Stream documents directly from disk to get a mini-batch (chunk) of
+   documents;
+2. Preprocess: clean and remove stop-words in the mini-batch of
+   documents;
+3. Doc2vec: use =HashingVectorizer= to extract features from text;
+4. Update =SGDClassifier= and go back to step 1.
+
+Let's do the out-of core learning:
+
+In [21]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.feature_extraction.text import HashingVectorizer
+    from sklearn.linear_model import SGDClassifier
+    from sklearn.metrics import roc_auc_score
+
+    hashvec = HashingVectorizer(n_features=2**20, 
+                                preprocessor=preprocessor, tokenizer=tokenizer_stem_nostop)
+    # loss='log' gives logistic regression
+    clf = SGDClassifier(loss='log', n_iter=100)
+    batch_size = 1000
+    stream = get_stream(path='datasets/train.csv', size=batch_size)
+    classes = np.array([0, 1])
+    train_auc, val_auc = [], []
+    # we use one batch for training and another for validation in each iteration
+    iters = int((25000+batch_size-1)/(batch_size*2))
+    for i in range(iters):
+        batch = next(stream)
+        X_train, y_train = batch['review'], batch['sentiment']
+        if X_train is None:
+            break
+        X_train = hashvec.transform(X_train)
+        clf.partial_fit(X_train, y_train, classes=classes)
+        train_auc.append(roc_auc_score(y_train, clf.predict_proba(X_train)[:,1]))
+        
+        # validate
+        batch = next(stream)
+        X_val, y_val = batch['review'], batch['sentiment']
+        score = roc_auc_score(y_val, clf.predict_proba(hashvec.transform(X_val))[:,1])
+        val_auc.append(score)
+        print('[{}/{}] {}'.format((i+1)*(batch_size*2), 25000, score))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [2000/25000] 0.8785155639919747
+    [4000/25000] 0.8990255376344086
+    [6000/25000] 0.9116987753492246
+    [8000/25000] 0.9145485412929094
+    [10000/25000] 0.918076923076923
+    [12000/25000] 0.9234827757244116
+    [14000/25000] 0.9423918269230769
+    [16000/25000] 0.943243772975092
+    [18000/25000] 0.9394590313445015
+    [20000/25000] 0.9318567426970787
+    [22000/25000] 0.9413999935934397
+    [24000/25000] 0.9462890625
+#+END_SRC
+
+After fitting =SGDClassifier= by an entire pass over training set, let's
+plot the learning curve:
+
+In [19]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import matplotlib.pyplot as plt
+
+    plt.plot(range(1, len(train_auc)+1), train_auc, color='blue', label='Train auc')
+    plt.plot(range(1, len(train_auc)+1), val_auc, color='red', label='Val auc')
+    plt.legend(loc="best")
+    plt.xlabel('#Batches')
+    plt.ylabel('Auc')
+    plt.tight_layout()
+    plt.savefig('./output/fig-out-of-core.png', dpi=300)
+    plt.show()
+#+END_SRC
+
+
+The learning curve looks great! The validation accuracy improves as more
+examples are seen.
+
+Since training =SGDClassifier= may take long, you can save your trained
+classifier to disk periodically:
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # import optimized pickle written in C for serializing and 
+    # de-serializing a Python object
+    import _pickle as pkl
+
+    # dump to disk
+    pkl.dump(hashvec, open('output/hashvec.pkl', 'wb'))
+    pkl.dump(clf, open('output/clf-sgd.pkl', 'wb'))
+
+    # load from disk
+    hashvec = pkl.load(open('output/hashvec.pkl', 'rb'))
+    clf = pkl.load(open('output/clf-sgd.pkl', 'rb'))
+
+    df_test = pd.read_csv('datasets/test.csv')
+    print('test auc: %.3f' % roc_auc_score(df_test['sentiment'], \
+                clf.predict_proba(hashvec.transform(df_test['review']))[:,1]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    test auc: 0.930
+#+END_SRC
+
+Now you have the all the supporting knowledge for the competition. Happy
+coding and good luck!
+
+In [ ]:

@@ -1,0 +1,2065 @@
+* Scientific Python 101
+  :PROPERTIES:
+  :CUSTOM_ID: Scientific-Python-101
+  :END:
+
+Shan-Hung Wu & DataLab
+
+Python is one of the most popular programming languages for data
+science.
+
+This lab guides you through basics of Python for the Deep Learning
+course and provides some useful references.
+
+NOTE: all code examples provided in this course are written in Python 3,
+which is not compatible with Python 2. Please make sure that you know
+about the major [[http://sebastianraschka.com/Articles/2014_python_2_3_key_diff.html][differences]] between the two Python versions.
+
+Python enjoys a large number of useful add-on packages developed by its
+active community. For this course, we will use the following packages:
+
+-  [[http://www.numpy.org/][NumPy]]: provides multi-dimensional arrays
+   to store and manipulate data;
+-  [[http://www.scipy.org/][SciPy]]: built on top of NumPy that provides
+   a large number of functions operating on =Numpy= arrays and useful
+   for scientific applications;
+-  [[http://pandas.pydata.org/][Pandas]]: built on top of NumPy that
+   provides additional higher level data manipulation tools that make
+   working with tabular data even more convenient;
+-  [[http://scikit-learn.org/][Scikit-learn]]: provides the
+   off-the-shelf implementation of various machine learning algorithms;
+-  [[http://matplotlib.org/][Matplotlib]] and [[https://stanford.edu/~mwaskom/software/seaborn/][Seaborn]]:
+   provides various plotting functions for data and model visualization;
+-  [[https://www.tensorflow.org/][Tensorflow]]: for deep learning.
+
+** Environment Setup
+   :PROPERTIES:
+   :CUSTOM_ID: Environment-Setup
+   :END:
+
+The easiest way to setting up a scientific Python environment is to
+install the [[https://www.continuum.io/downloads][Anaconda]] for Python
+3. Anaconda is a free Python distribution that bundles all the essential
+Python packages for data science, math, and engineering in one
+user-friendly cross-platform distribution.
+
+*** Package Management
+    :PROPERTIES:
+    :CUSTOM_ID: Package-Management
+    :END:
+
+Anaconda comes with
+[[http://conda.pydata.org/docs/using/index.html][Conda]], a package
+manager application that quickly installs, runs, and updates packages
+and their dependencies. To list all installed packages, type the
+following in the command-line:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda list
+#+END_SRC
+
+To install a new package, type:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda install package-name
+#+END_SRC
+
+To update an existing package, type:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda update package-name
+#+END_SRC
+
+You can also update Python with the =update= command:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda update python
+#+END_SRC
+
+*** Environment Management
+    :PROPERTIES:
+    :CUSTOM_ID: Environment-Management
+    :END:
+
+Sometimes, you need to switch to an environment with a specific Python
+version and its packages. You don't have to re-install Python if your
+version does not match. Instead, you can simply use Conda to manage
+multiple environments. To create a new Python environment, say version
+3.4, simply type:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda create -n env-name python=3.4
+#+END_SRC
+
+You can switch to an environment by typing:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > source activate env-name (Linux or Mac)
+    > activate env-name (Windows)
+#+END_SRC
+
+The Python version you choose when downloading =Anaconda= is called the
+=root= environment. To list all environments, type:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > conda info --envs
+#+END_SRC
+
+NOTE: each environment maintains the list of installed packages
+independently. So, you may find that some packages are missing in a
+newly created environment. If this happens, simply install the missing
+package using the =conda install= command in that environment.
+
+*** Virtualenv
+    :PROPERTIES:
+    :CUSTOM_ID: Virtualenv
+    :END:
+
+An alternative to using Anaconda is to install [[https://virtualenv.pypa.io/en/stable/userguide/][virtualenv]] using pip. Before
+running the following commands, make sure you have [[https://www.python.org/downloads/][Python]] and [[https://pip.pypa.io/en/stable/installing/][pip]] installed.
+
+To install virtualenv, type the following in the command-line:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > pip install virtualenv
+#+END_SRC
+
+After the installation, you can create a Python 3 virtual environment:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > virtualenv -p python3 env-name
+#+END_SRC
+
+To activate the created environment:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > source activate env-name (Linux or Mac)
+    > activate env-name (Windows)
+#+END_SRC
+
+Install Jupyter packages:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > pip install ipython
+    > pip install jupyter
+#+END_SRC
+
+You can open jupyter notebook by running:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > jupyter notebook
+#+END_SRC
+
+And also the packages we are going to use:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > pip install numpy
+    > pip install scipy
+    > pip install Pillow
+    > pip install matplotlib
+#+END_SRC
+
+** Opening Lab Notes and Running
+Code
+   :PROPERTIES:
+   :CUSTOM_ID: Opening-Lab-Notes-and-Running-Code
+   :END:
+
+All lab notes, including this doc, are written and released in the [[https://ipython.org/notebook.html][Jupyter
+Notebook]] format (with file extension =*.ipynb=). Jupyter Notebook is a web
+application that allows you to create and share documents that contain live
+Python code, $\LaTeX$ equations, visualizations, and rich explanatory text. We
+highly recommend you to play with the code in a notebook. To open a notebook,
+switch to the directory containing the notebook in the command-line and start
+the Jupyter web server (locating at =http://127.0.0.1:8888= by default) by
+typing:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    > jupyter notebook
+#+END_SRC
+
+Then, a web page will be opened automatically. By clicking the notebook name,
+you open the notebook in a web page. Now, you can re-run a code snippet by
+hitting =Shift+Enter= in a code cell. You can also edit some text using the
+lightweight [[http://eherrera.net/markdowntutorial/][Markdown]] language in a Markdown cell.
+
+Sometimes, you wish to measure the execution time of a code cell. You can do
+this by adding the following as the first line of the code:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    %%timeit
+#+END_SRC
+
+This is one of the built-in [[http://ipython.readthedocs.io/en/stable/interactive/magics.html][magic commands]].
+
+** Readings[[Readings][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Readings
+   :END:
+
+If you are not familiar with Python yet, you may read this
+[[https://docs.python.org/3/tutorial/][tutorial]]. If you already know
+Java and don't want to start over everything from scratch, you may read
+this [[https://antrix.net/static/pages/python-for-java/online/][tutorial
+for busy Java developers]].
+
+*** Scientific Python[[Scientific-Python][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Scientific-Python
+    :END:
+
+To have an overview of the scientific packages like NumPy, SciPy, and
+Matlibplot, we will follow this
+[[http://cs231n.github.io/python-numpy-tutorial/][tutorial]] for this
+class. This tutorial has recently been translated from Python 2 to
+Python 3, but note that their provided Jupyter Notebook is still in
+Python 2. We have included the Python 3 version of the code in this
+Notebook. If you want to see the differences between Python 2 and 3,
+check
+[[http://sebastianraschka.com/Articles/2014_python_2_3_key_diff.html][this]]
+source.
+
+*** Calculus[[Calculus][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Calculus
+    :END:
+
+Don't forget to grab your favorite Calculus book and read again the
+topics about *multivariate* calculus:
+
+-  Product rules, quotient rules, and chain rules;
+-  Partial derivatives and directional derivatives;
+-  Gradient of a (multivariate) function;
+-  Jacobian matrix of a vector-valued function;
+-  Hessian matrix
+-  Taylor's theorem.
+
+If you don't know where to start, follow
+[[http://wiki.fast.ai/index.php/Calculus_for_Deep_Learning][this]] and
+[[https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant][that]].
+
+If you think you have a good understanding of the above topics,
+congrats! You are now ready for the [Deep Learning] course!
+
+** Basic Python[[Basic-Python][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Basic-Python
+   :END:
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print ("Hello world!")
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Hello world!
+#+END_SRC
+
+*** Basic data types[[Basic-data-types][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Basic-data-types
+    :END:
+
+**** Numbers[[Numbers][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Numbers
+     :END:
+
+Integers and floats work as you would expect from other languages:
+
+In [59]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = 3
+    print (x), type(x)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    3
+#+END_SRC
+
+Out[59]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (None, int)
+#+END_SRC
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (x + 1)   # Addition;
+    print (x - 1)   # Subtraction;
+    print (x * 2)   # Multiplication;
+    print (x ** 2)  # Exponentiation;
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    4
+    2
+    6
+    9
+#+END_SRC
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x += 1
+    print (x)  # Prints "4"
+    x *= 2
+    print (x)  # Prints "8"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    4
+    8
+#+END_SRC
+
+In [12]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    y = 2.5
+    print (type(y)) # Prints "<type 'float'>"
+    print (y, y + 1, y * 2, y ** 2) # Prints "2.5 3.5 5.0 6.25"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <class 'float'>
+    2.5 3.5 5.0 6.25
+#+END_SRC
+
+Note that unlike many languages, Python does not have unary increment
+(x++) or decrement (x--) operators.
+
+Python also has built-in types for long integers and complex numbers;
+you can find all of the details in the
+[[https://docs.python.org/3.5/library/stdtypes.html#numeric-types-int-float-complex][documentation]].
+
+**** Booleans[[Booleans][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Booleans
+     :END:
+
+Python implements all of the usual operators for Boolean logic, but uses
+English words rather than symbols (=&&=, =||=, etc.):
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    t, f = True, False
+    print (type(t)) # Prints "<type 'bool'>"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <class 'bool'>
+#+END_SRC
+
+Now we let's look at the operations:
+
+In [23]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (t and f) # Logical AND;
+    print (t or f)  # Logical OR;
+    print (not t)   # Logical NOT;
+    print (t != f)  # Logical XOR;
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    False
+    True
+    False
+    True
+#+END_SRC
+
+**** Strings[[Strings][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Strings
+     :END:
+
+In [25]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello = 'hello'   # String literals can use single quotes
+    world = "world"   # or double quotes; it does not matter.
+    print (hello, len(hello))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello 5
+#+END_SRC
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hw = hello + ' ' + world  # String concatenation
+    print (hw)  # prints "hello world"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello world
+#+END_SRC
+
+In [27]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hw12 = '%s %s %d' % (hello, world, 12)  # sprintf style string formatting
+    print (hw12)  # prints "hello world 12"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello world 12
+#+END_SRC
+
+String objects have a bunch of useful methods; for example:
+
+In [29]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    s = "hello"
+    print (s.capitalize())  # Capitalize a string; prints "Hello"
+    print (s.upper())       # Convert a string to uppercase; prints "HELLO"
+    print (s.rjust(7))      # Right-justify a string, padding with spaces; prints "  hello"
+    print (s.center(7))     # Center a string, padding with spaces; prints " hello "
+    print (s.replace('l', '(ell)'))  # Replace all instances of one substring with another;
+                                   # prints "he(ell)(ell)o"
+    print ()'  world '.strip()  # Strip leading and trailing whitespace; prints "world"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Hello
+    HELLO
+      hello
+     hello 
+    he(ell)(ell)o
+    world
+#+END_SRC
+
+You can find a list of all string methods in the
+[[https://docs.python.org/3.5/library/stdtypes.html#string-methods][documentation]].
+
+*** Containers[[Containers][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Containers
+    :END:
+
+Python includes several built-in container types: lists, dictionaries,
+sets, and tuples.
+
+**** Lists[[Lists][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Lists
+     :END:
+
+A list is the Python equivalent of an array, but is resizeable and can
+contain elements of different types:
+
+In [30]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    xs = [3, 1, 2]   # Create a list
+    print (xs, xs[2])
+    print (xs[-1])     # Negative indices count from the end of the list; prints "2"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [3, 1, 2] 2
+    2
+#+END_SRC
+
+In [34]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    xs[2] = 'foo'    # Lists can contain elements of different types
+    print (xs)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [3, 1, 'foo']
+#+END_SRC
+
+In [35]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    xs.append('bar') # Add a new element to the end of the list
+    print (xs)  
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [3, 1, 'foo', 'bar']
+#+END_SRC
+
+In [36]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = xs.pop()     # Remove and return the last element of the list
+    print (x, xs )
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    bar [3, 1, 'foo']
+#+END_SRC
+
+As usual, you can find all the gory details about lists in the
+[[https://docs.python.org/3.5/tutorial/datastructures.html#more-on-lists][documentation]].
+
+**** Slicing[[Slicing][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Slicing
+     :END:
+
+In addition to accessing list elements one at a time, Python provides
+concise syntax to access sublists; this is known as slicing:
+
+In [38]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    nums = list(range(5))     # range is a built-in function that creates a list of integers
+    print(nums)               # Prints "[0, 1, 2, 3, 4]"
+    print(nums[2:4])          # Get a slice from index 2 to 4 (exclusive); prints "[2, 3]"
+    print(nums[2:])           # Get a slice from index 2 to the end; prints "[2, 3, 4]"
+    print(nums[:2])           # Get a slice from the start to index 2 (exclusive); prints "[0, 1]"
+    print(nums[:])            # Get a slice of the whole list; prints "[0, 1, 2, 3, 4]"
+    print(nums[:-1])          # Slice indices can be negative; prints "[0, 1, 2, 3]"
+    nums[2:4] = [8, 9]        # Assign a new sublist to a slice
+    print(nums)  
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [0, 1, 2, 3, 4]
+    [2, 3]
+    [2, 3, 4]
+    [0, 1]
+    [0, 1, 2, 3, 4]
+    [0, 1, 2, 3]
+    [0, 1, 8, 9, 4]
+#+END_SRC
+
+**** Loops[[Loops][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Loops
+     :END:
+
+You can loop over the elements of a list like this:
+
+In [22]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals = ['cat', 'dog', 'monkey']
+    for animal in animals:
+        print (animal)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cat
+    dog
+    monkey
+#+END_SRC
+
+If you want access to the index of each element within the body of a
+loop, use the built-in =enumerate= function:
+
+In [41]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals = ['cat', 'dog', 'monkey']
+    for idx, animal in enumerate(animals):
+        print ('#%d: %s' % (idx + 1, animal))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #1: cat
+    #2: dog
+    #3: monkey
+#+END_SRC
+
+**** List Comprehensions:[[List-Comprehensions:][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: List-Comprehensions:
+     :END:
+
+When programming, frequently we want to transform one type of data into
+another. As a simple example, consider the following code that computes
+square numbers:
+
+In [43]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    nums = [0, 1, 2, 3, 4]
+    squares = []
+    for x in nums:
+        squares.append(x ** 2)
+    print (squares)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [0, 1, 4, 9, 16]
+#+END_SRC
+
+You can make this code simpler using a list comprehension:
+
+In [44]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    nums = [0, 1, 2, 3, 4]
+    squares = [x ** 2 for x in nums]
+    print (squares)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [0, 1, 4, 9, 16]
+#+END_SRC
+
+List comprehensions can also contain conditions:
+
+In [46]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    nums = [0, 1, 2, 3, 4]
+    even_squares = [x ** 2 for x in nums if x % 2 == 0]
+    print (even_squares)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [0, 4, 16]
+#+END_SRC
+
+**** Dictionaries[[Dictionaries][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Dictionaries
+     :END:
+
+A dictionary stores (key, value) pairs, similar to a =Map= in Java or an
+object in Javascript. You can use it like this:
+
+In [48]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Create a new dictionary with some data
+    d = {'cat': 'cute', 'dog': 'furry'}  
+    # Get an entry from a dictionary; prints "cute"
+    print (d['cat'])       
+    # Check if a dictionary has a given key; prints "True"
+    print ('cat' in d)     
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cute
+    True
+#+END_SRC
+
+In [52]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d['fish'] = 'wet'    # Set an entry in a dictionary
+    print (d['fish'])      # Prints "wet"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    wet
+#+END_SRC
+
+In [54]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (d['monkey'])  # KeyError: 'monkey' not a key of d
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ---------------------------------------------------------------------------
+    KeyError                                  Traceback (most recent call last)
+    <ipython-input-54-39608aeda0ef> in <module>()
+    ----> 1 print (d['monkey'])  # KeyError: 'monkey' not a key of d
+
+    KeyError: 'monkey'
+#+END_SRC
+
+In [57]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (d.get('monkey', 'N/A'))  # Get an element with a default; prints "N/A"
+    print (d.get('fish', 'N/A'))    # Get an element with a default; prints "wet"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    N/A
+    wet
+#+END_SRC
+
+In [59]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    del (d['fish'])        # Remove an element from a dictionary
+    print (d.get('fish', 'N/A')) # "fish" is no longer a key; prints "N/A"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    N/A
+#+END_SRC
+
+You can find all you need to know about dictionaries in the
+[[https://docs.python.org/3.5/library/stdtypes.html#dict][documentation]].
+
+It is easy to iterate over the keys in a dictionary:
+
+In [60]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d = {'person': 2, 'cat': 4, 'spider': 8}
+    for animal in d:
+        legs = d[animal]
+        print ('A %s has %d legs' % (animal, legs))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    A person has 2 legs
+    A cat has 4 legs
+    A spider has 8 legs
+#+END_SRC
+
+If you want access to keys and their corresponding values, use the items
+method:
+
+In [23]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d = {'person': 2, 'cat': 4, 'spider': 8}
+    for animal, legs in d.items():
+        print ('A %s has %d legs' % (animal, legs))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    A person has 2 legs
+    A cat has 4 legs
+    A spider has 8 legs
+#+END_SRC
+
+Dictionary comprehensions: These are similar to list comprehensions, but
+allow you to easily construct dictionaries. For example:
+
+In [65]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    nums = [0, 1, 2, 3, 4]
+    even_num_to_square = {x: x ** 2 for x in nums if x % 2 == 0}
+    print (even_num_to_square)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    {0: 0, 2: 4, 4: 16}
+#+END_SRC
+
+**** Sets[[Sets][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Sets
+     :END:
+
+A set is an unordered collection of distinct elements. As a simple
+example, consider the following:
+
+In [68]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals = {'cat', 'dog'}
+    print( 'cat' in animals)   # Check if an element is in a set; prints "True"
+    print ('fish' in animals)  # prints "False"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    True
+    False
+#+END_SRC
+
+In [70]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals.add('fish')      # Add an element to a set
+    print ('fish' in animals)
+    print (len(animals))       # Number of elements in a set;
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    True
+    3
+#+END_SRC
+
+In [71]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals.add('cat')       # Adding an element that is already in the set does nothing
+    print (len(animals)       )
+    animals.remove('cat')    # Remove an element from a set
+    print (len(animals))       
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    3
+    2
+#+END_SRC
+
+/Loops/: Iterating over a set has the same syntax as iterating over a
+list; however since sets are unordered, you cannot make assumptions
+about the order in which you visit the elements of the set:
+
+In [45]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    animals = {'cat', 'dog', 'fish'}
+    for idx, animal in enumerate(animals):
+        print ('#%d: %s' % (idx + 1, animal))
+    # Prints "#1: fish", "#2: dog", "#3: cat"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #1: dog
+    #2: cat
+    #3: fish
+#+END_SRC
+
+Set comprehensions: Like lists and dictionaries, we can easily construct
+sets using set comprehensions:
+
+In [73]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from math import sqrt
+    print ({int(sqrt(x)) for x in range(30)})
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    {0, 1, 2, 3, 4, 5}
+#+END_SRC
+
+**** Tuples[[Tuples][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Tuples
+     :END:
+
+A tuple is an (immutable) ordered list of values. A tuple is in many
+ways similar to a list; one of the most important differences is that
+tuples can be used as keys in dictionaries and as elements of sets,
+while lists cannot. Here is a trivial example:
+
+In [74]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d = {(x, x + 1): x for x in range(10)}  # Create a dictionary with tuple keys
+    t = (5, 6)       # Create a tuple
+    print (type(t))
+    print (d[t])       
+    print (d[(1, 2)])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <class 'tuple'>
+    5
+    1
+#+END_SRC
+
+The
+[[https://docs.python.org/3.5/tutorial/datastructures.html#tuples-and-sequences][documentation]]
+has more information about tuples.
+
+*** Functions[[Functions][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Functions
+    :END:
+
+Python functions are defined using the =def= keyword. For example:
+
+In [77]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def sign(x):
+        if x > 0:
+            return 'positive'
+        elif x < 0:
+            return 'negative'
+        else:
+            return 'zero'
+
+    for x in [-1, 0, 1]:
+        print (sign(x))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    negative
+    zero
+    positive
+#+END_SRC
+
+We will often define functions to take optional keyword arguments, like
+this:
+
+In [79]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def hello(name, loud=False):
+        if loud:
+            print ('HELLO, %s' % name.upper())
+        else:
+            print ('Hello, %s!' % name)
+
+    hello('Bob')
+    hello('Fred', loud=True)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Hello, Bob!
+    HELLO, FRED
+#+END_SRC
+
+*** Classes[[Classes][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Classes
+    :END:
+
+The syntax for defining classes in Python is straightforward:
+
+In [80]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class Greeter:
+
+        # Constructor
+        def __init__(self, name):
+            self.name = name  # Create an instance variable
+
+        # Instance method
+        def greet(self, loud=False):
+            if loud:
+                print ('HELLO, %s!' % self.name.upper())
+            else:
+                print ('Hello, %s' % self.name)
+
+    g = Greeter('Fred')  # Construct an instance of the Greeter class
+    g.greet()            # Call an instance method; prints "Hello, Fred"
+    g.greet(loud=True)   # Call an instance method; prints "HELLO, FRED!"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Hello, Fred
+    HELLO, FRED!
+#+END_SRC
+
+** Numpy[[Numpy][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Numpy
+   :END:
+
+Numpy is the core library for scientific computing in Python. It
+provides a high-performance multidimensional array object, and tools for
+working with these arrays. If you are already familiar with MATLAB, you
+might find this
+[[http://wiki.scipy.org/NumPy_for_Matlab_Users][tutorial]] useful to get
+started with Numpy.
+
+To use Numpy, we first need to import the =numpy= package:
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+#+END_SRC
+
+*** Arrays
+    :PROPERTIES:
+    :CUSTOM_ID: Arrays
+    :END:
+
+A numpy array is a grid of values, all of the same type, and is indexed
+by a tuple of nonnegative integers. The number of dimensions is the rank
+of the array; the shape of an array is a tuple of integers giving the
+size of the array along each dimension.
+
+We can initialize numpy arrays from nested Python lists, and access
+elements using square brackets:
+
+In [47]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    a = np.array([1, 2, 3])  # Create a rank 1 array
+    print (type(a), a.shape, a[0], a[1], a[2])
+    a[0] = 5                 # Change an element of the array
+    print (a)                  
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <class 'numpy.ndarray'> (3,) 1 2 3
+    [5 2 3]
+#+END_SRC
+
+In [133]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    b = np.array([[1,2,3],[4,5,6]])   # Create a rank 2 array
+    print (b)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[1 2 3]
+     [4 5 6]]
+#+END_SRC
+
+In [134]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (b.shape)                   
+    print (b[0, 0], b[0, 1], b[1, 0])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (2, 3)
+    1 2 4
+#+END_SRC
+
+Numpy also provides many functions to create arrays:
+
+In [138]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    a = np.zeros((2,2))  # Create an array of all zeros
+    print (a)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 0.  0.]
+     [ 0.  0.]]
+#+END_SRC
+
+In [139]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    b = np.ones((1,2))   # Create an array of all ones
+    print (b)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 1.  1.]]
+#+END_SRC
+
+In [140]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    c = np.full((2,2), 7) # Create a constant array
+    print (c) 
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[7 7]
+     [7 7]]
+#+END_SRC
+
+In [141]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d = np.eye(2)        # Create a 2x2 identity matrix
+    print (d)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 1.  0.]
+     [ 0.  1.]]
+#+END_SRC
+
+In [143]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    e = np.random.random((2,2)) # Create an array filled with random values
+    print (e)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 0.73962407  0.9447553 ]
+     [ 0.99848484  0.67682408]]
+#+END_SRC
+
+*** Array Indexing
+    :PROPERTIES:
+    :CUSTOM_ID: Array-Indexing
+    :END:
+
+Numpy offers several ways to index into arrays.
+
+Slicing: Similar to Python lists, numpy arrays can be sliced. Since
+arrays may be multidimensional, you must specify a slice for each
+dimension of the array:
+
+In [158]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+
+    # Create the following rank 2 array with shape (3, 4)
+    # [[ 1  2  3  4]
+    #  [ 5  6  7  8]
+    #  [ 9 10 11 12]]
+    a = np.array([[1,2,3,4], [5,6,7,8], [9,10,11,12]])
+
+    # Use slicing to pull out the subarray consisting of the first 2 rows
+    # and columns 1 and 2; b is the following array of shape (2, 2):
+    # [[2 3]
+    #  [6 7]]
+    b = a[:2, 1:3]
+    print (b)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[2 3]
+     [6 7]]
+#+END_SRC
+
+A slice of an array is a view into the same data, so modifying it will
+modify the original array.
+
+In [159]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (a[0, 1])  
+    b[0, 0] = 77    # b[0, 0] is the same piece of data as a[0, 1]
+    print (a[0, 1]) 
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    2
+    77
+#+END_SRC
+
+You can also mix integer indexing with slice indexing. However, doing so
+will yield an array of lower rank than the original array. Note that
+this is quite different from the way that MATLAB handles array slicing:
+
+In [160]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Create the following rank 2 array with shape (3, 4)
+    a = np.array([[1,2,3,4], [5,6,7,8], [9,10,11,12]])
+    print (a)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 1  2  3  4]
+     [ 5  6  7  8]
+     [ 9 10 11 12]]
+#+END_SRC
+
+Two ways of accessing the data in the middle row of the array. Mixing
+integer indexing with slices yields an array of lower rank, while using
+only slices yields an array of the same rank as the original array:
+
+In [161]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    row_r1 = a[1, :]    # Rank 1 view of the second row of a  
+    row_r2 = a[1:2, :]  # Rank 2 view of the second row of a
+    row_r3 = a[[1], :]  # Rank 2 view of the second row of a
+    print (row_r1, row_r1.shape)
+    print (row_r2, row_r2.shape)
+    print (row_r3, row_r3.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [5 6 7 8] (4,)
+    [[5 6 7 8]] (1, 4)
+    [[5 6 7 8]] (1, 4)
+#+END_SRC
+
+In [164]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # We can make the same distinction when accessing columns of an array:
+    col_r1 = a[:, 1]
+    col_r2 = a[:, 1:2]
+    print (col_r1, col_r1.shape)
+    print
+    print (col_r2, col_r2.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [ 2  6 10] (3,)
+    [[ 2]
+     [ 6]
+     [10]] (3, 1)
+#+END_SRC
+
+Integer array indexing: When you index into numpy arrays using slicing,
+the resulting array view will always be a subarray of the original
+array. In contrast, integer array indexing allows you to construct
+arbitrary arrays using the data from another array. Here is an example:
+
+In [53]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    a = np.array([[1,2], [3, 4], [5, 6]])
+
+    # An example of integer array indexing.
+    # The returned array will have shape (3,) and 
+    print (a[[0, 1, 2], [0, 1, 0]])
+
+    # The above example of integer array indexing is equivalent to this:
+    print (np.array([a[0, 0], a[1, 1], a[2, 0]]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [1 4 5]
+    [1 4 5]
+#+END_SRC
+
+In [54]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # When using integer array indexing, you can reuse the same
+    # element from the source array:
+    print (a[[0, 0], [1, 1]])
+
+    # Equivalent to the previous integer array indexing example
+    print (np.array([a[0, 1], a[0, 1]]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [2 2]
+    [2 2]
+#+END_SRC
+
+One useful trick with integer array indexing is selecting or mutating
+one element from each row of a matrix:
+
+In [55]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Create a new array from which we will select elements
+    a = np.array([[1,2,3], [4,5,6], [7,8,9], [10, 11, 12]])
+    print (a)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 1  2  3]
+     [ 4  5  6]
+     [ 7  8  9]
+     [10 11 12]]
+#+END_SRC
+
+In [56]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Create an array of indices
+    b = np.array([0, 2, 0, 1])
+
+    # Select one element from each row of a using the indices in b
+    print (a[np.arange(4), b])  # Prints "[ 1  6  7 11]"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [ 1  6  7 11]
+#+END_SRC
+
+In [57]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Mutate one element from each row of a using the indices in b
+    a[np.arange(4), b] += 10
+    print (a)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[11  2  3]
+     [ 4  5 16]
+     [17  8  9]
+     [10 21 12]]
+#+END_SRC
+
+Boolean array indexing: Boolean array indexing lets you pick out
+arbitrary elements of an array. Frequently this type of indexing is used
+to select the elements of an array that satisfy some condition. Here is
+an example:
+
+In [58]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+
+    a = np.array([[1,2], [3, 4], [5, 6]])
+
+    bool_idx = (a > 2)  # Find the elements of a that are bigger than 2;
+                        # this returns a numpy array of Booleans of the same
+                        # shape as a, where each slot of bool_idx tells
+                        # whether that element of a is > 2.
+
+    print (bool_idx)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[False False]
+     [ True  True]
+     [ True  True]]
+#+END_SRC
+
+In [21]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # We use boolean array indexing to construct a rank 1 array
+    # consisting of the elements of a corresponding to the True values
+    # of bool_idx
+    print (a[bool_idx])
+
+    # We can do all of the above in a single concise statement:
+    print (a[a > 2])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [3 4 5 6]
+    [3 4 5 6]
+#+END_SRC
+
+For brevity we have left out a lot of details about numpy array
+indexing; if you want to know more you should read the
+[[http://docs.scipy.org/doc/numpy/reference/arrays.indexing.html][documentation]].
+
+*** Datatypes
+    :PROPERTIES:
+    :CUSTOM_ID: Datatypes
+    :END:
+
+Every numpy array is a grid of elements of the same type. Numpy provides
+a large set of numeric datatypes that you can use to construct arrays.
+Numpy tries to guess a datatype when you create an array, but functions
+that construct arrays usually also include an optional argument to
+explicitly specify the datatype. Here is an example:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = np.array([1, 2])  # Let numpy choose the datatype
+    y = np.array([1.0, 2.0])  # Let numpy choose the datatype
+    z = np.array([1, 2], dtype=np.int64)  # Force a particular datatype
+
+    print (x.dtype, y.dtype, z.dtype)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    int64 float64 int64
+#+END_SRC
+
+You can read all about numpy datatypes in the [[http://docs.scipy.org/doc/numpy/reference/arrays.dtypes.html][documentation]].
+
+*** Array Math
+    :PROPERTIES:
+    :CUSTOM_ID: Array-Math
+    :END:
+
+Basic mathematical functions operate elementwise on arrays, and are available
+both as operator overloads and as functions in the numpy module:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = np.array([[1,2],[3,4]], dtype=np.float64)
+    y = np.array([[5,6],[7,8]], dtype=np.float64)
+
+    # Elementwise sum; both produce the array
+    # [[ 6.0  8.0]
+    #  [10.0 12.0]]
+    print (x + y)
+    print (np.add(x, y))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[  6.   8.]
+     [ 10.  12.]]
+    [[  6.   8.]
+     [ 10.  12.]]
+#+END_SRC
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Elementwise difference; both produce the array
+    # [[-4.0 -4.0]
+    #  [-4.0 -4.0]]
+    print (x - y)
+    print (np.subtract(x, y))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[-4. -4.]
+     [-4. -4.]]
+    [[-4. -4.]
+     [-4. -4.]]
+#+END_SRC
+
+In [27]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Elementwise product; both produce the array
+    # [[ 5.0 12.0]
+    #  [21.0 32.0]]
+    print (x * y)
+    print (np.multiply(x, y))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[  5.  12.]
+     [ 21.  32.]]
+    [[  5.  12.]
+     [ 21.  32.]]
+#+END_SRC
+
+In [28]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Elementwise division; both produce the array
+    # [[ 0.2         0.33333333]
+    #  [ 0.42857143  0.5       ]]
+    print (x / y)
+    print (np.divide(x, y))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 0.2         0.33333333]
+     [ 0.42857143  0.5       ]]
+    [[ 0.2         0.33333333]
+     [ 0.42857143  0.5       ]]
+#+END_SRC
+
+In [29]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Elementwise square root; produces the array
+    # [[ 1.          1.41421356]
+    #  [ 1.73205081  2.        ]]
+    print (np.sqrt(x))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 1.          1.41421356]
+     [ 1.73205081  2.        ]]
+#+END_SRC
+
+Note that unlike MATLAB, =*= is elementwise multiplication, not matrix
+multiplication. We instead use the ~dot~ function to compute inner products of
+vectors, to multiply a vector by a matrix, and to multiply matrices. dot is
+available both as a function in the numpy module and as an instance method of
+array objects:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = np.array([[1,2],[3,4]])
+    y = np.array([[5,6],[7,8]])
+
+    v = np.array([9,10])
+    w = np.array([11, 12])
+
+    # Inner product of vectors; both produce 219
+    print (v.dot(w))
+    print (np.dot(v, w))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    219
+    219
+#+END_SRC
+
+In [31]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Matrix / vector product; both produce the rank 1 array [29 67]
+    print( x.dot(v))
+    print (np.dot(x, v))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [29 67]
+    [29 67]
+#+END_SRC
+
+In [33]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Matrix / matrix product; both produce the rank 2 array
+    # [[19 22]
+    #  [43 50]]
+    print (x.dot(y))
+    print (np.dot(x, y))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[19 22]
+     [43 50]]
+    [[19 22]
+     [43 50]]
+#+END_SRC
+
+Numpy provides many useful functions for performing computations on
+arrays; one of the most useful is =sum=:
+
+In [35]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    x = np.array([[1,2],[3,4]])
+
+    print (np.sum(x))  # Compute sum of all elements; prints "10"
+    print (np.sum(x, axis=0))  # Compute sum of each column; prints "[4 6]"
+    print (np.sum(x, axis=1))  # Compute sum of each row; prints "[3 7]"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    10
+    [4 6]
+    [3 7]
+#+END_SRC
+
+You can find the full list of mathematical functions provided by numpy in the
+[[http://docs.scipy.org/doc/numpy/reference/routines.math.html][documentation]].
+
+Apart from computing mathematical functions using arrays, we frequently need to
+reshape or otherwise manipulate data in arrays. The simplest example of this
+type of operation is transposing a matrix; to transpose a matrix, simply use the
+T attribute of an array object:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print (x)
+    print (x.T)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[1 2]
+     [3 4]]
+    [[1 3]
+     [2 4]]
+#+END_SRC
+
+In [37]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    v = np.array([[1,2,3]])
+    print (v) 
+    print (v.T)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[1 2 3]]
+    [[1]
+     [2]
+     [3]]
+#+END_SRC
+
+*** Broadcasting[[Broadcasting][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Broadcasting
+    :END:
+
+Broadcasting is a powerful mechanism that allows numpy to work with arrays of
+different shapes when performing arithmetic operations. Frequently we have a
+smaller array and a larger array, and we want to use the smaller array multiple
+times to perform some operation on the larger array.
+
+For example, suppose that we want to add a constant vector to each row of a
+matrix. We could do it like this:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # We will add the vector v to each row of the matrix x,
+    # storing the result in the matrix y
+    x = np.array([[1,2,3], [4,5,6], [7,8,9], [10, 11, 12]])
+    v = np.array([1, 0, 1])
+    y = np.empty_like(x)   # Create an empty matrix with the same shape as x
+
+    # Add the vector v to each row of the matrix x with an explicit loop
+    for i in range(4):
+        y[i, :] = x[i, :] + v
+
+    print (y)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 2  2  4]
+     [ 5  5  7]
+     [ 8  8 10]
+     [11 11 13]]
+#+END_SRC
+
+This works; however when the matrix =x= is very large, computing an
+explicit loop in Python could be slow. Note that adding the vector v to
+each row of the matrix =x= is equivalent to forming a matrix =vv= by
+stacking multiple copies of =v= vertically, then performing elementwise
+summation of =x= and =vv=. We could implement this approach like this:
+
+In [46]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    vv = np.tile(v, (4, 1))  # Stack 4 copies of v on top of each other
+    print (vv)                 # Prints "[[1 0 1]
+                             #          [1 0 1]
+                             #          [1 0 1]
+                             #          [1 0 1]]"
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[1 0 1]
+     [1 0 1]
+     [1 0 1]
+     [1 0 1]]
+#+END_SRC
+
+In [47]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    y = x + vv  # Add x and vv elementwise
+    print (y)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 2  2  4]
+     [ 5  5  7]
+     [ 8  8 10]
+     [11 11 13]]
+#+END_SRC
+
+Numpy broadcasting allows us to perform this computation without
+actually creating multiple copies of v. Consider this version, using
+broadcasting:
+
+In [49]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+
+    # We will add the vector v to each row of the matrix x,
+    # storing the result in the matrix y
+    x = np.array([[1,2,3], [4,5,6], [7,8,9], [10, 11, 12]])
+    v = np.array([1, 0, 1])
+    y = x + v  # Add v to each row of x using broadcasting
+    print (y)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 2  2  4]
+     [ 5  5  7]
+     [ 8  8 10]
+     [11 11 13]]
+#+END_SRC
+
+The line =y = x + v= works even though =x= has shape =(4, 3)= and =v=
+has shape =(3,)= due to broadcasting; this line works as if v actually
+had shape =(4, 3)=, where each row was a copy of =v=, and the sum was
+performed elementwise.
+
+Broadcasting two arrays together follows these rules:
+
+1. If the arrays do not have the same rank, prepend the shape of the
+   lower rank array with 1s until both shapes have the same length.
+2. The two arrays are said to be compatible in a dimension if they have
+   the same size in the dimension, or if one of the arrays has size 1 in
+   that dimension.
+3. The arrays can be broadcast together if they are compatible in all
+   dimensions.
+4. After broadcasting, each array behaves as if it had shape equal to
+   the elementwise maximum of shapes of the two input arrays.
+5. In any dimension where one array had size 1 and the other array had
+   size greater than 1, the first array behaves as if it were copied
+   along that dimension
+
+If this explanation does not make sense, try reading the explanation from the
+[[http://docs.scipy.org/doc/numpy/user/basics.broadcasting.html][documentation]] or this [[http://wiki.scipy.org/EricsBroadcastingDoc][explanation]].
+
+Functions that support broadcasting are known as universal functions. You can
+find the list of all universal functions in the [[http://docs.scipy.org/doc/numpy/reference/ufuncs.html#available-ufuncs][documentation]].
+
+Here are some applications of broadcasting:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Compute outer product of vectors
+    v = np.array([1,2,3])  # v has shape (3,)
+    w = np.array([4,5])    # w has shape (2,)
+    # To compute an outer product, we first reshape v to be a column
+    # vector of shape (3, 1); we can then broadcast it against w to yield
+    # an output of shape (3, 2), which is the outer product of v and w:
+
+    print (np.reshape(v, (3, 1)) * w)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 4  5]
+     [ 8 10]
+     [12 15]]
+#+END_SRC
+
+In [51]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Add a vector to each row of a matrix
+    x = np.array([[1,2,3], [4,5,6]])
+    # x has shape (2, 3) and v has shape (3,) so they broadcast to (2, 3),
+    # giving the following matrix:
+
+    print (x + v)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[2 4 6]
+     [5 7 9]]
+#+END_SRC
+
+In [52]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Add a vector to each column of a matrix
+    # x has shape (2, 3) and w has shape (2,).
+    # If we transpose x then it has shape (3, 2) and can be broadcast
+    # against w to yield a result of shape (3, 2); transposing this result
+    # yields the final result of shape (2, 3) which is the matrix x with
+    # the vector w added to each column. Gives the following matrix:
+
+    print ((x.T + w).T)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 5  6  7]
+     [ 9 10 11]]
+#+END_SRC
+
+In [59]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Another solution is to reshape w to be a row vector of shape (2, 1);
+    # we can then broadcast it directly against x to produce the same
+    # output.
+    print (x + np.reshape(w, (2, 1)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 5  6  7]
+     [ 9 10 11]]
+#+END_SRC
+
+In [60]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Multiply a matrix by a constant:
+    # x has shape (2, 3). Numpy treats scalars as arrays of shape ();
+    # these can be broadcast together to shape (2, 3), producing the
+    # following array:
+    print (x * 2)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[ 2  4  6]
+     [ 8 10 12]]
+#+END_SRC
+
+Broadcasting typically makes your code more concise and faster, so you
+should strive to use it where possible.
+
+This brief overview has touched on many of the important things that you
+need to know about numpy, but is far from complete. Check out the
+[[http://docs.scipy.org/doc/numpy/reference/][numpy reference]] to find
+out much more about numpy.
+
+** SciPy[[SciPy][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: SciPy
+   :END:
+
+Numpy provides a high-performance multidimensional array and basic tools to
+compute with and manipulate these arrays. [[http://docs.scipy.org/doc/scipy/reference/][SciPy]] builds on this, and provides a
+large number of functions that operate on numpy arrays and are useful for
+different types of scientific and engineering applications.
+
+The best way to get familiar with SciPy is to [[http://docs.scipy.org/doc/scipy/reference/index.html][browse the documentation]]. We will
+highlight some parts of SciPy that you might find useful for this class.
+
+*** Image Operations[[Image-Operations][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Image-Operations
+    :END:
+
+SciPy provides some basic functions to work with images. For example, it
+has functions to read images from disk into numpy arrays, to write numpy
+arrays to disk as images, and to resize images. Here is a simple example
+that showcases these functions:
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from scipy.misc import imread, imsave, imresize
+
+    # Read an JPEG image into a numpy array
+    # Note: Assuming you have a folder assets with an image to work with
+    img = imread('assets/cat.jpg')
+    print(img.dtype, img.shape)  # Prints "uint8 (400, 248, 3)"
+
+    # We can tint the image by scaling each of the color channels
+    # by a different scalar constant. The image has shape (400, 248, 3);
+    # we multiply it by the array [1, 0.95, 0.9] of shape (3,);
+    # numpy broadcasting means that this leaves the red channel unchanged,
+    # and multiplies the green and blue channels by 0.95 and 0.9
+    # respectively.
+    img_tinted = img * [1, 0.95, 0.9]
+
+    # Resize the tinted image to be 300 by 300 pixels.
+    img_tinted = imresize(img_tinted, (300, 300))
+
+    # Write the tinted image back to disk
+    imsave('assets/cat_tinted.jpg', img_tinted)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    uint8 (400, 248, 3)
+#+END_SRC
+
+[[file:assets/cat.jpg]]
+[[file:assets/cat_tinted.jpg]]
+
+Top: The original image. Bottom: The tinted and resized image.
+
+*** Distance between Points[[Distance-between-Points][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Distance-between-Points
+    :END:
+
+SciPy defines some useful functions for computing distances between sets of
+points.
+
+The function =scipy.spatial.distance.pdist= computes the distance *between all
+pairs of points in a given set*:
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    from scipy.spatial.distance import pdist, squareform
+
+    # Create the following array where each row is a point in 2D space:
+    # [[0 1]
+    #  [1 0]
+    #  [2 0]]
+    x = np.array([[0, 1], [1, 0], [2, 0]])
+    print(x)
+
+    # Compute the Euclidean distance between all rows of x.
+    # d[i, j] is the Euclidean distance between x[i, :] and x[j, :],
+    # and d is the following array:
+    # [[ 0.          1.41421356  2.23606798]
+    #  [ 1.41421356  0.          1.        ]
+    #  [ 2.23606798  1.          0.        ]]
+    d = squareform(pdist(x, 'euclidean'))
+    print(d)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[0 1]
+     [1 0]
+     [2 0]]
+    [[ 0.          1.41421356  2.23606798]
+     [ 1.41421356  0.          1.        ]
+     [ 2.23606798  1.          0.        ]]
+#+END_SRC
+
+You can read all the details about this function in the [[http://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.pdist.html][documentation]].
+
+A similar function (=scipy.spatial.distance.cdist=) computes the distance
+between all pairs across two sets of points; you can read about it in the
+[[http://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html][documentation]].
+
+** Matplotlib[[Matplotlib][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Matplotlib
+   :END:
+
+[[http://matplotlib.org/][Matplotlib]] is a plotting library. In this section give a brief introduction to
+the =matplotlib.pyplot= module, which provides a plotting system similar to that
+of MATLAB.
+
+By running this special iPython command, we will be displaying plots inline:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    %matplotlib inline
+#+END_SRC
+
+*** Plotting[[Plotting][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Plotting
+    :END:
+
+The most important function in =matplotlib= is plot, which allows you to
+plot 2D data. Here is a simple example:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Compute the x and y coordinates for points on a sine curve
+    x = np.arange(0, 3 * np.pi, 0.1)
+    y = np.sin(x)
+
+    # Plot the points using matplotlib
+    plt.plot(x, y)
+    plt.show()  # You must call plt.show() to make graphics appear.
+#+END_SRC
+
+
+With just a little bit of extra work we can easily plot multiple lines
+at once, and add a title, legend, and axis labels:
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Compute the x and y coordinates for points on sine and cosine curves
+    x = np.arange(0, 3 * np.pi, 0.1)
+    y_sin = np.sin(x)
+    y_cos = np.cos(x)
+
+    # Plot the points using matplotlib
+    plt.plot(x, y_sin)
+    plt.plot(x, y_cos)
+    plt.xlabel('x axis label')
+    plt.ylabel('y axis label')
+    plt.title('Sine and Cosine')
+    plt.legend(['Sine', 'Cosine'])
+    plt.show()
+#+END_SRC
+
+
+
+*** Subplots[[Subplots][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Subplots
+    :END:
+
+You can plot different things in the same figure using the subplot
+function. Here is an example:
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    # Compute the x and y coordinates for points on sine and cosine curves
+    x = np.arange(0, 3 * np.pi, 0.1)
+    y_sin = np.sin(x)
+    y_cos = np.cos(x)
+
+    # Set up a subplot grid that has height 2 and width 1,
+    # and set the first such subplot as active.
+    plt.subplot(2, 1, 1)
+
+    # Make the first plot
+    plt.plot(x, y_sin)
+    plt.title('Sine')
+
+    # Set the second subplot as active, and make the second plot.
+    plt.subplot(2, 1, 2)
+    plt.plot(x, y_cos)
+    plt.title('Cosine')
+
+    # Show the figure.
+    plt.show()
+#+END_SRC
+
+
+
+You can read much more about the =subplot= function in the [[http://matplotlib.org/api/pyplot_api.html#matplotlib.pyplot.subplot][documentation]].
+
+*** Images
+
+    You can use the =imshow= function to show images. Here is an example:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    from scipy.misc import imread, imresize
+    import matplotlib.pyplot as plt
+
+    img = imread('assets/cat.jpg')
+    img_tinted = img * [1, 0.5, 0.5]
+
+    # Show the original image
+    plt.subplot(1, 2, 1)
+    plt.imshow(img)
+
+    # Show the tinted image
+    plt.subplot(1, 2, 2)
+
+    # A slight gotcha with imshow is that it might give strange results
+    # if presented with data that is not uint8. To work around this, we
+    # explicitly cast the image to uint8 before displaying it.
+
+    plt.imshow(np.uint8(img_tinted))
+    plt.show()
+#+END_SRC
+
+
+** Assignment (Optional)
+
+Two common numpy functions used in deep learning are [[https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.shape.html][np.shape]] and np.reshape().
+
+- ~X.shape~ is used to *get the shape (dimension)* of a matrix/vector X.
+- ~X.reshape(...)~ is used to reshape X into some other dimension. For example,
+  in computer science, an image is represented by a 3D array of shape
+  =(length,height,depth=3)=. However, when you read an image as the input of an
+  algorithm you convert it to a vector of shape =(length∗height∗3,1)= . In other
+  words, you *"unroll"*, or reshape, the 3D array into a 1D vector.
+
+
+[[file:assets/assignment.png]]
+
+An image histogram is a type of histogram that acts as a graphical
+representation of the tonal distribution in a digital image. It plots the number
+of pixels for each tonal value. By looking at the histogram for a specific image
+a viewer will be able to judge the entire tonal distribution at a glance.
+
+By using NumPy and matplotlib, we can get a plot of an image histogram that
+would look like the following:
+
+#+CAPTION: alt text
+[[file:assets/histogram.png]]
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+    from scipy.misc import imread, imresize
+    import matplotlib.pyplot as plt
+
+    img = imread('assets/cat.jpg')
+
+    plt.imshow(img)
+#+END_SRC
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x1068ea978>
+#+END_SRC
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    img.shape
+#+END_SRC
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (400, 248, 3)
+#+END_SRC
+
+*** Task
+    :PROPERTIES:
+    :CUSTOM_ID: Task
+    :END:
+
+Your task will be to use the numpy array for the loaded image, reshape it into
+an image vector with shape =(length∗height∗3,1)= and then plot it as a
+histogram. The expected plot would look like the histogram plotted above.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Reshape the image to (length*height*depth,1)
+    image_reshaped = None
+#+END_SRC
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Plot the vector as a histogram
+#+END_SRC
+

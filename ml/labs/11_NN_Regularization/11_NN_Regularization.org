@@ -1,0 +1,999 @@
+
+
+* Regularization in Neural Networks
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from IPython.display import Image
+    from IPython.display import display
+
+    # inline plotting instead of popping out
+    %matplotlib inline
+
+    # load utility classes/functions that has been taught in previous labs
+    # e.g., plot_decision_regions()
+    import os, sys
+    module_path = os.path.abspath(os.path.join('.'))
+    sys.path.append(module_path)
+    from lib import *
+#+END_SRC
+
+Without sufficiently large datasets, deep neural networks with a large number of
+parameters may suffer from the over-fitting problem. In this lab, we will apply
+some regularization techniques to neural networks over the CIFAR-10 dataset and
+see how they improve the generalizability.
+
+* The CIFAR-10 Dataset[[The-CIFAR-10-Dataset][¶]]
+  :PROPERTIES:
+  :CUSTOM_ID: The-CIFAR-10-Dataset
+  :END:
+
+[[https://www.cs.toronto.edu/~kriz/cifar.html][CIFAR-10]] consists of 60000 32x32 color images in 10 classes, with 6000 images
+per class. There are 50000 training images and 10000 test images. Here are the
+classes in the dataset, as well as 10 random images from each:
+
+[[file:fig-cifar-10.png]]
+
+You can see that each image contains just *one* object in the corresponding
+class. This makes the object recognition task easy. For more realistic datasets
+where an image may contain multiple objects, you may refer to the [[http://www.image-net.org/][ImageNet]]
+dataset.
+
+*** Loading Data using Keras
+    :PROPERTIES:
+    :CUSTOM_ID: Loading-Data-using-Keras
+    :END:
+
+Keras offers convenient facilities that automatically download some [[https://keras.io/datasets/][well-known
+datasets]] and store them in the =~/.keras/datasets= directory. Let's load the
+CIFAR-10 in Keras:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.datasets import cifar10
+    from keras.utils import np_utils
+
+    (X_train, y_train), (X_test, y_test) = cifar10.load_data()
+
+    # convert class vectors to binary vectors
+    Y_train = np_utils.to_categorical(y_train)
+    Y_test = np_utils.to_categorical(y_test)
+
+    print('X_train shape:', X_train.shape)
+    print('Y_train shape:', Y_train.shape)
+    print('X_test shape:', X_test.shape)
+    print('Y_test shape:', Y_test.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    X_train shape: (50000, 32, 32, 3)
+    Y_train shape: (50000, 10)
+    X_test shape: (10000, 32, 32, 3)
+    Y_test shape: (10000, 10)
+#+END_SRC
+
+NOTE: we assume that the TensorFlow image dimension ordering, i.e.,
+
+="image_dim_ordering": "tf"=
+
+is set in the Keras config file =~/.keras/keras.json=. This is the default
+value.
+
+*** Loading Data Manually (Optional)
+
+To know how it works under the hood, let's load CIFAR-10 by our own. According
+the [[https://www.cs.toronto.edu/~kriz/cifar.html][descripion]], the dataset file is divided into five training batches and one
+test batch, each with 10000 images. The test batch contains exactly 1000
+randomly-selected images from each class. We define some constants based on the
+above:
+
+In [251]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # dataset path
+    home = os.path.expanduser('~')
+    data_path = os.path.join(home, "data/CIFAR-10/")
+    data_url = "https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"
+
+    # CIFAR-10 constants
+    img_size = 32
+    img_channels = 3
+    nb_classes = 10
+    # length of the image after we flatten the image into a 1-D array
+    img_size_flat = img_size * img_size * img_channels
+    nb_files_train = 5
+    images_per_file = 10000
+    # number of all the images in the training dataset
+    nb_images_train = nb_files_train * images_per_file
+#+END_SRC
+
+We then define a function to download and extract the files from Internet:
+
+In [229]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import urllib.request
+    import tarfile
+
+    def download_and_extract_cifar():
+        if not os.path.exists(data_path):
+            os.makedirs(data_path)
+            
+            file_path, _ = urllib.request.urlretrieve(url=data_url,
+                                                      filename=os.path.join(data_path, 'cifar-10-python.tar.gz'),
+                                                      reporthook=print_download_progress)
+            print('\nExtracting... ', end='')
+            tarfile.open(name=file_path, mode="r:gz").extractall(data_path)
+            print('done')
+        else:
+            print("Data has already been downloaded and unpacked.")
+
+    download_and_extract_cifar()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Data has already been downloaded and unpacked.
+#+END_SRC
+
+Now we get a folder named =cifar-10-batches-py= containing the batch files. The
+next step is to load them into the memory:
+
+In [230]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import _pickle as pickle
+    from keras.utils import np_utils
+    import numpy as np
+
+    def load_data(file_name):
+        file_path = os.path.join(data_path, "cifar-10-batches-py/", file_name)
+        
+        print('Loading ' + file_name)
+        with open(file_path, mode='rb') as file:    
+            data = pickle.load(file, encoding='bytes')
+        raw_images = data[b'data']
+        cls = np.array(data[b'labels'])
+        
+        images = raw_images.reshape([-1, img_channels, img_size, img_size])    
+        # move the channel dimension to the last
+        images = np.rollaxis(images, 1, 4)
+        
+        return images, cls
+
+    def load_training_data():    
+        # pre-allocate the arrays for the images and class-numbers for efficiency.
+        images = np.zeros(shape=[nb_images_train, img_size, img_size, img_channels], 
+                          dtype=int)
+        cls = np.zeros(shape=[nb_images_train], dtype=int)
+        
+        begin = 0
+        for i in range(nb_files_train):
+            images_batch, cls_batch = load_data(file_name="data_batch_" + str(i + 1))
+            num_images = len(images_batch)
+            end = begin + num_images
+            images[begin:end, :] = images_batch
+            cls[begin:end] = cls_batch
+            begin = end
+            
+        return images, np_utils.to_categorical(cls, nb_classes)
+
+    def load_test_data():
+        images, cls = load_data(file_name="test_batch")
+        
+        return images, np_utils.to_categorical(cls, nb_classes)
+
+    def load_cifar():
+        X_train, Y_train = load_training_data()
+        X_test, Y_test = load_test_data()
+        
+        return X_train, Y_train, X_test, Y_test
+#+END_SRC
+
+In [252]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    X_train, Y_train, X_test, Y_test = load_cifar()
+
+    print('\nX_train shape:', X_train.shape)
+    print('Y_train shape:', Y_train.shape)
+    print('X_test shape:', X_test.shape)
+    print('Y_test shape:', Y_test.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Loading data_batch_1
+    Loading data_batch_2
+    Loading data_batch_3
+    Loading data_batch_4
+    Loading data_batch_5
+    Loading test_batch
+
+    X_train shape: (50000, 32, 32, 3)
+    Y_train shape: (50000, 10)
+    X_test shape: (10000, 32, 32, 3)
+    Y_test shape: (10000, 10)
+#+END_SRC
+
+*** Data Preprocessing
+
+The data are loaded as integers, so we need to cast it to floating point values
+in order to perform the division:
+
+In [253]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # normalize inputs from 0-255 to 0.0-1.0
+    X_train = X_train.astype('float32')
+    X_test = X_test.astype('float32')
+    X_train = X_train / 255.0
+    X_test = X_test / 255.0
+#+END_SRC
+
+For simplicity, we also convert the images into the grayscale. We use the [[https://en.wikipedia.org/wiki/Grayscale#Luma_coding_in_video_systems][Luma
+coding]] that is common in video systems:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import matplotlib.pyplot as plt
+
+    def grayscale(data, dtype='float32'):
+        # luma coding weighted average in video systems
+        r, g, b = np.asarray(.3, dtype=dtype), np.asarray(.59, dtype=dtype), np.asarray(.11, dtype=dtype)
+        rst = r * data[:, :, :, 0] + g * data[:, :, :, 1] + b * data[:, :, :, 2]
+        # add channel dimension
+        rst = np.expand_dims(rst, axis=3)
+        return rst
+
+    X_train_gray = grayscale(X_train)
+    X_test_gray = grayscale(X_test)
+
+    # now we have only one channel in the images
+    img_channels = 1
+
+    # plot a randomly chosen image
+    img = 64
+    plt.figure(figsize=(4, 2))
+    plt.subplot(1, 2, 1)
+    plt.imshow(X_train[img], interpolation='none')
+    plt.subplot(1, 2, 2)
+    plt.imshow(X_train_gray[img, :, :, 0], cmap=plt.get_cmap('gray'), interpolation='none')
+    plt.show()
+#+END_SRC
+
+As we can see, the objects in grayscale images can still be recognizable. Let's
+split the traning data to get a validation set:
+
+In [255]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.model_selection import train_test_split
+
+    X_train_gray, X_val_gray, Y_train, Y_val = train_test_split(X_train_gray, Y_train, test_size=0.2, random_state=0)
+
+    print('X_train_gray shape:', X_train_gray.shape)
+    print('X_val_gray shape:', X_val_gray.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    X_train_gray shape: (40000, 32, 32, 1)
+    X_val_gray shape: (10000, 32, 32, 1)
+#+END_SRC
+
+* Baseline Model
+
+Let's compile an 8-layer dense NN as the baseline:
+
+In [316]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.callbacks import EarlyStopping
+
+    # define constants
+    batch_size = 128
+    epoch_max = 100
+    early_stop = EarlyStopping(monitor='val_loss', min_delta=0, patience=5, verbose=0)
+
+    def fit(model):
+        hist = model.fit(X_train_gray, Y_train, \
+                        batch_size=batch_size, \
+                        nb_epoch=epoch_max, \
+                        validation_data=(X_val_gray, Y_val), \
+                        callbacks=[early_stop], \
+                        shuffle=True, verbose=0)
+        return hist
+
+    def evaluate(model, hist, plt_path):
+        score = model.evaluate(X_test_gray, Y_test, verbose=0)
+        print('Test loss: %.3f' % score[0])
+        print('Test accuracy: %.3f' % score[1])
+        plot_validation_history(hist, plt_path)
+#+END_SRC
+
+In [319]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.models import Sequential
+    from keras.layers import Dense, Flatten
+
+    baseline = Sequential()
+    # flatten our input into an 1-D array
+    baseline.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+    # hidden layers
+    for i in range(8):
+        baseline.add(Dense(512, activation='relu'))
+    # output layer
+    baseline.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    baseline.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training & evaluatation
+    %time hist = fit(baseline)
+    evaluate(baseline, hist, 'output/fig-val-baseline.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 19.8 s, sys: 2.58 s, total: 22.4 s
+    Wall time: 22.4 s
+    Test loss: 1.790
+    Test accuracy: 0.404
+#+END_SRC
+
+
+The NN does learn something as it gives about 40% accuracy, which is clearly
+higher than that (10%) of random guess. However, we observe the issues of
+overfitting here---at the last few epochs, the validation/testing loss is much
+higher than the training loss. The model needs to be regularized to have better
+generalizability.
+
+* Searching for Better Architecture
+
+One way to improve the testing performance is to fine-tune the NN architecture.
+To avoid overfitting, we can reduce the model complexity by using fewer layers
+and/or decreasing the number of neurons in a layer. Let's see how an arbitrarily
+chosen architecture works:
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    baseline2 = Sequential()
+
+    # flatten our input into a single dimension array
+    baseline2.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+    # hidden layers
+    baseline2.add(Dense(512, activation='relu'))
+    baseline2.add(Dense(256, activation='relu'))
+    baseline2.add(Dense(64, activation='relu'))
+    baseline2.add(Dense(32, activation='relu'))
+    # output layer
+    baseline2.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    baseline2.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training & evaluatation
+    %time hist = fit(baseline2)
+    evaluate(baseline2, hist, 'output/fig-val-baseline2.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 12.2 s, sys: 575 ms, total: 12.8 s
+    Wall time: 12.8 s
+    Test loss: 1.658
+    Test accuracy: 0.424
+#+END_SRC
+
+The new architecture improves the testing accuracy, but the problem of
+overfitting remains.
+
+We can continue this process to try out more models and then pick the best one.
+We can also use the grid-search to find out the best combination of the depth
+and width hyperparameters. However, this process is *very time consuming*, as
+there are too many hyperparameters (two at each layer) to search for. We need
+other regularization techniques.
+
+* Weight Decay
+
+Weight decay is a very common regularization technique. We have applied it to
+many previous models (e.g., regression, Logistic regression, SVM, etc.). For
+NNs, we can also penalize large weights in the cost function. This often comes
+in two flavors:
+
+*** $L\^2$-Norm Penalties
+
+The first way is add a term in the cost function that penalizes the
+$L\^2$-norm of the weight matrix at each layer:
+
+$$\arg\min\_{\Theta=\{\boldsymbol{W}\^{(1)}\cdots\boldsymbol{W}\^{(L)}\}}C(\Theta)+\alpha\sum\_{i=1}\^{L}\Vert\boldsymbol{W}\^{(i)}\Vert\_{F}\^{2}$$
+This can be easily done in Keras by specifying the regularizer when
+adding a layer:
+
+In [179]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.regularizers import l2
+
+    model_l2 = Sequential()
+    # flatten our input into a single dimension array
+    model_l2.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    l2_alpha = 0.0005
+    for i in range(8):
+        # penalize the L2-norm of the weight matrix 
+        model_l2.add(Dense(512, activation='relu', W_regularizer=l2(l2_alpha)))
+    # output layer
+    model_l2.add(Dense(nb_classes, activation='softmax', W_regularizer=l2(l2_alpha)))
+
+    # compile model
+    model_l2.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # training & evaluatation
+    %time hist = fit(model_l2)
+    evaluate(model_l2, hist, 'output/fig-val-model-l2.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 55.5 s, sys: 11.9 s, total: 1min 7s
+    Wall time: 1min 7s
+    Test loss: 1.945
+    Test accuracy: 0.296
+#+END_SRC
+
+
+The $L\^2$-norm penalties reduces the gap between the training and validation
+loss. However, the testing accuracy is *not* improved. Forcing the weights to be
+around 0 limits the expressiveness of an NN and also creates *dead units* that
+output insignificant values without contributing much to the predictions.
+
+*** Explicit Weight Constraints
+
+Alternatively, we can constrain the weights incident to each hidden unit to have
+a norm less than or equal to a desired value:
+
+In [180]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.constraints import maxnorm
+
+    model_c = Sequential()
+    # flatten our input into a single dimension array
+    model_c.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    c_maxnorm = 0.7
+    for i in range(8):
+        # constrain the weights incident to each hidden unit
+        model_c.add(Dense(512, activation='relu', W_constraint=maxnorm(c_maxnorm)))
+    # output layer
+    model_c.add(Dense(nb_classes, activation='softmax', W_constraint=maxnorm(c_maxnorm)))
+
+    # compile model
+    model_c.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # training & evaluatation
+    %time hist = fit(model_c)
+    evaluate(model_c, hist, 'output/fig-val-model-c.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 39.9 s, sys: 5.38 s, total: 45.3 s
+    Wall time: 45.3 s
+    Test loss: 1.745
+    Test accuracy: 0.381
+#+END_SRC
+
+
+Now we get a better test accuracy as compared to that of the $L\^2$-norm
+penalties. The explicit weight constraint does not encourage small weights
+around 0, thus avoids *dead units* that do not contribute much to the behavior
+of an NN. However, it still limits the expressiveness of our NN. The testing
+accuracy is worse than the baseline.
+
+* Batch Normalization
+
+As discussed in the lecture, the idea of batch normalization is to explicitly
+force the activations of each layer to take on a unit Gaussian distribution over
+a batch of training examples. This makes the gradient-based optimization easier.
+At training time, we need to backprop through the normalization operation at
+each neuron. This is possible because the normalization operation is
+differentiable.
+
+Although its main goal is to simplify the optimization task, batch normalization
+can improve the generalizability in a subtle way---during training, each example
+is "augmented" with the information in other examples in the same batch. This
+creates the effect similar to the noise augmentation that makes the NN more
+robust.
+
+Keras offers the =BatchNormalization= layer. When using this layer, we need to
+make sure that it is added *after* the summation sublayer and *before* the
+non-linear activation sublayer:
+
+In [183]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.layers import Activation
+    from keras.layers.normalization import BatchNormalization
+
+    model_bn = Sequential()
+
+    # flatten our input into a single dimension array
+    model_bn.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    for i in range(8):
+        model_bn.add(Dense(512))
+        # add BatchNormalization after summation sublayer and before activation sublayer
+        model_bn.add(BatchNormalization(mode=1))
+        model_bn.add(Activation('relu'))
+    # output layer
+    model_bn.add(Dense(nb_classes, activation='softmax', W_constraint=maxnorm(drop_maxnorm)))
+
+    # compile model
+    model_bn.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # training & evaluatation
+    %time hist = fit(model_bn)
+    evaluate(model_bn, hist, 'output/fig-val-model-bn.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 45 s, sys: 1.8 s, total: 46.8 s
+    Wall time: 46.7 s
+    Test loss: 1.694
+    Test accuracy: 0.425
+#+END_SRC
+
+
+We can see that the test accuracy is improved as compared to the baseline.
+However, batch normalization does not solve the overfitting problem.
+
+NOTE: we use =mode=1= for fully connected layers. If you are using convolutional
+layers (in CNNs, to be discussed later), switch to =mode=0= and set the =axis=
+parameter to the channel dimension. See [[https://keras.io/layers/normalization/][documentation]].
+
+* Dropout
+As discussed in the lecture, the key idea of dropout is to randomly drop some
+units from the NN when processing a batch in training. This forces each neuron
+to learn to operate by its own instead of relying on other neurons. (Just like
+when you know your teammate is not that reliable, you have to take more
+responsibility when doing your final project.)
+
+We can also think dropout as an ensemble technique where each batch trains a
+"thinned" network consisting of units that are not dropped out, as shown below:
+
+[[file:fig-dropout.png]]
+
+At test time, the *weigh scaling* technique is commonly used---to make a
+prediction, we use the entire trained NN (with all units), but the weights going
+out from each unit is multiplied by the probability $p$ that a neuron is dropped
+out during the training time. This is to ensure that for any hidden unit the
+expected output at test time is the same as the output at training time.
+
+In Keras, we can enable dropout by adding a =Dropout= layer after each (or a
+specific) ordinary layer, as below. Note that since each thinned network is
+trained by only a batch, we enable the batch normalization to make the training
+easier.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.layers import Activation
+    from keras.layers.normalization import BatchNormalization
+    from keras.layers import Dropout
+
+    model_drop = Sequential()
+
+    # flatten our input into a single dimension array
+    model_drop.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    drop_rate = 0.2
+    for i in range(8):
+        model_drop.add(Dense(512))
+        model_drop.add(BatchNormalization(mode=1))
+        model_drop.add(Activation('relu'))
+        # dropout neurons randomly
+        model_drop.add(Dropout(drop_rate))
+    # output layer
+    model_drop.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_drop.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    # training & evaluatation
+    %time hist = fit(model_drop)
+    evaluate(model_drop, hist, 'output/fig-val-model-drop.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 1min 30s, sys: 2.19 s, total: 1min 33s
+    Wall time: 1min 35s
+    Test loss: 1.618
+    Test accuracy: 0.447
+#+END_SRC
+
+We get a much better learning curve and improved testing accuracy. The dropout
+network requires more epochs to train.
+
+NOTE: in cases where the NN does not overfit (when, e.g., there are a lot of
+training data), it may be better to increase the width (number of neurons) of
+each ordinary hidden layer when using dropout. See [[https://www.cs.toronto.edu/~hinton/absps/JMLRdropout.pdf][discussions]].
+
+* Data Augmentation
+
+NNs are known to be unrobust to noises/adversarial data points. One way to solve
+this problem is to "augment" each data point by a number of random
+transformations, provided that the transformations do not change the class
+labels of the point. With data augmentation, a model has a lower chance to see
+twice the exact same point. This helps prevent overfitting when dataset size is
+limited.
+
+Keras provides the =ImageDataGenerator= class that can apply the following
+transformations to images:
+
+-  to rotate an image within =rotation_range= (0-180);
+-  to shift/translate an image vertically or horizontally within
+   =width_shift= or =height_shift= (fraction of total width or height);
+-  to shear an image within =shear_range=;
+-  to zoom an image within =zoom_range=;
+-  to randomly flip an image horizontally, as indicated by the
+   =horizontal_flip= flag;
+-  if the above transformations (e.g., rotation or width/height shift)
+   creates new pixels, to fill image pixels following the mode specified
+   by =fill_mode= (either =constant=, =nearest=, =reflect= or =wrap=).
+
+Thre are [[https://keras.io/preprocessing/image/#imagedatagenerator][other transformations]] available. It is important to note that we should
+*not* apply a transformation that is going to affect the label. For example, if
+you apply a horizontal flip to an image representing the character 'b' in an OCR
+application, it will become 'd' and invalidate the associated label.
+
+Below we visualize some images after augmentation.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.preprocessing.image import ImageDataGenerator
+    import matplotlib.pyplot as plt
+
+    datagen = ImageDataGenerator(rotation_range=20, \
+                                 width_shift_range=0.1, \
+                                 height_shift_range=0.1, \
+                                 shear_range=0.1, \
+                                 zoom_range=0.2, \
+                                 horizontal_flip=True, \
+                                 fill_mode='nearest')
+
+    # visualize augmented points
+    plt.figure(figsize=(6, 6))
+    (X_batch, Y_batch) = datagen.flow(X_train_gray, Y_train, batch_size=9).next()
+    for i in range(9):
+        plt.subplot(3, 3, (i + 1))
+        plt.imshow(X_batch[i, :, :, 0], cmap=plt.get_cmap('gray'), interpolation='none')
+    plt.show()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    128
+#+END_SRC
+
+We can see some occasional artifacts near the image edges. These are the filled
+pixels.
+
+Let's feed the augmented data to our model (with batch normalization), as below.
+Note that the generator runs in parallel to the model fitting for efficiency. If
+you have a GPU, this means that your CPU does real-time data augmentation on
+images in parallel to the model fitting run on GPU.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.layers import Activation
+    from keras.layers.normalization import BatchNormalization
+    from keras.layers import Dropout
+    from keras.preprocessing.image import ImageDataGenerator
+    import math
+
+    model_aug = Sequential()
+
+    # flatten our input into a single dimension array
+    model_aug.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    for i in range(8):
+        model_aug.add(Dense(512))
+        model_aug.add(BatchNormalization(mode=1))
+        model_aug.add(Activation('relu'))
+    # output layer
+    model_aug.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_aug.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training
+    %time hist = model_aug.fit_generator( \
+                         datagen.flow(X_train_gray, Y_train, batch_size=batch_size), \
+                         samples_per_epoch=X_train_gray.shape[0], \
+                         nb_epoch=epoch_max, \
+                         validation_data=(X_val_gray, Y_val), \
+                         callbacks=[early_stop], \
+                         verbose=0)
+
+    # evaluation
+    evaluate(model_aug, hist, 'output/fig-val-model-aug.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    /home/shwu/anaconda3/lib/python3.5/site-packages/keras/engine/training.py:1569: UserWarning: Epoch comprised more than `samples_per_epoch` samples, which might affect learning results. Set `samples_per_epoch` correctly to avoid this warning.
+      warnings.warn('Epoch comprised more than '
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 7min 43s, sys: 8.07 s, total: 7min 51s
+    Wall time: 7min 19s
+    Test loss: 1.504
+    Test accuracy: 0.469
+#+END_SRC
+
+
+We see improved test accuracy. We also notice that the model *underfits* the
+dataset now. This is because the data augmentation effectively increases the
+number of training examples.
+
+NOTE: we see a warning complaining about the =samples_per_epoch= setting.
+Normally, it should be a number that can be divided by the =batch_size=. For
+now, let's just ignore this warning.
+
+Next, let's try to avoid the underfitting problem by increasing the width of
+hidden layers:
+
+In [280]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    model_aug2 = Sequential()
+
+    # flatten our input into a single dimension array
+    model_aug2.add(Flatten(input_shape=(img_size, img_size, img_channels)))
+
+    # hidden layers
+    for i in range(8):
+        model_aug2.add(Dense(1024))
+        model_aug2.add(BatchNormalization(mode=1))
+        model_aug2.add(Activation('relu'))
+    # output layer
+    model_aug2.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_aug2.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training
+    %time hist = model_aug2.fit_generator( \
+                         datagen.flow(X_train_gray, Y_train, batch_size=batch_size), \
+                         samples_per_epoch=X_train_gray.shape[0], \
+                         nb_epoch=epoch_max, \
+                         validation_data=(X_val_gray, Y_val), \
+                         callbacks=[early_stop], \
+                         verbose=0)
+
+    # evaluation
+    evaluate(model_aug2, hist, 'output/fig-val-model-aug2.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    /home/shwu/anaconda3/lib/python3.5/site-packages/keras/engine/training.py:1569: UserWarning: Epoch comprised more than `samples_per_epoch` samples, which might affect learning results. Set `samples_per_epoch` correctly to avoid this warning.
+      warnings.warn('Epoch comprised more than '
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    CPU times: user 12min 48s, sys: 20.8 s, total: 13min 8s
+    Wall time: 11min 45s
+    Test loss: 1.432
+    Test accuracy: 0.502
+#+END_SRC
+
+Now we see a much better learning curve, as well as further improved test
+accuracy.
+
+* Domain-Specific Design: CNN (Preview)
+
+If done right, the domain-specific design can yield much better results than the
+above general regularization techniques. This is because it can incorporate the
+prior knowledge only available in the current domain.
+
+Since we are classifying images, it is nature to use a Convolutional NN (CNN)
+that captures the *location-independent patterns* inside an image. We will
+discuss how CNNs work in the next lecture. For now, let's just do a quick
+preview and get some sense about the effectiveness of domain-specific design.
+
+Turning our model into a CNN is quire easy. Instead of flatten the input, we can
+just feed it into a stack of convolutional and pooling layers:
+
+In [307]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from keras.layers.convolutional import Convolution2D, MaxPooling2D
+
+    model_cnn = Sequential()
+
+    # conolutional hidden layers
+    for i in range(6):
+        model_cnn.add(Convolution2D(32, 3, 3, 
+                            input_shape=(img_size, img_size, img_channels), 
+                            border_mode='same', activation='relu'))
+        if (i + 1) % 2 == 0:
+            model_cnn.add(MaxPooling2D(pool_size=(2, 2), border_mode='same'))
+        
+    print('Output shape of last concolution layers: {0}'.format(model_cnn.output_shape))
+    model_cnn.add(Flatten())
+
+    # fully connected hidden layers
+    for i in range(2):
+        model_cnn.add(Dense(512))
+        model_cnn.add(BatchNormalization(mode=1))
+        model_cnn.add(Activation('relu'))
+        
+    # output layer
+    model_cnn.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_cnn.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training & evaluatation
+    %time hist = fit(model_cnn)
+    evaluate(model_cnn, hist, 'output/fig-val-model-cnn.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Output shape of last concolution layers: (None, 4, 4, 32)
+    CPU times: user 1min 53s, sys: 31.4 s, total: 2min 24s
+    Wall time: 2min 26s
+    Test loss: 1.037
+    Test accuracy: 0.698
+#+END_SRC
+
+We get a big jump in test accuracy! More surprisingly, we solve *fewer*
+variables in this CNN than in previous models:
+
+In [310]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print('baseline: {0} parameters'.format(baseline.count_params()))
+    print('model_bn: {0} parameters'.format(model_bn.count_params()))
+    print('model_cnn: {0} parameters'.format(model_cnn.count_params()))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    baseline: 2368522 parameters
+    model_bn: 2384906 parameters
+    model_cnn: 581098 parameters
+#+END_SRC
+
+Now you get some sense about how effective a domain-specific network could be.
+But we are not done yet. The current CNN has the overfitting problem. Let's
+train it using the augmented dataset:
+
+In [311]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    model_cnn2 = Sequential()
+
+    # convolutional hidden layers
+    for i in range(6):
+        model_cnn2.add(Convolution2D(32, 3, 3, 
+                            input_shape=(img_size, img_size, img_channels), 
+                            border_mode='same', activation='relu'))
+        if (i + 1) % 2 == 0:
+            model_cnn2.add(MaxPooling2D(pool_size=(2, 2), border_mode='same'))
+        
+    print('Output shape of last concolution layers: {0}'.format(model_cnn2.output_shape))
+    model_cnn2.add(Flatten())
+
+    # fully connected hidden layers
+    for i in range(2):
+        model_cnn2.add(Dense(512))
+        model_cnn2.add(BatchNormalization(mode=1))
+        model_cnn2.add(Activation('relu'))
+        
+    # output layer
+    model_cnn2.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_cnn2.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training
+    %time hist = model_cnn2.fit_generator( \
+                         datagen.flow(X_train_gray, Y_train, batch_size=batch_size), \
+                         samples_per_epoch=X_train_gray.shape[0], \
+                         nb_epoch=epoch_max, \
+                         validation_data=(X_val_gray, Y_val), \
+                         callbacks=[early_stop], \
+                         verbose=0)
+
+    # evaluation
+    evaluate(model_cnn2, hist, 'output/fig-val-model-cnn2.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Output shape of last concolution layers: (None, 4, 4, 32)
+    CPU times: user 10min 13s, sys: 1min 57s, total: 12min 11s
+    Wall time: 8min 38s
+    Test loss: 0.611
+    Test accuracy: 0.793
+#+END_SRC
+
+We get even better test accuracy now. Let's put what we have learned so far
+together. We increase the network size and add a dropout layer after each
+ordinary hidden layer:
+
+In [314]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    model_cnn3 = Sequential()
+
+    # convolutional hidden layers
+    drop_rate = 0.2
+    for i in range(6):
+        model_cnn3.add(Convolution2D(64, 3, 3, 
+                            input_shape=(img_size, img_size, img_channels), 
+                            border_mode='same', activation='relu'))
+        model_cnn3.add(Dropout(drop_rate))
+        if (i + 1) % 2 == 0:
+            model_cnn3.add(MaxPooling2D(pool_size=(2, 2), border_mode='same'))
+        
+    print('Output shape of last concolution layers: {0}'.format(model_cnn3.output_shape))
+    model_cnn3.add(Flatten())
+
+    # fully connected hidden layers
+    for i in range(2):
+        model_cnn3.add(Dense(1024))
+        model_cnn3.add(BatchNormalization(mode=1))
+        model_cnn3.add(Activation('relu'))
+        model_cnn3.add(Dropout(drop_rate))
+        
+    # output layer
+    model_cnn3.add(Dense(nb_classes, activation='softmax'))
+
+    # compile model
+    model_cnn3.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+
+    # training
+    %time hist = model_cnn3.fit_generator( \
+                         datagen.flow(X_train_gray, Y_train, batch_size=batch_size), \
+                         samples_per_epoch=X_train_gray.shape[0], \
+                         nb_epoch=epoch_max, \
+                         validation_data=(X_val_gray, Y_val), \
+                         callbacks=[early_stop], \
+                         verbose=0)
+
+    # evaluation
+    evaluate(model_cnn3, hist, 'output/fig-val-model-cnn3.png')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Output shape of last concolution layers: (None, 4, 4, 64)
+    CPU times: user 19min 52s, sys: 4min 35s, total: 24min 27s
+    Wall time: 20min
+    Test loss: 0.526
+    Test accuracy: 0.820
+#+END_SRC
+
+Finally, we get 82% test accuracy, which is twice as high as that of the
+baseline. This CNN has a similar number of parameters as the baseline:
+
+In [320]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print('baseline: {0} parameters'.format(baseline.count_params()))
+    print('model_cnn3: {0} parameters'.format(model_cnn3.count_params()))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    baseline: 2368522 parameters
+    model_cnn3: 2302922 parameters
+#+END_SRC
+
+Now we have some hands on experience in NN regularization. You are encouraged to
+fine-tune the network architecture to walk around the underfitting problem we
+have right now :)
+
+* Remarks
+  :PROPERTIES:
+  :CUSTOM_ID: Remarks
+  :END:
+
+In this lab, we only used grayscale images. Color information is vital to get
+the the state-of-the-art performance (95% and 92% with and without data
+augmentation respectively). In the next lab, we will explore the internals of
+CNNs using color images. Happy training!
+

@@ -1,0 +1,1064 @@
+
+
+* DataLab Cup 1: Predicting Appropriate Response
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    %matplotlib inline
+#+END_SRC
+
+* Competition Info[[Competition-Info][¶]]
+  :PROPERTIES:
+  :CUSTOM_ID: Competition-Info
+  :END:
+
+In this competition, you have to *select the most appropriate response from 6
+candidates* based on previous chat message. You are provided with lines of total
+8 tv programs as training data, and each program has serveral episodes. You also
+get a question collection which contains *1 chat history and 6 condidate
+responses* for each question. Your goal is to learn a function that is able to
+predict the best response.
+
+[[file:illustration.png]]
+
+*** Dataset Format
+
+-  =Program01.csv~Program08.csv= contains total 8 tv program's lines
+-  =Question.csv= contains total 500 questions, and each question
+   includes chat and candidate options.
+
+*** How to Submit Results?
+
+You have to predict the correct response in =Question.csv=, and *submit
+it to the Kaggle-In-Class* online judge system. Following are some
+example actions:
+
+| Action              | Description                                                                                                                                                            |
+|---------------------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Data                | Get the dataset.                                                                                                                                                       |
+| Make a Submission   | Your testing performance will be evaluated immediately and shown on the leaderboard.                                                                                   |
+| Leaderboard         | The current ranking of participants. Note that this ranking only reflects the performance on part of the testset and may not equal to the final ranking (see below).   |
+| Forum               | You can ask questions or share findings here.                                                                                                                          |
+| Kernels             | You can create your jupyter notebook, run it, and keep it as private or public here.                                                                                   |
+
+*** Scoring
+
+The evaluation metric is *CategorizationAccuracy*. The ranking shown on the
+leaderboard before the end of competition reflects only the accuracy over *part
+of* =Question.csv=. However, this is *not* how we evaluate your final scores.
+After the competition, we combine *accuracy over the entire =Question.csv=* and
+*your report* as the final score.
+
+There will be two baseline results, namely, =Benchmark-60= and =Benchmark-80=.
+You have to outperform =Benchmark-60= to get 60 points, and =Benchmark-80= to
+get 80. Meanwhile, *the higher accuracy you achieve, the higher the final score
+you will get*.
+
+*** Important Dates[[Important-Dates][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Important-Dates
+    :END:
+
+-  2017/10/24 (TUE) - competition starts
+-  2017/10/29 (SUN) 23:59pm - competition ends, final score announcement
+-  2017/10/31 (TUE) - winner team share
+-  2017/11/2 (THU) 23:59pm - report submission (iLMS);
+
+*** Report[[Report][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Report
+    :END:
+
+After the competition, *each team have to hand in a report* in Jupyter
+notebook format via the iLMS system. You report should include:
+
+-  Student ID, name of each team member
+-  How did you preprocess data (cleaning, feature engineering, etc.)?
+-  How did you build the classifier (model, training algorithm, special
+   techniques, etc.)?
+-  Conclusions (interesting findings, pitfalls, takeaway lessons, etc.)?
+
+The file name of your report must be =DL_comp1_{Your Team number}_report.ipynb=.
+
+* Hint 1: Feature Engineering is More Important Then You Expected
+
+So far, we learn various machine learning techniques based on datasets where the
+date features are predefined. In many real-world applications, including this
+competition, we only get raw data and have to define the features ourself.
+*Feature engineering* is the process of using domain knowledge to create
+features that make machine learning algorithms work. While good modeling and
+training techniques help you make better predictions, feature engineering
+usually determines whether your task is "learnable".
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import pandas as pd
+
+    NUM_PROGRAM = 8
+    programs = []
+    for i in range(1, NUM_PROGRAM+1):
+        program = pd.read_csv('Program0%d.csv' % (i))
+        
+        print('Program %d' % (i))
+        print('Episodes: %d' % (len(program)))
+        print(program.columns)
+        print()
+        
+        print(program.loc[:1]['Content'])
+        print()
+        
+        programs.append(program)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Program 1
+    Episodes: 1299
+    Index(['Content'], dtype='object')
+
+    0    還好天氣不錯\n昨天晚上的流星雨\n我看到很多流星\n這次的收穫真豐富\n當然豐富啦\n我就...
+    1    好熱喔\n這種倉庫很不通風\n好熱喔\n受不了\n今天天氣真的是太熱了\n我都快中暑了\n那...
+    Name: Content, dtype: object
+
+    Program 2
+    Episodes: 205
+    Index(['Content'], dtype='object')
+
+    0    我們現在只差兩分\n只差兩分\n等下阿偉先站過來\n他們會埋伏一個射手出來\n我們盡量把他堵...
+    1    四十年前\n我媽為了養我跟我哥\n開這間理髮店\n她把手藝都傳給哥\n希望他可以接下這間店\...
+    Name: Content, dtype: object
+
+    Program 3
+    Episodes: 57
+    Index(['Content'], dtype='object')
+
+    0    台南人劇團\n一個從古都台南輸出的\n現代劇團\n每年總有令人驚奇的戲劇產生\n玩大師\n莎...
+    1    一齣舞台劇\n這個舞台劇的結果\n所有觀眾都知道\n兩個演員在舞台上\n撐了一百多分鐘\n目...
+    Name: Content, dtype: object
+
+    Program 4
+    Episodes: 10
+    Index(['Content'], dtype='object')
+
+    0    念書幹嘛偷光\n燈一開就有了啊\n太陽是不是從樹葉之間的\n這個縫灑下來\n然後在地上啊\n...
+    1    倫語社\n效果立竿見影\n立竿見影\n這也是指很快囉\n但是它和曇花一現\n有什麼不一樣\n...
+    Name: Content, dtype: object
+
+    Program 5
+    Episodes: 369
+    Index(['Content'], dtype='object')
+
+    0    公平的對待\n孩子才會樂於做良性的競爭\n這樣一來\n真正有實力的人才不會被埋沒\n老師好\...
+    1    你們看\n我臉上的痘痘\n畫了粧之後就沒那麼明顯了\n就算熬夜K書\n長了黑眼圈也不怕\n你...
+    Name: Content, dtype: object
+
+    Program 6
+    Episodes: 80
+    Index(['Content'], dtype='object')
+
+    0    在這個世上\n既能解放你滿肚子壓力\n又讓你避之唯恐不及的\n只有馬桶\n但是如果你到現在還...
+    1    你相信嗎\n全球十大致人於死的動物榜首是誰\n獅子嗎\n不是\n鱷魚嗎\nNo\n答案竟然是...
+    Name: Content, dtype: object
+
+    Program 7
+    Episodes: 611
+    Index(['Content'], dtype='object')
+
+    0    嗨, 大家好\n歡迎收看「聽聽看」\n你這個禮拜過得好不好呢\n有沒有什麼新鮮事\n要和朋友...
+    1    你今天是不是跟我一樣\n早就迫不及待的\n想要收看我們「聽聽看」了呢\n怎麼樣\n上個禮拜的...
+    Name: Content, dtype: object
+
+    Program 8
+    Episodes: 210
+    Index(['Content'], dtype='object')
+
+    0    每天帶你拜訪一個家庭\n邀請一位貴賓和他們共進晚餐\n談談人生大小事\n但如果登門拜訪的\n...
+    1    如果用一句話\n來形容吃飯這件事情\n那句話應該就是體驗人生\n今天的「誰來晚餐」\n發生在...
+    Name: Content, dtype: object
+#+END_SRC
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    questions = pd.read_csv('Question.csv')
+
+    print('Question')
+    print('Episodes: %d' % (len(questions)))
+    print(questions.columns)
+    print()
+
+    print(questions.loc[:2]['Question'])
+    print()
+
+    for i in range(6):
+        print(questions.loc[:2]['Option%d' % (i)])
+        print()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Question
+    Episodes: 500
+    Index(['Question', 'Option0', 'Option1', 'Option2', 'Option3', 'Option4',
+           'Option5'],
+          dtype='object')
+
+    0    媽給你送錢包來啦 來 你看一下是不是這個\n對 就是這個 你在哪裡找到它的\n
+    1             古人說三日不讀書 面目可憎 我覺得我最近可能臉色太難看了\n
+    2                         你說我們做父母的最擔心的就是這個\n
+    Name: Question, dtype: object
+
+    0        你看 這是我新買的錢包
+    1    所以想回復我昔日面貌姣好的樣子
+    2      我剛剛聽你媽說你要讀什麼科
+    Name: Option0, dtype: object
+
+    0     我的錢包不見了啦
+    1    是不是要定期來舉辦
+    2    其他老師又集體叛變
+    Name: Option1, dtype: object
+
+    0    以後上網咖的錢包在我身上
+    1         各辦理一次才對
+    2        聽起來好好玩天啊
+    Name: Option2, dtype: object
+
+    0                          什麼有錢包場
+    1                     能夠督促所有的用人機關
+    2    只是小孩自己的興趣不能得到發展 他們的心裡可能也會很悶喔
+    Name: Option3, dtype: object
+
+    0    早上你爸爸在車上找到的 一定是前天你放學的時候掉在車上了
+    1                   在上次的節目討論中也有提到
+    2                      走到這裡就沒有路了耶
+    Name: Option4, dtype: object
+
+    0         我為什麼要給你們錢包
+    1           超過九十分貝以上
+    2    每一個科目像是國語數學都很優秀
+    Name: Option5, dtype: object
+#+END_SRC
+
+We get raw content of programs' lines, but there aren't any feature we can learn
+from. To predict from text, we have to go through several preprocessing steps
+first.
+
+*** Preprocessing: Cut Words[[Preprocessing:-Cut-Words][¶]]
+    :PROPERTIES:
+    :CUSTOM_ID: Preprocessing:-Cut-Words
+    :END:
+
+Since chinese characters are continuous one by one, we have to *cut them into
+meaningful words* first. We use [[https://github.com/fxsjy/jieba][jieba]] with *traditional chinese dictionary* to
+cut our text. You can install *jieba* via pip.
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+        pip install jieba
+#+END_SRC
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import jieba
+
+    jieba.set_dictionary('big5_dict.txt')
+#+END_SRC
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    example_str = '我討厭吃蘋果'
+    cut_example_str = jieba.lcut(example_str)
+    print(cut_example_str)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Building prefix dict from /home/tim/ray/Workspace/Course_DeepLearning/Comp1/Release/big5_dict.txt ...
+    Loading model from cache /tmp/jieba.ubfd2136d7a9b93dc278d35ab3e6630e5.cache
+    Loading model cost 0.544 seconds.
+    Prefix dict has been built succesfully.
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ['我', '討厭', '吃', '蘋果']
+#+END_SRC
+
+We cut not only =Program.csv= but also =Question.csv=, and save as
+*list*.
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def jieba_lines(lines):
+        cut_lines = []
+        
+        for line in lines:
+            cut_line = jieba.lcut(line)
+            cut_lines.append(cut_line)
+        
+        return cut_lines
+#+END_SRC
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cut_programs = []
+
+    for program in programs:
+        n = len(program)
+        cut_program = []
+        
+        for i in range(n):
+            lines = program.loc[i]['Content'].split('\n')
+            cut_program.append(jieba_lines(lines))
+        
+        cut_programs.append(cut_program)
+#+END_SRC
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(len(cut_programs))
+    print(len(cut_programs[0]))
+    print(len(cut_programs[0][0]))
+    print(cut_programs[0][0][:3])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    8
+    1299
+    635
+    [['還好', '天氣', '不錯'], ['昨天', '晚上', '的', '流星雨'], ['我', '看到', '很多', '流星']]
+#+END_SRC
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cut_questions = []
+    n = len(questions)
+
+    for i in range(n):
+        cut_question = []
+        lines = questions.loc[i]['Question'].split('\n')
+        cut_question.append(jieba_lines(lines))
+        
+        for j in range(6):
+            line = questions.loc[j]['Option%d' % (j)]
+            cut_question.append(jieba.lcut(line))
+        
+        cut_questions.append(cut_question)
+#+END_SRC
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(len(cut_questions))
+    print(len(cut_questions[0]))
+    print(cut_questions[0][0])
+
+    for i in range(1, 7):
+        print(cut_questions[0][i])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    500
+    7
+    [['媽給', '你', '送', '錢包', '來', '啦', ' ', '來', ' ', '你', '看', '一下', '是', '不', '是', '這個'], ['對', ' ', '就是', '這個', ' ', '你', '在', '哪裡', '找到', '它', '的'], []]
+    ['你', '看', ' ', '這是', '我', '新', '買', '的', '錢包']
+    ['是', '不', '是', '要', '定期', '來', '舉辦']
+    ['聽起來', '好好玩', '天', '啊']
+    ['那', '我', '去', '探索', '一下']
+    ['什麼', '你', '說', '我', '是', '鬼']
+    ['沒有', '人', '是', '十全十美', '的']
+#+END_SRC
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import numpy as np
+
+    np.save('cut_Programs.npy', cut_programs)
+    np.save('cut_Questions.npy', cut_questions)
+#+END_SRC
+
+After saving, we can load them directly next time.
+
+In [12]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    cut_programs = np.load('cut_Programs.npy')
+    cut_Question = np.load('cut_Questions.npy')
+#+END_SRC
+
+*** Preprocessing: Word Dictionary & Out-of-Vocabulary
+
+There are many words after cutting, but *not all of them is useful*. The word
+*too common or too rare* can not give us information but may noise. We count the
+the number of occurrence for each word and remove useless one.
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    word_dict = dict()
+#+END_SRC
+
+In [14]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def add_word_dict(w):
+        if not w in word_dict:
+            word_dict[w] = 1
+        else:
+            word_dict[w] += 1
+#+END_SRC
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    for program in cut_programs:
+        for lines in program:
+            for line in lines:
+                for w in line:
+                    add_word_dict(w)
+#+END_SRC
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    for question in cut_questions:
+        lines = question[0]
+        for line in lines:
+            for w in line:
+                add_word_dict(w)
+        
+        for i in range(1, 7):
+            line = question[i]
+            for w in line:
+                add_word_dict(w)
+#+END_SRC
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import operator
+
+    word_dict = sorted(word_dict.items(), key=operator.itemgetter(1), reverse=True)
+#+END_SRC
+
+In [18]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    VOC_SIZE = 15000
+    VOC_START = 20
+
+    voc_dict = word_dict[VOC_START:VOC_START+VOC_SIZE]
+    print(voc_dict[:10])
+    np.save('voc_dict.npy', voc_dict)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [('他', 81495), ('也', 77074), ('就是', 75444), ('說', 74677), ('來', 69134), ('會', 67805), ('那', 67274), ('喔', 61443), ('可以', 60159), ('跟', 59954)]
+#+END_SRC
+
+In [19]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    voc_dict = np.load('voc_dict.npy')
+#+END_SRC
+
+Now, =voc_dict= becomes better word dictionary, then we should replace
+those removed words aka out-of-vocabulary words into an *unknown token*
+in the following use.
+
+*** Preprocessing: Generating Training Data
+
+Though the format of question is to select one from six, our traing data only
+have continuous lines. Naively, i want to change the whole problem *into a
+binary classification* which means given two lines, my model want to *judge
+these two are context or not*.
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import random
+
+    NUM_TRAIN = 10000
+    TRAIN_VALID_RATE = 0.7
+#+END_SRC
+
+In [21]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def generate_training_data():
+        Xs, Ys = [], []
+        
+        for i in range(NUM_TRAIN):
+            pos_or_neg = random.randint(0, 1)
+            
+            if pos_or_neg==1:
+                program_id = random.randint(0, NUM_PROGRAM-1)
+                episode_id = random.randint(0, len(cut_programs[program_id])-1)
+                line_id = random.randint(0, len(cut_programs[program_id][episode_id])-2)
+                
+                Xs.append([cut_programs[program_id][episode_id][line_id], 
+                           cut_programs[program_id][episode_id][line_id+1]])
+                Ys.append(1)
+                
+            else:
+                first_program_id = random.randint(0, NUM_PROGRAM-1)
+                first_episode_id = random.randint(0, len(cut_programs[first_program_id])-1)
+                first_line_id = random.randint(0, len(cut_programs[first_program_id][first_episode_id])-1)
+                
+                second_program_id = random.randint(0, NUM_PROGRAM-1)
+                second_episode_id = random.randint(0, len(cut_programs[second_program_id])-1)
+                second_line_id = random.randint(0, len(cut_programs[second_program_id][second_episode_id])-1)
+                
+                Xs.append([cut_programs[first_program_id][first_episode_id][first_line_id], 
+                           cut_programs[second_program_id][second_episode_id][second_line_id]])
+                Ys.append(0)
+        
+        return Xs, Ys
+#+END_SRC
+
+In [22]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Xs, Ys = generate_training_data()
+
+    x_train, y_train = Xs[:int(NUM_TRAIN*TRAIN_VALID_RATE)], Ys[:int(NUM_TRAIN*TRAIN_VALID_RATE)]
+    x_valid, y_valid = Xs[int(NUM_TRAIN*TRAIN_VALID_RATE):], Ys[int(NUM_TRAIN*TRAIN_VALID_RATE):]
+#+END_SRC
+
+Since machine learning models only accept numerical features, we must
+convert categorical features, such as tokens into a numerical form. In
+the next section, we introduce several commonly used models, including
+*BoW*, *TF-IDF*, and *Feature Hashing* that allows us to represent text
+as numerical feature vectors.
+
+In [23]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    example_doc = []
+
+    for line in cut_programs[0][0]:
+        example_line = ''
+        for w in line:
+            if w in voc_dict:
+                example_line += w+' '
+            
+        example_doc.append(example_line)
+
+    print(example_doc[:10])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ['還好 天氣 不錯 ', '昨天 晚上 ', '看到 很多 流星 ', '這次 收穫 真 豐富 ', '當然 豐富 啦 ', '說 嘛 ', '精心 製作 ', '被 一個 人 吃掉 ', '真的 嗎 ', '不要 忘記 做 秘密 檔案 ']
+#+END_SRC
+
+*** Word2Vec: BoW (Bag-Of-Words)
+
+The idea behind bag-of-words model is to represent each document by
+occurrence of words, which can be summarized as the following steps:
+
+1. Build vocabulary dictionary by unique token from the entire set of
+   documents;
+2. Represent each document by a vector, where each position corresponds
+   to the occurrence of a vocabulary in dictionary.
+
+Each vocabulary in BoW can be a single word (1-gram) or a sequence of n
+continuous words (n-gram). It has been shown empirically that 3-gram or 4-gram
+BoW models yield good performance in anti-spam email filtering application.
+
+Here, we use Scikit-learn's implementation [[http://scikit-learn.org/stable/modules/generated/sklearn.feature_extraction.text.CountVectorizer.html][CountVectorizer]] to construct the BoW
+model:
+
+In [24]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import scipy as sp
+    from sklearn.feature_extraction.text import CountVectorizer
+
+    # ngram_range=(min, max), default: 1-gram => (1, 1)
+    count = CountVectorizer(ngram_range=(1, 1))
+
+    count.fit(example_doc)
+    BoW = count.vocabulary_
+    print('[vocabulary]\n')
+    for key in list(BoW.keys())[:10]:
+        print('%s %d' % (key, BoW[key]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [vocabulary]
+
+    一半 7
+    經常 377
+    兩種 89
+    跑進去 445
+    地盤 156
+    趕走 443
+    常常 206
+    脫皮 395
+    更新 271
+    現在 323
+#+END_SRC
+
+The parameter =ngram_range=(min-length, max-length)= in CountVectorizer
+specifies the vocabulary to be ={min-length}=-gram to ={max-length}=-gram. For
+example =ngram_range=(1, 2)= will use both 1-gram and 2-gram as vocabularies.
+After constructing BoW model by calling =fit()=, you can access BoW vocabularies
+in its attribute =vocubalary_=, which is stored as Python dictionary that maps
+vocabulary to an integer index.
+
+Let's transform the example documents into feature vectors:
+
+In [25]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # get matrix (doc_id, vocabulary_id) --> tf
+    doc_bag = count.transform(example_doc)
+    print('(did, vid)\ttf')
+    print(doc_bag[:10])
+
+    print('\nIs document-term matrix a scipy.sparse matrix? {}'.format(sp.sparse.issparse(doc_bag)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (did, vid) tf
+      (0, 46)   1
+      (0, 168)  1
+      (0, 469)  1
+      (1, 268)  1
+      (1, 270)  1
+      (2, 217)  1
+      (2, 310)  1
+      (2, 352)  1
+      (3, 259)  1
+      (3, 435)  1
+      (3, 456)  1
+      (4, 340)  1
+      (4, 435)  1
+      (6, 370)  1
+      (6, 414)  1
+      (7, 6)    1
+      (7, 128)  1
+      (8, 354)  1
+      (9, 44)   1
+      (9, 225)  1
+      (9, 293)  1
+      (9, 361)  1
+
+    Is document-term matrix a scipy.sparse matrix? True
+#+END_SRC
+
+Since each document contains only a small subset of vocabularies,
+=CountVectorizer.transform()= stores feature vectors as scipy.sparse matrix,
+where entry index is =(document-index, vocabulary-index)= pair, and the value is
+the *term frequency*---the number of times a vocabulary (term) occurs in a
+document.
+
+Unfortunately, many Scikit-learn classifiers do not support input as sparse
+matrix now. We can convert =doc_bag= into a Numpy dense matrix:
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    doc_bag = doc_bag.toarray()
+    print(doc_bag[:10])
+
+    print('\nAfter calling .toarray(), is it a scipy.sparse matrix? {}'.format(sp.sparse.issparse(doc_bag)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [[0 0 0 ..., 0 0 0]
+     [0 0 0 ..., 0 0 0]
+     [0 0 0 ..., 0 0 0]
+     ..., 
+     [0 0 0 ..., 0 0 0]
+     [0 0 0 ..., 0 0 0]
+     [0 0 0 ..., 0 0 0]]
+
+    After calling .toarray(), is it a scipy.sparse matrix? False
+#+END_SRC
+
+In [27]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    doc_bag = count.fit_transform(example_doc).toarray()
+
+    print("[most frequent vocabularies]")
+    bag_cnts = np.sum(doc_bag, axis=0)
+    top = 10
+    # [::-1] reverses a list since sort is in ascending order
+    for tok, v in zip(count.inverse_transform(np.ones(bag_cnts.shape[0]))[0][bag_cnts.argsort()[::-1][:top]], 
+                      np.sort(bag_cnts)[::-1][:top]):
+        print('%s: %d' % (tok, v))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [most frequent vocabularies]
+    蟋蟀: 98
+    可以: 21
+    就是: 21
+    聲音: 20
+    這樣: 19
+    你們: 17
+    真的: 16
+    還有: 15
+    比較: 15
+    豆油伯: 15
+#+END_SRC
+
+To find out most frequent words among documents, we first sum up vocabulary
+counts in documents, where =axis=0= is the document index. Then, we sort the
+summed vocabulary count array in ascending order and get the sorted index by
+=argsort()=. Next, we revert the sorted list by =[::-1]=, and feed into
+=inverse_transform()= to get corresponding vocabularies. Finally, we show the 10
+most frequent vocabularies with their occurrence counts.
+
+Next, we introduce the *TF-IDF* model that *downweights frequently occurring
+words* among the input documents.
+
+*** Word2Vec: TF-IDF (Term-Frequency & Inverse-Document-Frequency)
+
+F-IDF model calculates not only the term-frequency (TF) as BoW model
+does, but also the *document-frequency* (DF) of a term, which refers to
+the number of documents that contain this term. The TF-IDF score for a
+term is defined as
+
+[[file:tf-idf.png]]
+
+where the =log()= term is called the *inverse-document-frequency* (IDF) and
+=Ndoc= is the total number of documents. The idea behind TF-IDF is to downweight
+the TF of a word if it appears in many documents. For example, if a word appears
+in every document, the second term become =log(1)+1=1= , which will be smaller
+than any other word appearing in only a part of documents.
+
+NOTE: we add =1= to both the numerator and denominator inside the =log()= in the
+above definition so to avoid the numeric issue of dividing by =0=.
+
+Let's create the TF-IDF feature representation:
+
+In [28]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    tfidf = TfidfVectorizer(ngram_range=(1,1))
+    tfidf.fit(example_doc)
+
+    top = 10
+    # get idf score of vocabularies
+    idf = tfidf.idf_
+    print('[vocabularies with smallest idf scores]')
+    sorted_idx = idf.argsort()
+    for i in range(top):
+        print('%s: %.2f' % (tfidf.get_feature_names()[sorted_idx[i]], idf[sorted_idx[i]]))
+
+    doc_tfidf = tfidf.transform(example_doc).toarray()
+    tfidf_sum = np.sum(doc_tfidf, axis=0)
+    print("\n[vocabularies with highest tf-idf scores]")
+    for tok, v in zip(tfidf.inverse_transform(np.ones(tfidf_sum.shape[0]))[0][tfidf_sum.argsort()[::-1]][:top], 
+                      np.sort(tfidf_sum)[::-1][:top]):
+        print('%s: %f' % (tok, v))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [vocabularies with smallest idf scores]
+    蟋蟀: 2.87
+    可以: 4.36
+    就是: 4.41
+    聲音: 4.46
+    這樣: 4.46
+    你們: 4.56
+    真的: 4.62
+    還有: 4.68
+    豆油伯: 4.68
+    比較: 4.68
+
+    [vocabularies with highest tf-idf scores]
+    蟋蟀: 42.016104
+    這樣: 11.916386
+    真的: 11.405347
+    就是: 11.256123
+    可以: 10.898674
+    聲音: 10.442999
+    豆油伯: 10.325579
+    還有: 9.835135
+    你們: 9.293539
+    叫做: 8.395597
+#+END_SRC
+
+Now we have a problem, the number of features that we have created in
+=doc_tfidf= is huge:
+
+In [29]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    print(doc_tfidf.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (635, 516)
+#+END_SRC
+
+There are more than 500 features for merely 650 documents. In practice, this may
+lead to too much memory consumption (even with sparse matrix representation) if
+we have a large number of vocabularies.
+
+*** Word2Vec: Feature Hashing
+
+*Feature hashing* reduces the dimension vocabulary space by hashing each
+vocabulary into a hash table with a fixed number of buckets. As compared to BoW,
+feature hashing has the following pros and cons:
+
+-  (+) no need to store vocabulary dictionary in memory anymore
+-  (-) no way to map token index back to token via =inverse_transform()=
+-  (-) no IDF weighting
+
+In [30]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.feature_extraction.text import HashingVectorizer
+
+    hashvec = HashingVectorizer(n_features=2**6)
+
+    doc_hash = hashvec.transform(example_doc)
+    print(doc_hash.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (635, 64)
+#+END_SRC
+
+Ok, now we can transform raw text to feature vectors.
+
+*** More Creative Features
+
+Now, you can go create your basic set of features for the text in competition.
+But *don't stop from here*. If you do aware the power of feature engineering,
+use your creativity to extract more features from the raw text. The more
+meaningful features you create, the more likely you will get a better score and
+win.
+
+Here are few examples for inspiration:
+
+-  [[https://radimrehurek.com/gensim/models/word2vec.html][Word2Vec]]
+-  [[https://radimrehurek.com/gensim/models/doc2vec.html][Doc2Vec]]
+-  [[https://web.eecs.umich.edu/~mihalcea/papers/mihalcea.emnlp04.pdf][TextRank]]
+-  [[https://radimrehurek.com/gensim/models/ldamodel.html][Latent Dirichlet Allocation]]
+-  Similar word dictionary
+-  [[https://en.wikipedia.org/wiki/Part-of-speech_tagging][Part-of-speech Tagging]]
+
+There are lots of other directions you can explore, such as NLP
+features, length of lines, etc.
+
+*** Hint 2: Use Out-of-Core Learning If You Don't Have Enough Memory
+
+The size of dataset in the competition is much larger than the lab. The
+dataset, after being represented as feature vectors, may become much
+larger, and you are unlikely to store all of them in memory. Next, we
+introduce another training technique called the *Out of Core Learning*
+to help you train a model using *data streaming*.
+
+The idea of Out of Core Learning is similar to the *stochastic gradient
+descent*, which updates the model when seeing a minibatch, except that each
+minibatch is loaded from disk via a data stream. Since we only see a part of the
+dataset at a time, we can only use the =HashingVectorizer= to transform text
+into feature vectors because the =HashingVectorizer= does not require knowing
+the vocabulary space in advance.
+
+Let's create a stream to read a chunk of CSV file at a time using the Pandas I/O
+API:
+
+In [31]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import pandas as pd
+
+    def get_stream(path, size):
+        for chunk in pd.read_csv(path, chunksize=size):
+            yield chunk
+
+    print(next(get_stream(path='imdb.csv', size=10)))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+                                                  review  sentiment
+    0  This movie is well done on so many levels that...          1
+    1  Wilson (Erica Gavin) is nabbed by the cops and...          1
+    2  Canto 1: How Kriemhild Mourned Over Siegfried ...          1
+    3  I bought Bloodsuckers on ebay a while ago. I w...          0
+    4  I took part in a little mini production of thi...          1
+    5  This is certainly one of my all time fav episo...          1
+    6  This scary and rather gory adaptation of Steph...          1
+    7  Mike Hawthorne(Gordon Currie)is witness to the...          0
+    8  It looks to me as if the creators of "The Clas...          0
+    9  This comic book style film is funny, has nicel...          1
+#+END_SRC
+
+Good. Our stream works correctly.
+
+For out-of core learning, we have to use models that can train and update the
+model's weight iteratively. Here, we use the SGDClassifier to train a
+LogisticRegressor using the stochastic gradient descent. We can partial update
+SGDClassifier by calling the =partial_fit()= method. Our workflow now becomes:
+
+1. Stream documents directly from disk to get a mini-batch (chunk) of
+   documents;
+2. Preprocess: clean words in the mini-batch of documents;
+3. Word2vec: use HashingVectorizer to extract features from text;
+4. Update =SGDClassifier= and go back to step 1.
+
+In [32]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import re
+    from bs4 import BeautifulSoup
+
+    def preprocessor(text):
+        # remove HTML tags
+        text = BeautifulSoup(text, 'html.parser').get_text()
+        
+        # regex for matching emoticons, keep emoticons, ex: :), :-P, :-D
+        r = '(?::|;|=|X)(?:-)?(?:\)|\(|D|P)'
+        emoticons = re.findall(r, text)
+        text = re.sub(r, '', text)
+        
+        # convert to lowercase and append all emoticons behind (with space in between)
+        # replace('-','') removes nose of emoticons
+        text = re.sub('[\W]+', ' ', text.lower()) + ' ' + ' '.join(emoticons).replace('-','')
+        return text
+
+    print(preprocessor('<a href="example.com">Hello, This :-( is a sanity check ;P!</a>'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    hello this is a sanity check  :( ;P
+#+END_SRC
+
+In [33]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import nltk
+    from nltk.corpus import stopwords
+    from nltk.stem.porter import PorterStemmer
+
+    nltk.download('stopwords')
+    stop = stopwords.words('english')
+
+    def tokenizer_stem_nostop(text):
+        porter = PorterStemmer()
+        return [porter.stem(w) for w in re.split('\s+', text.strip()) \
+                if w not in stop and re.match('[a-zA-Z]+', w)]
+
+    print(tokenizer_stem_nostop('runners like running and thus they run'))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [nltk_data] Downloading package stopwords to /home/tim/nltk_data...
+    [nltk_data]   Package stopwords is already up-to-date!
+    ['runner', 'like', 'run', 'thu', 'run']
+#+END_SRC
+
+In [34]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from sklearn.feature_extraction.text import HashingVectorizer
+    from sklearn.linear_model import SGDClassifier
+    from sklearn.metrics import roc_auc_score
+
+    hashvec = HashingVectorizer(n_features=2**20, 
+                                preprocessor=preprocessor, tokenizer=tokenizer_stem_nostop)
+    # loss='log' gives logistic regression
+    clf = SGDClassifier(loss='log', n_iter=100)
+
+    batch_size = 1000
+    stream = get_stream(path='imdb.csv', size=batch_size)
+
+    classes = np.array([0, 1])
+    train_auc, val_auc = [], []
+
+    # we use one batch for training and another for validation in each iteration
+    iters = int((25000+batch_size-1)/(batch_size*2))
+
+    for i in range(iters):
+        batch = next(stream)
+        X_train, y_train = batch['review'], batch['sentiment']
+        if X_train is None:
+            break
+            
+        X_train = hashvec.transform(X_train)
+        clf.partial_fit(X_train, y_train, classes=classes)
+        train_auc.append(roc_auc_score(y_train, clf.predict_proba(X_train)[:,1]))
+        
+        # validate
+        batch = next(stream)
+        X_val, y_val = batch['review'], batch['sentiment']
+        score = roc_auc_score(y_val, clf.predict_proba(hashvec.transform(X_val))[:,1])
+        val_auc.append(score)
+        print('[%d/%d] %f' % ((i+1)*(batch_size*2), 25000, score))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [2000/25000] 0.883333
+    [4000/25000] 0.910172
+    [6000/25000] 0.909240
+    [8000/25000] 0.911040
+    [10000/25000] 0.936461
+    [12000/25000] 0.908915
+    [14000/25000] 0.936745
+    [16000/25000] 0.939940
+    [18000/25000] 0.943612
+    [20000/25000] 0.928762
+    [22000/25000] 0.925087
+    [24000/25000] 0.943273
+#+END_SRC
+
+After fitting SGDClassifier by an entire pass over training set, let's
+plot the learning curve:
+
+In [35]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import matplotlib.pyplot as plt
+
+    plt.plot(range(1, len(train_auc)+1), train_auc, color='blue', label='Train auc')
+    plt.plot(range(1, len(train_auc)+1), val_auc, color='red', label='Val auc')
+    plt.legend(loc="best")
+    plt.xlabel('#Batches')
+    plt.ylabel('Auc')
+    plt.tight_layout()
+    plt.savefig('./fig-out-of-core.png', dpi=300)
+    plt.show()
+#+END_SRC
+
+The learning curve looks great! The validation accuracy improves as more
+examples are seen.
+
+Since training =SGDClassifier= may take long, you can save your trained
+classifier to disk periodically:
+
+In [36]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # import optimized pickle written in C for serializing and  de-serializing a Python object
+    import _pickle as pkl
+
+    # dump to disk
+    pkl.dump(hashvec, open('hashvec.pkl', 'wb'))
+    pkl.dump(clf, open('clf-sgd.pkl', 'wb'))
+
+    # load from disk
+    hashvec = pkl.load(open('hashvec.pkl', 'rb'))
+    clf = pkl.load(open('clf-sgd.pkl', 'rb'))
+
+    df_test = pd.read_csv('imdb.csv')
+    print('test auc: %.3f' % roc_auc_score(df_test['sentiment'], 
+                                           clf.predict_proba(hashvec.transform(df_test['review']))[:,1]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    test auc: 0.947
+#+END_SRC
+
+Now you have the all the supporting knowledge for the competition. Happy
+coding and good luck!

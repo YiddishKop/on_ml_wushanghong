@@ -1,0 +1,1553 @@
+
+
+* Autoencoder & GANs
+
+In this lab, we are going to introduce two types of unsupervised learning model:
+Autoencoder and Generative Adversarial Networks (GANs)
+
+** Autoencoder
+
+Autoencoder is a popular unsupervised learning model, which is used to reduce
+data dimension or used in some end2end learning model, like img2img translation.
+Autoencoder has two compoments encoder and decoder. Encoder learns a code
+representation c of input data, and decoder learns to reconstruct input data
+from c. As we have the pretrained encoder we can reduce the data dimension to
+the code size. Note that since this is a neural network model, it is much more
+efficient than other data dimension reduction methods.
+
+[[file:Autoencoder/imgs/autoencoder.png]]
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Import libraries
+    import sys
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = '3'
+    import numpy as np
+    %matplotlib inline
+    import matplotlib.pyplot as plt
+    from time import time
+    import tensorflow as tf
+    from tensorflow.contrib import learn
+    from tqdm import trange
+    from time import time
+    from Autoencoder.utils import *
+#+END_SRC
+
+We demo the autoencoder by MNIST dataset. In the following, we will show
+our setting of model initializer, the reconstruction results and the
+manifold learning performance(which can be compared to denoising
+autoencoder latter).
+
+Note: In MNIST dataset, although the pixels are ranged in [0,1], we
+recommand to use binary cross entropy loss to have sharper reconstructed
+results.
+
+Some setting is referenced from [[https://blog.keras.io/building-autoencoders-in-keras.html][The Keras Blog: Autoencoder]]
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class AutoEncoder(object):
+
+      def __init__(self,
+                   sess,
+                   inputs,
+                   targets=None,
+                   b1=0.5,
+                   lr=1.,
+                   code_size=16,
+                   batch_size=256,
+                   n_epoch=200,
+                   cost_function='bce',
+                   name='autoencoder',
+                   optimizer='adadelta'):
+        self.sess = sess  #tensorflow session
+        self.b1 = b1  #beta1 for AdadeltaOptimizer
+        self.lr = lr  #learning rate
+        self.n_epoch = n_epoch  #number of epoch
+        self.batch_size = batch_size
+        self.inputs = inputs
+        self.code_size = code_size  #embedding size
+        self.load_dataset()
+        if targets is not None:
+          self.targets = targets  #for autoencoder, targets is the same to input
+          self.gen_noisy_data()
+        else:
+          self.targets = inputs
+        self.cost_function = cost_function
+        self.optimizer = optimizer
+        self.log = {'train_loss': [], 'valid_loss': []}
+
+        self.name = name
+
+        self.build_model()
+
+      def build_model(self):
+        code_size = self.code_size
+        with tf.variable_scope(self.name) as scope:
+          self.enc1 = tf.layers.dense(
+              inputs=self.inputs,
+              units=code_size * 16,
+              activation=tf.nn.relu,
+              name='enc')
+          self.enc2 = tf.layers.dense(
+              inputs=self.enc1,
+              units=code_size * 8,
+              activation=tf.nn.relu,
+              name='enc2')
+          self.enc3 = tf.layers.dense(
+              inputs=self.enc2,
+              units=code_size * 4,
+              activation=tf.nn.relu,
+              name='enc3')
+          self.code = tf.layers.dense(
+              inputs=self.enc3, units=code_size, activation=tf.nn.relu, name='code')
+
+          self.dec1 = tf.layers.dense(
+              inputs=self.code,
+              units=code_size * 4,
+              activation=tf.nn.relu,
+              name='dec')
+          self.dec2 = tf.layers.dense(
+              inputs=self.dec1,
+              units=code_size * 8,
+              activation=tf.nn.relu,
+              name='dec2')
+          self.dec3 = tf.layers.dense(
+              inputs=self.dec2,
+              units=code_size * 16,
+              activation=tf.nn.relu,
+              name='dec3')
+          self.recon_logits = tf.layers.dense(
+              inputs=self.dec3, units=28 * 28, name='recon_logits')
+          self.jacobian_op = self.jacobian(self.code, self.inputs)
+          if self.cost_function == 'mse':
+            self.recon = self.recon_logits
+            self.cost = tf.reduce_mean(tf.pow(self.targets - self.recon_logits, 2))
+          elif self.cost_function == 'bce':
+            self.recon = tf.nn.sigmoid(self.recon_logits)
+            self.cost = tf.reduce_mean(
+                tf.nn.sigmoid_cross_entropy_with_logits(
+                    labels=self.targets, logits=self.recon_logits))
+
+          else:
+            raise NotImplementedError
+
+      def train(self):
+        if self.optimizer == 'adadelta':
+          self.optim = tf.train.AdadeltaOptimizer(self.lr).minimize(self.cost)
+        elif self.optimizer == 'adam':
+          self.optim = tf.train.AdamOptimizer(
+              self.lr, beta1=self.b1).minimize(self.cost)
+        elif self.optimizer == 'rmsprop':
+          self.optim = tf.train.RMSPropOptimizer(self.lr).minimize(self.cost)
+        else:
+          raise NotImplementedError
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+
+        X = self.inputs
+        t0 = time()
+        if self.targets is not self.inputs:
+          print('Denoising autoencoder')
+          Y = self.targets
+          for epoch in trange(self.n_epoch):
+            t = time()
+            shuffle(self.trX, self.trX_noisy)
+            for batch, noisy_batch in iter_data(
+                self.trX, self.trX_noisy, size=self.batch_size):
+              self.optim.run(
+                  session=self.sess, feed_dict={X: noisy_batch,
+                                                Y: batch})
+
+            idxs = np.random.randint(
+                low=0, high=len(self.vaX), size=self.batch_size)
+            valid_batch = self.vaX[idxs]
+            valid_noisy_batch = self.vaX_noisy[idxs]
+
+            self.log['train_loss'].append(
+                self.cost.eval(
+                    session=self.sess, feed_dict={X: noisy_batch,
+                                                  Y: batch}))
+            self.log['valid_loss'].append(
+                self.cost.eval(
+                    session=self.sess,
+                    feed_dict={X: valid_noisy_batch,
+                               Y: valid_batch}))
+          print("final loss %g, total cost time: %.2fs" % (self.cost.eval(
+              session=self.sess, feed_dict={X: self.teX_noisy,
+                                            Y: self.teX}), time() - t0))
+
+        else:
+          print('Audoencoder')
+          for epoch in trange(self.n_epoch):
+            t = time()
+            shuffle(self.trX)
+            for batch in iter_data(self.trX, size=self.batch_size):
+              self.optim.run(session=self.sess, feed_dict={X: batch})
+
+            idxs = np.random.randint(
+                low=0, high=len(self.vaX), size=self.batch_size)
+            valid_batch = self.vaX[idxs]
+
+            self.log['train_loss'].append(
+                self.cost.eval(session=self.sess, feed_dict={X: batch}))
+            self.log['valid_loss'].append(
+                self.cost.eval(session=self.sess, feed_dict={X: valid_batch}))
+          print("final loss %g, total cost time: %.2fs" %
+                (self.cost.eval(session=self.sess, feed_dict={X: self.teX}),
+                 time() - t0))
+
+      def load_dataset(self):
+        mnist = learn.datasets.load_dataset("mnist")
+        self.trX = mnist.train.images  # Returns np.array
+        self.vaX = mnist.validation.images  # Returns np.array
+        self.teX = mnist.test.images
+
+      def gen_noisy_data(self):
+        # Noise scale
+        noise_factor = 0.4
+        trX_noisy = self.trX + noise_factor * np.random.normal(
+            loc=0., scale=1.0, size=self.trX.shape)
+        vaX_noisy = self.vaX + noise_factor * np.random.normal(
+            loc=0., scale=1.0, size=self.vaX.shape)
+        teX_noisy = self.teX + noise_factor * np.random.normal(
+            loc=0., scale=1.0, size=self.teX.shape)
+
+        # Range of our dataset is [0,1]
+        self.trX_noisy = np.clip(trX_noisy, 0., 1.)
+        self.vaX_noisy = np.clip(vaX_noisy, 0., 1.)
+        self.teX_noisy = np.clip(teX_noisy, 0., 1.)
+
+      def encode(self, inputs):
+
+        return self.code.eval(session=self.sess, feed_dict={self.inputs: inputs})
+
+      def reconstruct(self, inputs):
+        return self.recon.eval(session=self.sess, feed_dict={self.inputs: inputs})
+
+      def jacobian(self, y, x):
+        # For function f: mapping from single column x to multiple values ys
+        # Note: tf.gradients returns sum(dy/dx)
+        # for each x in xs, so we need to compute each y seperatedly.
+        jacobian_flat = tf.concat(
+            [tf.gradients(y_i, x)[0] for y_i in tf.unstack(y, axis=1)], axis=0)
+        return jacobian_flat
+
+      def get_jaco_matrix(self, xbatch):
+        jaco_matrix = []
+        for x in xbatch:
+          jaco_matrix.append(
+              self.jacobian_op.eval(
+                  session=self.sess, feed_dict={self.inputs: x.reshape(1, -1)})
+              .reshape(1, self.code_size, 28 * 28))
+        return np.concatenate(jaco_matrix)
+#+END_SRC
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    sess = tf.Session()
+    X = tf.placeholder(tf.float32, shape=[None, 28 * 28])
+    autoencoder = AutoEncoder(sess=sess, inputs=X, optimizer='adadelta', lr=1)
+    autoencoder.train()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Extracting MNIST-data/train-images-idx3-ubyte.gz
+    Extracting MNIST-data/train-labels-idx1-ubyte.gz
+    Extracting MNIST-data/t10k-images-idx3-ubyte.gz
+    Extracting MNIST-data/t10k-labels-idx1-ubyte.gz
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      0%|          | 0/200 [00:00<?, ?it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Audoencoder
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    100%|██████████| 200/200 [06:28<00:00,  1.95s/it]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    final loss 0.102375, total cost time: 388.04s
+#+END_SRC
+
+Plot the learning curve to check if the training is converged.
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    train_loss = autoencoder.log['train_loss']
+    valid_loss = autoencoder.log['valid_loss']
+    plt.plot(range(len(train_loss)), train_loss, color='blue', label='Train loss')
+    plt.plot(range(len(valid_loss)), valid_loss, color='red', label='Valid loss')
+    plt.legend(loc="upper right")
+    plt.xlabel('#Epoch')
+    plt.ylabel('Loss')
+    plt.show()
+#+END_SRC
+
+
+In the figure, the top row are testing images from MNIST, and the bottom
+row are the reconstruction results. We can see that the performance is
+generally good except the reconstruction of digit 4 may seems like digit
+9 (No.7 example).
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    n = 10
+
+    orig_imgs = autoencoder.teX[:n].reshape(-1, 28, 28)
+    recon_imgs = autoencoder.reconstruct(
+      orig_imgs.reshape(-1, 28 * 28)).reshape(-1, 28, 28)
+
+    plot_imgs(orig_imgs, n=n, title='Test Samples')
+    plot_imgs(recon_imgs, n=n, title='Recon Samples')
+#+END_SRC
+
+*** Tangent vectors & Jacobian matrix
+
+Autoencoder can also learn manifold. To justify this, we can plot the
+tangent vectors.
+
+Extract tangent vectors:
+
+1. Sample a data $x\_0$
+2. Compute Jacobian matrix $J(x\_0)$ of $f: Image \mapsto Code$
+3. Compute SVD of $J(x\_0)$, $J(x\_0) = U\Sigma V\^T$
+4. Pick top K eigenvectors from V as tangent vectors.
+
+In the following demo, we use the first sample in testing data, which is
+a digit 7 image.
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    img = autoencoder.teX[:1]
+    jaco_matrix = autoencoder.get_jaco_matrix(img)
+    print(jaco_matrix.shape)
+    V = tangent_vecs(jaco_matrix[0])
+    print(V.shape)
+    plot_imgs(jaco_matrix.reshape(-1, 28, 28), n=16, title='Jacobian Matrix')
+    plot_imgs(V.reshape(-1, 28, 28), n=16, title='Tangent Vectors')
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (1, 16, 784)
+    (16,)
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (16, 784)
+#+END_SRC
+
+
+
+
+
+* Denoising Autoencoder and Manifold Learning
+
+As the above result, autoencoder can learn manifold. However, it's not good
+enough. We can improve it by adding regularization term for Jacobian matrix of
+reconstruction or simply adding noise to data, to make the codes more robust to
+input images. You can find more details from this [[https://www.iro.umontreal.ca/~vincentp/Publications/denoising_autoencoders_tr1316.pdf][paper]].
+
+[[file:Autoencoder/imgs/denoising_autoencoder.png]]
+
+Given appropriate noisy magnitude, denoising autoencoder can learn the
+direction toward the data manifold, mapping noisy data to original one.
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    sess.close()
+    tf.reset_default_graph()
+    sess = tf.Session()
+    X = tf.placeholder(tf.float32, shape=[None, 28 * 28])
+    Y = tf.placeholder(tf.float32, shape=[None, 28 * 28])
+
+    # In our AutoEncoder class,
+    # it will automatically change to denoising autoencoder if "targets" is given.
+    autoencoder = AutoEncoder(
+        sess=sess, inputs=X, targets=Y, optimizer='adadelta', lr=1)
+    # autoencoderModel = AutoEncoder(
+    #     sess=sess, inputs=X, optimizer='adam', niter=200, cost_function='mse')
+    autoencoder.train()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Extracting MNIST-data/train-images-idx3-ubyte.gz
+    Extracting MNIST-data/train-labels-idx1-ubyte.gz
+    Extracting MNIST-data/t10k-images-idx3-ubyte.gz
+    Extracting MNIST-data/t10k-labels-idx1-ubyte.gz
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+      0%|          | 0/200 [00:00<?, ?it/s]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Denoising autoencoder
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    100%|██████████| 200/200 [11:53<00:00,  3.47s/it]
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    final loss 0.116553, total cost time: 713.80s
+#+END_SRC
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    train_loss = autoencoder.log['train_loss']
+    valid_loss = autoencoder.log['valid_loss']
+    plt.plot(range(len(train_loss)), train_loss, color='blue', label='Train loss')
+    plt.plot(range(len(valid_loss)), valid_loss, color='red', label='Valid loss')
+    plt.legend(loc="upper right")
+    plt.xlabel('#Epoch')
+    plt.ylabel('Loss')
+    plt.show()
+#+END_SRC
+
+
+
+The reconstruction results here, compared to the above ones, are little
+more blurry but we can still distinguish each different digits.
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    n = 10
+
+    orig_imgs = autoencoder.teX_noisy[:n].reshape(-1, 28, 28)
+    recon_imgs = autoencoder.reconstruct(
+      orig_imgs.reshape(-1, 28 * 28)).reshape(-1, 28, 28)
+
+    plot_imgs(orig_imgs, n=n, title='Test Samples')
+    plot_imgs(recon_imgs, n=n, title='Recon Samples')
+#+END_SRC
+
+
+
+
+
+Plot the Jacobian matrix and tangent vectors given a single digit 7
+image.
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    img = autoencoder.teX[:1]
+    jaco_matrix = autoencoder.get_jaco_matrix(img)
+    V = tangent_vecs(jaco_matrix[0])
+    plot_imgs(jaco_matrix.reshape(-1, 28, 28), n=16, title='Jacobian Matrix')
+    plot_imgs(V.reshape(-1, 28, 28), n=16, title='Tangent Vectors')
+
+    #reset the system path
+    sys.path.pop()
+
+    #reset tensorflow graph
+    tf.reset_default_graph()
+    sess.close()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (16,)
+#+END_SRC
+
+
+
+
+
+
+
+As the result, we can see that the tangent vectors are more sharper.
+
+* DCGAN
+
+[[https://papers.nips.cc/paper/5423-generative-adversarial-nets.pdf][Generative adversarial networks(GANs)]] is a generative model proposed by Ian
+Goodfellow etc. in 2014.
+
+#+CAPTION: nn
+[[http://www.timzhangyuxuan.com/static/images/project_DCGAN/structure.png]]
+
+GANs has two main components in the model, generator and discriminator.
+Discriminator tries to discriminate real data from generated data and generator
+tries to generate real-like data to fool discriminator. The training process
+alternates between optimizing discriminator(discriminaotr first) and optimizing
+generator. As long as discriminator was smart enough, it can lead generator to
+go toward the manifold of real data.
+
+[[file:GAN/imgs/gans_model.png]]
+
+In this lab, we modified the code from [[https://github.com/carpedm20/DCGAN-tensorflow][DCGAN in tensorflow]] and [[https://github.com/Newmu/dcgan_code][original DCGAN in
+theano]]. We demo the training of DCGAN on MNIST dataset.
+
+[[file:GAN/imgs/dcgan_architecture.png]]
+
+Some notes in DCGAN (referenced from [[https://arxiv.org/pdf/1511.06434.pdf][paper]]):
+
+-  Replace any pooling layers with strided convolutions (discriminator)
+   and fractional-strided convolutions (generator).
+
+   -  Each convolutional layer halved the feature maps resolution. (Not
+      hard requirement.)
+
+-  Use batchnorm in both the generator and the discriminator.
+
+   -  The batchnorm here is the simplest one just normalize the feature
+      activations.
+   -  Don't use batchnorm in the last few layers in generator. Since it
+      may make it difficult for generator to fit the variance of real
+      data. For example, if the mean of data is not zero, and we use
+      batchnorm and Tanh in the last layer of G, then it will never
+      match the true data distribution.
+
+-  Use ReLU activation in generator for all layers except for the
+   output, which uses Tanh or Sigmoid.
+
+   -  Tanh or Sigmoid depends on the range of real data.
+
+-  Use LeakyReLU activation in the discriminator for all layers.
+
+   -  LeakyReLu is recommened by AllConvNet approach for faster
+      training.
+
+In the following code, we
+
+1. specify the checkpoint directory to store the model snapshots and
+   samples directory to store generated samples
+2. initialize DCGAN in dcgan.py and train on the default dataset,
+   MNIST.(Change dataset need to modify code in dcgan.py)
+
+In our setting and environment each epoch cost almost 6 seconds. The result is
+good enough after 100 epochs. And we save the snapshots of the model every 10
+epochs.
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import sys
+    sys.path.append('GAN')
+    from GAN.utils import *
+    from GAN.ops import *
+
+    import os
+    %matplotlib inline
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import tensorflow as tf
+    import time
+    import math
+    from glob import glob
+    from tensorflow.contrib import learn
+    import numpy as np
+    from tqdm import tqdm
+#+END_SRC
+
+In [12]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class DCGAN(object):
+
+      def __init__(self,
+                   sess,
+                   input_height=28,
+                   input_width=28,
+                   crop=True,
+                   batch_size=128,
+                   output_height=28,
+                   output_width=28,
+                   y_dim=None,
+                   z_dim=100,
+                   gf_dim=64,
+                   df_dim=64,
+                   gfc_dim=1024,
+                   dfc_dim=1024,
+                   c_dim=1,
+                   dataset_name='mnist',
+                   input_fname_pattern='*.jpg',
+                   checkpoint_dir='checkpoint',
+                   samples_dir=None,
+                   show_samples=False,
+                   learning_rate=2e-4,
+                   beta1=0.5,
+                   epoch=100):
+        """
+        Args:
+          sess: TensorFlow session
+          batch_size: The size of batch. Should be specified before training.
+          y_dim: (optional) Dimension of dim for y. [None]
+          z_dim: (optional) Dimension of dim for Z. [100]
+          gf_dim: (optional) Dimension of gen filters in first conv layer. [64]
+          df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
+          gfc_dim: (optional) Dimension of gen units for for fully connected layer. [1024]
+          dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
+          c_dim: (optional) Dimension of image color. For grayscale input, set to 1. [3]
+            """
+        self.sess = sess
+
+        self.epoch = epoch
+        self.batch_size = batch_size
+        self.sample_num = 200
+        self.learning_rate = learning_rate
+        self.beta1 = beta1
+
+        self.input_height = input_height
+        self.input_width = input_width
+        self.output_height = output_height
+        self.output_width = output_width
+
+        self.y_dim = y_dim
+        self.z_dim = z_dim
+
+        self.gf_dim = gf_dim
+        self.df_dim = df_dim
+
+        self.gfc_dim = gfc_dim
+        self.dfc_dim = dfc_dim
+
+        self.input_fname_pattern = input_fname_pattern
+        self.dataset_name = dataset_name
+        self.checkpoint_dir = checkpoint_dir
+        if not os.path.exists(checkpoint_dir):
+          os.makedirs(checkpoint_dir)
+
+        self.samples_dir = samples_dir
+        if not os.path.exists(samples_dir) and samples_dir is not None:
+          os.makedirs(samples_dir)
+        self.show_samples = show_samples
+
+        self.trX, self.teX = self.load_mnist()
+        self.ntrain = len(self.trX)
+        self.c_dim = 1
+        self.grayscale = (self.c_dim == 1)
+        self.log = {'d_loss': [], 'g_loss': [], 'gen_samples': []}
+        self.build_model()
+
+      def build_model(self):
+        image_dims = [self.input_height, self.input_width, self.c_dim]
+
+        self.inputs = tf.placeholder(
+            tf.float32, [None] + image_dims, name='real_images')
+        self.sample_inputs = tf.placeholder(
+            tf.float32, [None] + image_dims, name='sample_inputs')
+
+        inputs = self.inputs
+        sample_inputs = self.sample_inputs
+
+        self.z = tf.placeholder(tf.float32, [None, self.z_dim], name='z')
+
+        self.G = self.generator(self.z)
+        self.D, self.D_logits_real = self.discriminator(inputs)
+
+        self.D_, self.D_logits_fake = self.discriminator(self.G, reuse=True)
+
+        self.d_loss_real = tf.reduce_mean(
+            bce(self.D_logits_real, tf.ones_like(self.D)))
+        self.d_loss_fake = tf.reduce_mean(
+            bce(self.D_logits_fake, tf.zeros_like(self.D_)))
+        self.g_loss = tf.reduce_mean(bce(self.D_logits_fake, tf.ones_like(self.D_)))
+
+        self.d_loss = self.d_loss_real + self.d_loss_fake
+
+        t_vars = tf.trainable_variables()
+        # get variables for generator and discriminator,
+        # since they are trained separately.
+        self.d_vars = [var for var in t_vars if 'd_' in var.name]
+        self.g_vars = [var for var in t_vars if 'g_' in var.name]
+
+        self.saver = tf.train.Saver()
+
+      def train(self):
+        #get the optimization ops
+        d_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+                  .minimize(self.d_loss, var_list=self.d_vars)
+        g_optim = tf.train.AdamOptimizer(self.learning_rate, beta1=self.beta1) \
+                  .minimize(self.g_loss, var_list=self.g_vars)
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+
+        #generate random noise
+        sample_z = np.random.uniform(-1, 1, size=(self.sample_num, self.z_dim))
+        sample_idxs = np.random.randint(
+            low=0, high=len(self.trX), size=self.sample_num)
+        sample_inputs = self.trX[sample_idxs]
+
+        counter = 1
+        start_time = time.time()
+        print('start training')
+        for epoch in range(self.epoch):
+          shuffle(self.trX)
+          for batch_images in iter_data(self.trX, size=self.batch_size):
+            batch_z = np.random.uniform(-1, 1, [self.batch_size,
+                                                self.z_dim]).astype(np.float32)
+            if counter % 2 == 0:
+              # Update D network
+              self.sess.run(
+                  d_optim, feed_dict={
+                      self.inputs: batch_images,
+                      self.z: batch_z,
+                  })
+            else:
+              # Update G network
+              self.sess.run(
+                  g_optim, feed_dict={
+                      self.z: batch_z,
+                  })
+            counter += 1
+
+          # calculate the loss to monitor the training process
+          errD_fake = self.d_loss_fake.eval(
+              session=self.sess, feed_dict={self.z: batch_z})
+          errD_real = self.d_loss_real.eval(
+              session=self.sess, feed_dict={self.inputs: batch_images})
+          errG = self.g_loss.eval(session=self.sess, feed_dict={self.z: batch_z})
+          self.log['d_loss'].append(errD_fake + errD_real)
+          self.log['g_loss'].append(errG)
+          print("Epoch: [%2d] time: %.2fs, d_loss: %.4f, g_loss: %.4f" \
+            % (epoch,time.time() - start_time, errD_fake+errD_real, errG))
+
+          # save the generated samples
+          if (epoch + 1) % 1 == 0:
+            samples = self.sess.run(
+                self.G, feed_dict={
+                    self.z: sample_z,
+                })
+            img = grayscale_grid_vis(
+                samples,
+                nhw=(10, 20),
+                save_path=self.samples_dir + '/%d.jpg' % epoch)
+            self.log['gen_samples'].append(img)
+            if (epoch + 1) % 10 == 0:
+              if self.show_samples:
+                plt.imshow(img, cmap='gray')
+                plt.axis('off')
+                plt.show()
+
+          if (epoch + 1) % 10 == 0:
+            self.save(self.checkpoint_dir, counter)
+
+      def discriminator(self, image, y=None, reuse=False):
+        with tf.variable_scope("discriminator") as scope:
+          if reuse:
+            scope.reuse_variables()
+
+          x = image
+
+          h0 = lrelu(conv2d(x, self.c_dim, name='d_h0_conv'))
+          h1 = lrelu(bn(conv2d(h0, self.df_dim, name='d_h1_conv')))
+          h1 = flatten(h1)
+          h2 = lrelu(bn(linear(h1, self.dfc_dim, 'd_h2_lin')))
+          h3 = linear(h2, 1, 'd_h3_lin')
+
+          return tf.nn.sigmoid(h3), h3
+
+      def generator(self, z, y=None):
+        with tf.variable_scope("generator") as scope:
+          s_h, s_w = self.output_height, self.output_width
+          s_h2, s_h4 = int(s_h / 2), int(s_h / 4)
+          s_w2, s_w4 = int(s_w / 2), int(s_w / 4)
+
+          h0 = tf.nn.relu(bn(linear(z, self.gfc_dim, 'g_h0_lin')))
+
+          h1 = tf.nn.relu(bn(linear(h0, self.gf_dim * 2 * s_h4 * s_w4, 'g_h1_lin')))
+          h1 = tf.reshape(h1, [-1, s_h4, s_w4, self.gf_dim * 2])
+
+          h2 = tf.nn.relu(bn(deconv2d(h1, nf=self.gf_dim * 2, name='g_h2')))
+          return tf.nn.sigmoid(deconv2d(h2, nf=self.c_dim, name='g_h3'))
+
+      def load_mnist(self):
+        mnist = learn.datasets.load_dataset("mnist")
+        train_data = mnist.train.images.reshape(-1, 28, 28, 1)  # Returns np.array
+        test_data = mnist.test.images.reshape(-1, 28, 28, 1)  # Returns np.array
+        return train_data, test_data
+
+      @property
+      def model_dir(self):
+        return "%s_%s" % (self.dataset_name, self.batch_size)
+
+      def save(self, checkpoint_dir, step):
+        model_name = "DCGAN.model"
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+
+        if not os.path.exists(checkpoint_dir):
+          os.makedirs(checkpoint_dir)
+
+        self.saver.save(
+            self.sess, os.path.join(checkpoint_dir, model_name), global_step=step)
+
+      def load(self, checkpoint_dir):
+        import re
+        print(" [*] Reading checkpoints...")
+        checkpoint_dir = os.path.join(checkpoint_dir, self.model_dir)
+
+        ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+          ckpt_name = os.path.basename(ckpt.model_checkpoint_path)
+          self.saver.restore(self.sess, os.path.join(checkpoint_dir, ckpt_name))
+          counter = int(next(re.finditer("(\d+)(?!.*\d)", ckpt_name)).group(0))
+          print(" [*] Success to read {}".format(ckpt_name))
+          return True, counter
+        else:
+          print(" [*] Failed to find a checkpoint")
+          return False, 0
+#+END_SRC
+
+In [14]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Specifiy model checkpoint directory & samples directory
+    checkpoint_dir = 'checkpoint'
+    samples_dir = 'samples'
+
+    tf.reset_default_graph()
+
+    sess = tf.Session()
+    dcgan = DCGAN(
+        sess,
+        input_width=28,
+        input_height=28,
+        output_width=28,
+        output_height=28,
+        batch_size=128,
+        input_fname_pattern='*.jpg',
+        checkpoint_dir=checkpoint_dir,
+        samples_dir=samples_dir,
+        show_samples=True,
+        epoch=100)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Extracting MNIST-data/train-images-idx3-ubyte.gz
+    Extracting MNIST-data/train-labels-idx1-ubyte.gz
+    Extracting MNIST-data/t10k-images-idx3-ubyte.gz
+    Extracting MNIST-data/t10k-labels-idx1-ubyte.gz
+#+END_SRC
+
+Let's plot the generated images right after the initialization. It's good to
+check if there are any unexpacted artifacts in it. For case of DCGAN, we should
+see checkboard effect in our generated samples if we use fully convolutional
+layers. As mentioned in this [[http://distill.pub/2016/deconv-checkerboard/][blog post]], this will introduce some checkboard
+effect. If the training is succeed, then this effect can be largely reduced. The
+blog post used upsampling to replace strided deconvolution in generator. This
+can cancell off the checkboard effect but have more blury result.
+
+In the following cell, we also plot the original MNIST dataset.
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    init = tf.global_variables_initializer()
+    sess.run(init)
+    sample_z = np.random.uniform(-1, 1, size=(200, 100))
+    samples = dcgan.G.eval(session=dcgan.sess, feed_dict={dcgan.z: sample_z})
+    plt.imshow(samples[0].reshape(28, 28), cmap='gray')
+    plt.axis('off')
+    plt.title('Generated sample')
+    plt.show()
+
+    samples = dcgan.trX[:200]
+    img = grayscale_grid_vis(samples, nhw=(10, 20))
+    plt.imshow(img, cmap='gray')
+    plt.axis('off')
+    plt.title('Real MNIST samples')
+    plt.show()
+#+END_SRC
+
+
+
+
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Start training
+    dcgan.train()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    start training
+    Epoch: [ 0] time: 9.47s, d_loss: 0.6706, g_loss: 1.3559
+    Epoch: [ 1] time: 18.51s, d_loss: 1.0176, g_loss: 0.9393
+    Epoch: [ 2] time: 27.61s, d_loss: 1.1929, g_loss: 0.8304
+    Epoch: [ 3] time: 36.70s, d_loss: 1.1571, g_loss: 0.8426
+    Epoch: [ 4] time: 45.81s, d_loss: 1.2032, g_loss: 0.8374
+    Epoch: [ 5] time: 54.93s, d_loss: 1.1704, g_loss: 0.8626
+    Epoch: [ 6] time: 64.01s, d_loss: 1.2318, g_loss: 0.8516
+    Epoch: [ 7] time: 73.12s, d_loss: 1.2385, g_loss: 0.8365
+    Epoch: [ 8] time: 82.15s, d_loss: 1.2391, g_loss: 0.8353
+    Epoch: [ 9] time: 91.24s, d_loss: 1.2840, g_loss: 0.8369
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [10] time: 101.96s, d_loss: 1.2423, g_loss: 0.8018
+    Epoch: [11] time: 111.06s, d_loss: 1.2172, g_loss: 0.8040
+    Epoch: [12] time: 120.16s, d_loss: 1.2477, g_loss: 0.8039
+    Epoch: [13] time: 129.31s, d_loss: 1.2316, g_loss: 0.7940
+    Epoch: [14] time: 138.27s, d_loss: 1.2322, g_loss: 0.8305
+    Epoch: [15] time: 147.37s, d_loss: 1.2137, g_loss: 0.8151
+    Epoch: [16] time: 156.48s, d_loss: 1.2460, g_loss: 0.8013
+    Epoch: [17] time: 165.54s, d_loss: 1.2664, g_loss: 0.8273
+    Epoch: [18] time: 174.71s, d_loss: 1.2334, g_loss: 0.7895
+    Epoch: [19] time: 183.78s, d_loss: 1.2216, g_loss: 0.8038
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [20] time: 194.30s, d_loss: 1.2682, g_loss: 0.8005
+    Epoch: [21] time: 203.35s, d_loss: 1.2580, g_loss: 0.7838
+    Epoch: [22] time: 212.41s, d_loss: 1.3198, g_loss: 0.8269
+    Epoch: [23] time: 221.55s, d_loss: 1.2540, g_loss: 0.8058
+    Epoch: [24] time: 230.62s, d_loss: 1.2398, g_loss: 0.8087
+    Epoch: [25] time: 239.61s, d_loss: 1.2909, g_loss: 0.8325
+    Epoch: [26] time: 248.81s, d_loss: 1.2248, g_loss: 0.8201
+    Epoch: [27] time: 257.87s, d_loss: 1.2530, g_loss: 0.7926
+    Epoch: [28] time: 266.93s, d_loss: 1.2333, g_loss: 0.8362
+    Epoch: [29] time: 276.04s, d_loss: 1.2286, g_loss: 0.8060
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [30] time: 285.93s, d_loss: 1.2737, g_loss: 0.8328
+    Epoch: [31] time: 289.82s, d_loss: 1.2264, g_loss: 0.8012
+    Epoch: [32] time: 293.68s, d_loss: 1.2281, g_loss: 0.8217
+    Epoch: [33] time: 297.53s, d_loss: 1.2727, g_loss: 0.8218
+    Epoch: [34] time: 304.04s, d_loss: 1.2336, g_loss: 0.8061
+    Epoch: [35] time: 313.16s, d_loss: 1.1938, g_loss: 0.8170
+    Epoch: [36] time: 322.27s, d_loss: 1.1810, g_loss: 0.8303
+    Epoch: [37] time: 331.40s, d_loss: 1.1990, g_loss: 0.8248
+    Epoch: [38] time: 340.51s, d_loss: 1.2167, g_loss: 0.8124
+    Epoch: [39] time: 349.59s, d_loss: 1.2613, g_loss: 0.8168
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [40] time: 360.18s, d_loss: 1.2239, g_loss: 0.8377
+    Epoch: [41] time: 369.31s, d_loss: 1.2128, g_loss: 0.8132
+    Epoch: [42] time: 378.36s, d_loss: 1.1998, g_loss: 0.8118
+    Epoch: [43] time: 387.42s, d_loss: 1.2140, g_loss: 0.8476
+    Epoch: [44] time: 396.47s, d_loss: 1.2416, g_loss: 0.8270
+    Epoch: [45] time: 405.57s, d_loss: 1.2092, g_loss: 0.8730
+    Epoch: [46] time: 414.70s, d_loss: 1.2405, g_loss: 0.8731
+    Epoch: [47] time: 423.80s, d_loss: 1.1805, g_loss: 0.8523
+    Epoch: [48] time: 432.89s, d_loss: 1.1806, g_loss: 0.8370
+    Epoch: [49] time: 441.93s, d_loss: 1.1894, g_loss: 0.8510
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [50] time: 453.07s, d_loss: 1.1603, g_loss: 0.8754
+    Epoch: [51] time: 462.16s, d_loss: 1.2282, g_loss: 0.8241
+    Epoch: [52] time: 471.22s, d_loss: 1.1592, g_loss: 0.8527
+    Epoch: [53] time: 480.32s, d_loss: 1.1517, g_loss: 0.8843
+    Epoch: [54] time: 489.35s, d_loss: 1.1616, g_loss: 0.8596
+    Epoch: [55] time: 498.39s, d_loss: 1.1952, g_loss: 0.8398
+    Epoch: [56] time: 507.40s, d_loss: 1.2192, g_loss: 0.8194
+    Epoch: [57] time: 516.48s, d_loss: 1.2193, g_loss: 0.8954
+    Epoch: [58] time: 525.67s, d_loss: 1.1830, g_loss: 0.8769
+    Epoch: [59] time: 534.77s, d_loss: 1.1795, g_loss: 0.8728
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [60] time: 545.23s, d_loss: 1.2006, g_loss: 0.8720
+    Epoch: [61] time: 554.40s, d_loss: 1.1985, g_loss: 0.8298
+    Epoch: [62] time: 563.40s, d_loss: 1.1798, g_loss: 0.8534
+    Epoch: [63] time: 572.45s, d_loss: 1.1398, g_loss: 0.8617
+    Epoch: [64] time: 581.61s, d_loss: 1.1845, g_loss: 0.8667
+    Epoch: [65] time: 590.74s, d_loss: 1.1856, g_loss: 0.8199
+    Epoch: [66] time: 599.82s, d_loss: 1.1769, g_loss: 0.9124
+    Epoch: [67] time: 608.90s, d_loss: 1.1062, g_loss: 0.9238
+    Epoch: [68] time: 618.01s, d_loss: 1.2318, g_loss: 0.9037
+    Epoch: [69] time: 627.20s, d_loss: 1.1044, g_loss: 0.9099
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [70] time: 637.67s, d_loss: 1.1329, g_loss: 0.8956
+    Epoch: [71] time: 646.81s, d_loss: 1.1343, g_loss: 0.8814
+    Epoch: [72] time: 655.95s, d_loss: 1.1078, g_loss: 0.9211
+    Epoch: [73] time: 665.04s, d_loss: 1.1497, g_loss: 0.8845
+    Epoch: [74] time: 674.13s, d_loss: 1.1481, g_loss: 0.9074
+    Epoch: [75] time: 683.15s, d_loss: 1.1090, g_loss: 0.8972
+    Epoch: [76] time: 692.23s, d_loss: 1.1848, g_loss: 0.8555
+    Epoch: [77] time: 701.33s, d_loss: 1.1457, g_loss: 0.8889
+    Epoch: [78] time: 710.44s, d_loss: 1.0880, g_loss: 0.9293
+    Epoch: [79] time: 719.50s, d_loss: 1.1888, g_loss: 0.9185
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [80] time: 730.02s, d_loss: 1.0979, g_loss: 0.8996
+    Epoch: [81] time: 739.10s, d_loss: 1.1923, g_loss: 0.9259
+    Epoch: [82] time: 748.17s, d_loss: 1.1291, g_loss: 0.9024
+    Epoch: [83] time: 757.19s, d_loss: 1.1173, g_loss: 0.9094
+    Epoch: [84] time: 766.19s, d_loss: 1.1077, g_loss: 0.9200
+    Epoch: [85] time: 775.21s, d_loss: 1.1039, g_loss: 0.9140
+    Epoch: [86] time: 784.22s, d_loss: 1.1786, g_loss: 0.8745
+    Epoch: [87] time: 793.26s, d_loss: 1.1135, g_loss: 0.9132
+    Epoch: [88] time: 802.27s, d_loss: 1.1289, g_loss: 0.9221
+    Epoch: [89] time: 811.26s, d_loss: 1.0913, g_loss: 0.9613
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [90] time: 816.95s, d_loss: 1.0863, g_loss: 0.9795
+    Epoch: [91] time: 820.71s, d_loss: 1.1462, g_loss: 0.9393
+    Epoch: [92] time: 824.45s, d_loss: 1.0883, g_loss: 0.8874
+    Epoch: [93] time: 828.17s, d_loss: 1.1339, g_loss: 0.9482
+    Epoch: [94] time: 835.03s, d_loss: 1.0812, g_loss: 0.9582
+    Epoch: [95] time: 844.00s, d_loss: 1.0684, g_loss: 0.9124
+    Epoch: [96] time: 853.02s, d_loss: 1.1512, g_loss: 0.9223
+    Epoch: [97] time: 862.03s, d_loss: 1.1311, g_loss: 1.0074
+    Epoch: [98] time: 871.05s, d_loss: 1.1492, g_loss: 0.9836
+    Epoch: [99] time: 880.10s, d_loss: 1.1130, g_loss: 0.9344
+#+END_SRC
+
+
+
+We plot the training loss of discriminator and generator. We can see that we
+can't tell the model is converged or not from the training loss. Both curves
+oscillate at certain levels and it's independent with the quality of the
+generated images. So in practice, we plot the generated samples to monitor the
+training process. And due to this inconvenience, there are some works proposed
+in 2017 tried to solved it.
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d_loss = dcgan.log['d_loss']
+    g_loss = dcgan.log['g_loss']
+    plt.plot(range(len(d_loss)), d_loss, color='blue', label='d_loss')
+    plt.plot(range(len(g_loss)), g_loss, color='red', label='g_loss')
+    plt.legend(loc="upper right")
+    plt.xlabel('#Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training loss of D & G')
+    plt.show()
+#+END_SRC
+
+
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    imgs = np.array(dcgan.log['gen_samples'])
+    make_gif(imgs * 255., 'GAN/dcgan.gif', true_image=True, duration=2)
+
+    from IPython.display import Image
+    Image(url='GAN/dcgan.gif')
+#+END_SRC
+
+Out[3]:
+
+[[file:GAN/dcgan.gif]]
+
+In the following code, we simply demo how to load the pretrained DCGAN model.
+
+Ps. Need to train a DCGAN model first.
+
+In [19]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    tf.reset_default_graph()
+    sess.close()
+
+    sess = tf.Session()
+    dcgan = DCGAN(
+        sess,
+        input_width=28,
+        input_height=28,
+        output_width=28,
+        output_height=28,
+        batch_size=128,
+        input_fname_pattern='*.jpg',
+        checkpoint_dir=checkpoint_dir,
+        samples_dir=samples_dir,)
+
+    if not dcgan.load(checkpoint_dir)[0]:
+      raise Exception("[!] Train a model first, then run test mode")
+
+    sample_z = np.random.uniform(-1, 1, size=(200, 100))
+    samples = dcgan.G.eval(session=dcgan.sess, feed_dict={dcgan.z: sample_z})
+    # samples = dcgan.trX[:20]
+    img = grayscale_grid_vis(samples, nhw=(10, 20))
+    plt.imshow(img, cmap='gray')
+    plt.axis('off')
+    plt.show()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Extracting MNIST-data/train-images-idx3-ubyte.gz
+    Extracting MNIST-data/train-labels-idx1-ubyte.gz
+    Extracting MNIST-data/t10k-images-idx3-ubyte.gz
+    Extracting MNIST-data/t10k-labels-idx1-ubyte.gz
+     [*] Reading checkpoints...
+    INFO:tensorflow:Restoring parameters from checkpoint/mnist_128/DCGAN.model-43001
+     [*] Success to read DCGAN.model-43001
+#+END_SRC
+
+
+
+Clear the tensorflow graph and get ready for the next model.
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    tf.reset_default_graph()
+    sess.close()
+#+END_SRC
+
+* Wasserstein GAN
+
+There are some theoretical deficiencies in vanilla GAN. Therefore, [[https://arxiv.org/pdf/1701.07875.pdf][Wasserstein
+GAN (WGAN)]] was proposed to solve this problem. Apart from the original paper,
+[[https://www.cph-ai-lab.com/wasserstein-gan-wgan][this]] and [[https://www.alexirpan.com/2017/02/22/wasserstein-gan.html][this]] may help you understand the motivation of WGAN. We'll skip the
+theory in this tutorial and jump directly to the implementation. From the
+engineering perspective, here are what we need to modify based on DCGAN
+
+-  Don't apply sigmoid function to the last layer for the critic
+-  Don't apply logarithmic function to the generator loss and critic
+   loss
+-  Training critic multiple iterations per generator iteration
+-  Using RMSProp as the optimizer, instead of momentum related optimizer like
+  Adam. [[http://ruder.io/optimizing-gradient-descent/index.html#rmsprop][Here]] is a blog overview of gradient descent optimization algorithm.
+-  Applying weight clipping in the critic network
+
+Details of the algorithm are shown below.
+
+[[file:GAN/imgs/WGAN%20algorithm.jpg]]
+
+In [21]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #Inherit from DCGAN class
+    class WGAN(DCGAN):
+
+      def build_model(self):
+
+        # Training critic 5 iterations per generator iteration
+        self.n_critic = 5
+
+        image_dims = [self.input_height, self.input_width, self.c_dim]
+
+        self.inputs = tf.placeholder(
+            tf.float32, [None] + image_dims, name='real_images')
+        self.sample_inputs = tf.placeholder(
+            tf.float32, [None] + image_dims, name='sample_inputs')
+
+        inputs = self.inputs
+        sample_inputs = self.sample_inputs
+
+        self.z = tf.placeholder(tf.float32, [None, self.z_dim], name='z')
+
+        self.G = self.generator(self.z)
+        self.D, self.D_logits_real = self.discriminator(inputs)
+
+        self.D_, self.D_logits_fake = self.discriminator(self.G, reuse=True)
+
+        self.d_loss_real = tf.reduce_mean(self.D_logits_real)
+        self.d_loss_fake = tf.reduce_mean(self.D_logits_fake)
+        self.g_loss = -tf.reduce_mean(self.D_logits_fake)
+        self.d_loss = self.d_loss_fake - self.d_loss_real
+
+        t_vars = tf.trainable_variables()
+
+        self.d_vars = [var for var in t_vars if 'd_' in var.name]
+        self.g_vars = [var for var in t_vars if 'g_' in var.name]
+        self.saver = tf.train.Saver()
+
+      def train(self):
+        g_optim = tf.train.RMSPropOptimizer(learning_rate=5e-5).minimize(
+            self.g_loss, var_list=self.g_vars)
+        d_optim = tf.train.RMSPropOptimizer(learning_rate=5e-5).minimize(
+            self.d_loss, var_list=self.d_vars)
+
+        #get the weight clipping ops
+        clip_ops = []
+        for var in self.d_vars:
+          clip_bounds = [-.01, .01]
+          clip_ops.append(
+              tf.assign(var, tf.clip_by_value(var, clip_bounds[0], clip_bounds[1])))
+        clip_disc_weights = tf.group(*clip_ops)
+
+        init = tf.global_variables_initializer()
+        self.sess.run(init)
+
+        sample_z = np.random.uniform(-1, 1, size=(self.sample_num, self.z_dim))
+        sample_idxs = np.random.randint(
+            low=0, high=len(self.trX), size=self.sample_num)
+        sample_inputs = self.trX[sample_idxs]
+
+        counter = 1
+        self.n_critic += 1
+        start_time = time.time()
+        for epoch in range(self.epoch):
+          shuffle(self.trX)
+          for batch_images in iter_data(self.trX, size=self.batch_size):
+            batch_z = np.random.uniform(-1, 1, [self.batch_size,
+                                                self.z_dim]).astype(np.float32)
+            if counter % self.n_critic:
+              # Update D network
+              self.sess.run(
+                  d_optim, feed_dict={
+                      self.inputs: batch_images,
+                      self.z: batch_z,
+                  })
+              #Apply weight clipping to D network
+              self.sess.run(clip_disc_weights)
+            else:
+              # Update G network
+              self.sess.run(
+                  g_optim, feed_dict={
+                      self.z: batch_z,
+                  })
+            counter += 1
+
+          errD_fake = self.d_loss_fake.eval(
+              session=self.sess, feed_dict={self.z: batch_z})
+          errD_real = self.d_loss_real.eval(
+              session=self.sess, feed_dict={self.inputs: batch_images})
+          errG = self.g_loss.eval(session=self.sess, feed_dict={self.z: batch_z})
+          self.log['d_loss'].append(errD_fake + errD_real)
+          self.log['g_loss'].append(errG)
+          print("Epoch: [%2d] time: %.2fs, d_loss: %.4f, g_loss: %.4f" \
+            % (epoch,time.time() - start_time, errD_fake+errD_real, errG))
+
+          if (epoch + 1) % 1 == 0:
+            samples = self.sess.run(
+                self.G, feed_dict={
+                    self.z: sample_z,
+                })
+            img = grayscale_grid_vis(
+                samples,
+                nhw=(10, 20),
+                save_path=self.samples_dir + '/%d.jpg' % epoch)
+            self.log['gen_samples'].append(img)
+            if (epoch + 1) % 10 == 0:
+              if self.show_samples:
+                plt.imshow(img, cmap='gray')
+                plt.axis('off')
+                plt.show()
+
+          if (epoch + 1) % 10 == 0:
+            self.save(self.checkpoint_dir, counter)
+#+END_SRC
+
+Then we train the WGAN and visualize the training as before. The
+training of WGAN is unstable and when generated samples show some blurry
+digits may vary. Sometimes at epoch 60, there are still only grids in
+generated samples, and sometimes shape begins to appear around epoch 20.
+
+In [22]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # Specifiy model checkpoint directory & samples directory
+    checkpoint_dir = 'checkpoint'
+    samples_dir = 'samples'
+
+    sess = tf.Session()
+    model = WGAN(
+        sess,
+        input_width=28,
+        input_height=28,
+        output_width=28,
+        output_height=28,
+        batch_size=128,
+        input_fname_pattern='*.jpg',
+        checkpoint_dir=checkpoint_dir,
+        samples_dir=samples_dir,
+        show_samples=True,
+        epoch=100)
+
+    # show_all_variables()
+    init = tf.global_variables_initializer()
+    sess.run(init)
+    sample_z = np.random.uniform(-1, 1, size=(200, 100))
+    samples = model.G.eval(session=model.sess, feed_dict={model.z: sample_z})
+    plt.imshow(samples[0].reshape(28, 28), cmap='gray')
+    plt.axis('off')
+    plt.title('Generated sample')
+    plt.show()
+
+    samples = model.trX[:200]
+    img = grayscale_grid_vis(samples, nhw=(10, 20))
+    plt.imshow(img, cmap='gray')
+    plt.axis('off')
+    plt.title('Real MNIST samples')
+    plt.show()
+
+    model.train()
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Extracting MNIST-data/train-images-idx3-ubyte.gz
+    Extracting MNIST-data/train-labels-idx1-ubyte.gz
+    Extracting MNIST-data/t10k-images-idx3-ubyte.gz
+    Extracting MNIST-data/t10k-labels-idx1-ubyte.gz
+#+END_SRC
+
+
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [ 0] time: 8.59s, d_loss: -0.1605, g_loss: 0.4195
+    Epoch: [ 1] time: 16.72s, d_loss: 0.1630, g_loss: 0.3884
+    Epoch: [ 2] time: 24.95s, d_loss: 0.3762, g_loss: 0.2526
+    Epoch: [ 3] time: 33.16s, d_loss: 0.2218, g_loss: 0.3879
+    Epoch: [ 4] time: 41.30s, d_loss: 0.1162, g_loss: 0.5739
+    Epoch: [ 5] time: 49.52s, d_loss: 0.2054, g_loss: 0.5391
+    Epoch: [ 6] time: 57.71s, d_loss: -0.1629, g_loss: 0.7662
+    Epoch: [ 7] time: 65.98s, d_loss: 0.2055, g_loss: 0.5397
+    Epoch: [ 8] time: 74.12s, d_loss: 0.1775, g_loss: 0.5045
+    Epoch: [ 9] time: 82.38s, d_loss: -0.1650, g_loss: 0.9066
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [10] time: 91.80s, d_loss: -0.1420, g_loss: 0.8182
+    Epoch: [11] time: 100.05s, d_loss: 0.2241, g_loss: 0.5393
+    Epoch: [12] time: 108.21s, d_loss: -0.0222, g_loss: 0.6959
+    Epoch: [13] time: 116.36s, d_loss: 0.0003, g_loss: 0.7129
+    Epoch: [14] time: 124.61s, d_loss: 0.1559, g_loss: 0.4851
+    Epoch: [15] time: 132.79s, d_loss: 0.0181, g_loss: 0.7331
+    Epoch: [16] time: 140.93s, d_loss: -0.0020, g_loss: 0.7672
+    Epoch: [17] time: 149.11s, d_loss: 0.0626, g_loss: 0.5725
+    Epoch: [18] time: 157.19s, d_loss: -0.0546, g_loss: 0.7027
+    Epoch: [19] time: 165.39s, d_loss: 0.2446, g_loss: 0.4808
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [20] time: 175.13s, d_loss: 0.5146, g_loss: 0.2212
+    Epoch: [21] time: 183.27s, d_loss: 0.2935, g_loss: 0.4970
+    Epoch: [22] time: 191.41s, d_loss: 0.2706, g_loss: 0.5016
+    Epoch: [23] time: 199.61s, d_loss: 0.2475, g_loss: 0.3866
+    Epoch: [24] time: 207.77s, d_loss: 0.0857, g_loss: 0.5888
+    Epoch: [25] time: 215.97s, d_loss: 0.1665, g_loss: 0.5473
+    Epoch: [26] time: 224.20s, d_loss: 0.3806, g_loss: 0.3764
+    Epoch: [27] time: 232.40s, d_loss: 0.1685, g_loss: 0.5511
+    Epoch: [28] time: 240.56s, d_loss: 0.1763, g_loss: 0.4750
+    Epoch: [29] time: 248.73s, d_loss: 0.1586, g_loss: 0.3638
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [30] time: 258.13s, d_loss: 0.2048, g_loss: 0.5181
+    Epoch: [31] time: 266.25s, d_loss: 0.1976, g_loss: 0.5132
+    Epoch: [32] time: 274.33s, d_loss: 0.2678, g_loss: 0.2784
+    Epoch: [33] time: 282.52s, d_loss: 0.0961, g_loss: 0.4808
+    Epoch: [34] time: 290.68s, d_loss: 0.2502, g_loss: 0.4601
+    Epoch: [35] time: 298.89s, d_loss: 0.2400, g_loss: 0.2574
+    Epoch: [36] time: 307.05s, d_loss: -0.0422, g_loss: 0.5078
+    Epoch: [37] time: 315.22s, d_loss: 0.0659, g_loss: 0.4704
+    Epoch: [38] time: 323.48s, d_loss: 0.1326, g_loss: 0.3251
+    Epoch: [39] time: 331.68s, d_loss: -0.0217, g_loss: 0.5367
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [40] time: 341.16s, d_loss: 0.1375, g_loss: 0.5137
+    Epoch: [41] time: 349.30s, d_loss: 0.1792, g_loss: 0.2806
+    Epoch: [42] time: 357.38s, d_loss: -0.0377, g_loss: 0.5232
+    Epoch: [43] time: 365.58s, d_loss: -0.0855, g_loss: 0.5706
+    Epoch: [44] time: 373.74s, d_loss: 0.0328, g_loss: 0.3058
+    Epoch: [45] time: 381.93s, d_loss: -0.0305, g_loss: 0.4933
+    Epoch: [46] time: 390.12s, d_loss: -0.1100, g_loss: 0.4977
+    Epoch: [47] time: 394.19s, d_loss: 0.0499, g_loss: 0.3242
+    Epoch: [48] time: 397.75s, d_loss: -0.0670, g_loss: 0.4966
+    Epoch: [49] time: 401.30s, d_loss: -0.0891, g_loss: 0.5168
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [50] time: 407.93s, d_loss: 0.0241, g_loss: 0.2714
+    Epoch: [51] time: 416.03s, d_loss: -0.2074, g_loss: 0.5418
+    Epoch: [52] time: 424.23s, d_loss: -0.0648, g_loss: 0.4912
+    Epoch: [53] time: 432.57s, d_loss: 0.0426, g_loss: 0.2445
+    Epoch: [54] time: 440.76s, d_loss: -0.2611, g_loss: 0.5889
+    Epoch: [55] time: 448.89s, d_loss: -0.1756, g_loss: 0.5217
+    Epoch: [56] time: 457.01s, d_loss: -0.0422, g_loss: 0.2831
+    Epoch: [57] time: 465.17s, d_loss: -0.2666, g_loss: 0.5362
+    Epoch: [58] time: 473.34s, d_loss: -0.0076, g_loss: 0.4518
+    Epoch: [59] time: 481.51s, d_loss: -0.1064, g_loss: 0.2717
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [60] time: 490.92s, d_loss: -0.1700, g_loss: 0.4900
+    Epoch: [61] time: 499.11s, d_loss: -0.0847, g_loss: 0.4223
+    Epoch: [62] time: 507.22s, d_loss: -0.1674, g_loss: 0.2894
+    Epoch: [63] time: 515.34s, d_loss: -0.2194, g_loss: 0.5255
+    Epoch: [64] time: 523.55s, d_loss: -0.2004, g_loss: 0.5104
+    Epoch: [65] time: 531.75s, d_loss: -0.1026, g_loss: 0.2256
+    Epoch: [66] time: 539.94s, d_loss: -0.1466, g_loss: 0.4750
+    Epoch: [67] time: 548.13s, d_loss: -0.3172, g_loss: 0.5298
+    Epoch: [68] time: 556.26s, d_loss: 0.0058, g_loss: 0.1917
+    Epoch: [69] time: 564.48s, d_loss: -0.1316, g_loss: 0.4460
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [70] time: 574.13s, d_loss: -0.1745, g_loss: 0.4858
+    Epoch: [71] time: 582.28s, d_loss: -0.0660, g_loss: 0.1949
+    Epoch: [72] time: 590.52s, d_loss: -0.1647, g_loss: 0.4336
+    Epoch: [73] time: 598.69s, d_loss: -0.2057, g_loss: 0.4696
+    Epoch: [74] time: 606.83s, d_loss: -0.1593, g_loss: 0.2692
+    Epoch: [75] time: 614.99s, d_loss: -0.1441, g_loss: 0.4444
+    Epoch: [76] time: 623.15s, d_loss: -0.1343, g_loss: 0.4530
+    Epoch: [77] time: 631.33s, d_loss: -0.0608, g_loss: 0.2048
+    Epoch: [78] time: 639.57s, d_loss: -0.2662, g_loss: 0.4595
+    Epoch: [79] time: 647.77s, d_loss: -0.2955, g_loss: 0.4732
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [80] time: 657.22s, d_loss: -0.1225, g_loss: 0.2096
+    Epoch: [81] time: 665.30s, d_loss: -0.2002, g_loss: 0.4722
+    Epoch: [82] time: 673.45s, d_loss: -0.1655, g_loss: 0.4110
+    Epoch: [83] time: 681.64s, d_loss: -0.1607, g_loss: 0.2565
+    Epoch: [84] time: 689.86s, d_loss: -0.0756, g_loss: 0.3887
+    Epoch: [85] time: 698.07s, d_loss: -0.1169, g_loss: 0.3841
+    Epoch: [86] time: 706.18s, d_loss: -0.1712, g_loss: 0.2341
+    Epoch: [87] time: 714.40s, d_loss: -0.2321, g_loss: 0.4151
+    Epoch: [88] time: 722.58s, d_loss: -0.1339, g_loss: 0.3788
+    Epoch: [89] time: 730.75s, d_loss: -0.1013, g_loss: 0.1749
+#+END_SRC
+
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Epoch: [90] time: 740.44s, d_loss: -0.2137, g_loss: 0.4119
+    Epoch: [91] time: 748.67s, d_loss: -0.1886, g_loss: 0.3836
+    Epoch: [92] time: 756.86s, d_loss: -0.0811, g_loss: 0.2023
+    Epoch: [93] time: 765.04s, d_loss: -0.1949, g_loss: 0.4098
+    Epoch: [94] time: 773.14s, d_loss: -0.2442, g_loss: 0.3997
+    Epoch: [95] time: 781.24s, d_loss: -0.1943, g_loss: 0.2524
+    Epoch: [96] time: 789.40s, d_loss: -0.2391, g_loss: 0.4112
+    Epoch: [97] time: 797.53s, d_loss: -0.2901, g_loss: 0.4277
+    Epoch: [98] time: 805.66s, d_loss: -0.1101, g_loss: 0.1715
+    Epoch: [99] time: 813.89s, d_loss: -0.1760, g_loss: 0.3925
+#+END_SRC
+
+
+
+In [23]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    d_loss = model.log['d_loss']
+    g_loss = model.log['g_loss']
+    plt.plot(range(len(d_loss)), d_loss, color='blue', label='d_loss')
+    plt.plot(range(len(g_loss)), g_loss, color='red', label='g_loss')
+    plt.legend(loc="upper right")
+    plt.xlabel('#Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training loss of D & G')
+    plt.show()
+#+END_SRC
+
+
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    imgs = np.array(model.log['gen_samples'])
+    make_gif(imgs * 255., 'GAN/wgan.gif', true_image=True, duration=2)
+
+    from IPython.display import Image
+    Image(url='GAN/wgan.gif')
+#+END_SRC
+
+Out[2]:
+
+[[file:GAN/wgan.gif]]
+
+In [25]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    tf.reset_default_graph()
+    sess.close()
+#+END_SRC
+
+* Improved WGAN
+
+Although Wasserstein GAN (WGAN) made progress toward stable training of GANs,
+still fail to converge in some settings. In this lab, you are required to
+implement [[https://arxiv.org/pdf/1704.00028.pdf][Improved Wasserstein GANs]], which is a milestone for GANs research.
+
+We will show the training result of Improved WGAN below, which indicates that,
+compared to WGAN, Improved WGAN has a much better performance. It generates
+recognizable digits much faster during the training process.
+
+Details of the algorithm are shown below.
+
+[[file:GAN/imgs/IWGAN%20algorithm.jpg]]
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from IPython.display import Image
+    Image(url='GAN/iwgan.gif')
+#+END_SRC
+
+Out[26]:
+
+[[file:GAN/iwgan.gif]]
+
+* Assignment
+
+There are two exercises in this lab.
+
+** Exercise 1
+
+Train an autoencoder model on [[http://www.msri.org/people/members/eranb/][Horse Images (gray scale)]]. Then pick one horse
+image and plot its manifold just like the demo in this lab.
+
+** Exercise 2
+
+Implement the [[https://arxiv.org/pdf/1704.00028.pdf][Improved WGAN]] and train it on the MNIST dataset. Then draw a gif
+of generated samples (10 x 20) to demonstrate the training process and show the
+best-generated samples you get.
+
+Hint: You are encouraged to modify the codes based on the DCGAN.
+
+** Notification
+   :PROPERTIES:
+   :CUSTOM_ID: Notification
+   :END:
+
+-  Submit the notebook file to demonstrate your codes and experiment
+   result on iLMS.
+-  Give a brief report to on what you have done.
+-  The deadline will be 2017/12/29 23:59

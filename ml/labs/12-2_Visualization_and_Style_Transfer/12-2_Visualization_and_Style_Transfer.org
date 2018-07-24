@@ -1,0 +1,1087 @@
+
+
+* Visualization & Style Transfer
+Today we are going to show how to load and use a pretrained model. We
+will also discuss some techniques that can help visualize what the
+networks represent in selected layers. Lastly, we will introduce you to
+an interesting work called style transfer which is basically about
+transferring a style of one image to another image.
+
+Here is the objective of this lab:
+
+-  [[deep-convolutional-networks][Visualize Convolutional Neural Networks]]
+
+   -  [[loading-a-pretrained-network][Loading a Pretrained Network]]
+   -  [[visualizing-filters][Visualizing Filters]]
+   -  [[visualizing-convolutional-output][Visualizing Convolutional Output]]
+   -  [[visualizing-gradient][Visualizing Gradient]]
+
+-  [[a-neural-algorithm-of-artistic-style][A Neural Algorithm of Artistic Style]]
+
+   -  [[defining-the-content-features-and-style-features][Defining Content Features and Style Features]]
+   -  [[defining-the-loss][Defining the Loss]]
+   -  [[the-algorithm][The Algorithm]]
+   -  [[art-gallery][Art Gallery]]
+
+-  [[references][References]]
+-  [[hw][Assignment]]
+
+Importing necessary libraries.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import os
+    #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+#+END_SRC
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    %matplotlib inline
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import tensorflow as tf
+    import IPython.display as ipyd
+    import scipy.misc
+    from libs import utils
+#+END_SRC
+
+<<deep-convolutional-networks>>
+
+* Visualize Convolutional Neural
+Networks[[Visualize-Convolutional-Neural-Networks][¶]]
+  :PROPERTIES:
+  :CUSTOM_ID: Visualize-Convolutional-Neural-Networks
+  :END:
+
+\\
+We are going to visualize a neural network pretrained using ImageNet, a
+large dataset used in ImageNet Large Scale Visual Recognition Challenge
+(ILSVRC). The training dataset contains around 1.2 million images
+composed of 1000 different types of objects. The pretrained network
+learned how to create useful representations of the data to
+differentiate between different classes.
+
+<<loading-a-pretrained-network>>
+
+** Loading a Pretrained Network[[Loading-a-Pretrained-Network][¶]]
+
+We can use a model that has been already trained ("pretrained") by
+someone else. We just need to have access to the model's parameters.
+Fortunately, nowadays many researchers are sharing their pretrained
+models. This is very convenient because it saves us a lot of time to
+train.
+
+Here we are going to use a pretrained VGG19 model. This is an architecture
+introduced from this [[https://arxiv.org/abs/1409.1556][paper]]. This model is known for its simplicity, using only
+3×3 convolutional layers stacked on top of each other in increasing depth. The
+"19" in its name stands for the number of layers in the network.\\
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from IPython.display import Image
+    Image('vgg19.jpg')
+#+END_SRC
+
+Out[3]:
+
+
+Please download the weights [[https://mega.nz/#!xZ8glS6J!MAnE91ND_WyfZ_8mvkuSa2YcA7q-1ehfSm-Q1fxOvvs][(vgg19.npy)]] and put it in the libs directory as
+where this notebook is.
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from libs import vgg19
+
+    #start an interactive session
+    sess = tf.InteractiveSession()
+
+    images = tf.placeholder(tf.float32, [1, 224, 224, 3])
+    train_mode = tf.placeholder(tf.bool)
+
+    #load the model
+    vgg = vgg19.Vgg19()
+    vgg.build(images, train_mode)
+
+    sess.run(tf.global_variables_initializer())
+#+END_SRC
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    g = tf.get_default_graph()
+    names = [op.name for op in g.get_operations()]
+    print('Sample of available operations: \n',names[:10])
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    Sample of available operations: 
+     ['Placeholder', 'Placeholder_1', 'mul/y', 'mul', 'Const', 'split/split_dim', 'split', 'sub/y', 'sub', 'sub_1/y']
+#+END_SRC
+
+The input to the graph is stored in the first tensor output, and the probability
+of the 1000 possible objects is in the last probability layer:
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    input_name = names[0] + ':0'
+    x = g.get_tensor_by_name(input_name)
+    x
+#+END_SRC
+
+Out[6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <tf.Tensor 'Placeholder:0' shape=(1, 224, 224, 3) dtype=float32>
+#+END_SRC
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    softmax = g.get_tensor_by_name(names[-2] + ':0')
+    #or use this: softmax = vgg.prob
+    softmax
+#+END_SRC
+
+Out[7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <tf.Tensor 'prob:0' shape=(1, 1000) dtype=float32>
+#+END_SRC
+
+Let's use a wonder woman image as a sample to feed in the network today.
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    processed_img = utils.load_image('wonder-woman.jpg')
+
+    plt.imshow(processed_img)
+    print('image shape: ', processed_img.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    image shape:  (224, 224, 3)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    /home/assistant/anaconda3/envs/katy/lib/python3.5/site-packages/skimage/transform/_warps.py:84: UserWarning: The default mode, 'constant', will be changed to 'reflect' in skimage 0.15.
+      warn("The default mode, 'constant', will be changed to 'reflect' in "
+#+END_SRC
+
+
+Our images must be shaped as a 4-dimensional shape describing the number of
+images, height, width, and number of channels before being fed into the network.
+So our original 3-dimensional image of height, width, channels needs an
+additional dimension on the 0th axis.
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    processed_img_4d = processed_img[np.newaxis]
+    print(processed_img_4d.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (1, 224, 224, 3)
+#+END_SRC
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    result = np.squeeze(softmax.eval(feed_dict={images: processed_img_4d, train_mode:False}))
+#+END_SRC
+
+The result of the network is a 1000 element vector, with probabilities for each
+class. We can sort these and use the labels of the 1000 classes to see what the
+top 5 predicted probabilities and labels are:
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    utils.print_prob(result)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    ('Top1: ', ['maillot'], 0.51197869)
+    ('Top5: ', [(['maillot'], 0.51197869), (['bikini,', 'two-piece'], 0.1334984), (['miniskirt,', 'mini'], 0.12154517), (['maillot,', 'tank', 'suit'], 0.051042415), (['gown'], 0.029725768)])
+#+END_SRC
+
+<<visualizing-filters>>
+
+** Visualizing Filters
+
+Let's try to first visualize the weights of the convolution filters to
+somehow help us understand what is happening inside the network.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    W_vgg = vgg.data_dict['conv1_1'][0]
+    print(W_vgg.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    (3, 3, 3, 64)
+#+END_SRC
+
+Let's look at every single individual filter in the first convolutional layer.
+We will see a total of 192 feature maps (64 filters * 3 channels).
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    W_montage = utils.montage_filters(W_vgg)
+    plt.figure(figsize=(10,10))
+    plt.imshow(W_montage, interpolation='nearest')
+#+END_SRC
+
+Out[13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc605748>
+#+END_SRC
+
+They are responding to edges, and corners.
+
+<<visualizing-convolutional-output>>
+
+** Visualizing Convolutional Output
+   :PROPERTIES:
+   :CUSTOM_ID: Visualizing-Convolutional-Output
+   :END:
+
+Also we can take a look at the convolutional output. We've just seen
+what each of the convolution filters look like. Let's try to see how
+they filter the image now by looking at the resulting convolution.
+
+In [14]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    vgg_conv1_1 = vgg.conv1_1.eval(feed_dict={images: processed_img_4d, train_mode:False}) 
+    vgg_conv2_1 = vgg.conv2_1.eval(feed_dict={images: processed_img_4d, train_mode:False})
+    vgg_conv5_1 = vgg.conv5_1.eval(feed_dict={images: processed_img_4d, train_mode:False})
+#+END_SRC
+
+In [15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    feature = vgg_conv1_1
+    montage = utils.montage_filters(np.rollaxis(np.expand_dims(feature[0], 3), 3, 2))
+    plt.figure(figsize=(10, 10))
+    plt.imshow(montage, cmap='gray')
+#+END_SRC
+
+Out[15]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc5e0dd8>
+#+END_SRC
+
+
+And the convolutional from second block:
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    feature = vgg_conv2_1
+    montage = utils.montage_filters(np.rollaxis(np.expand_dims(feature[0], 3), 3, 2))
+    plt.figure(figsize=(10, 10))
+    plt.imshow(montage, cmap='gray')
+#+END_SRC
+
+Out[16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc5a46a0>
+#+END_SRC
+
+
+Let's look at the shape of the convolutional output:
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    layer_shape = tf.shape(feature).eval(feed_dict={images:processed_img_4d, train_mode:False})
+    print(layer_shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [  1 112 112 128]
+#+END_SRC
+
+\\
+Our original image which was 1 x 224 x 224 x 3 color channels, now has
+128 new channels of information. Some channels capture edges of the
+body, some capture the face.
+
+We can also try to visualize some features from higher levels.
+
+In [18]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    feature = vgg_conv5_1
+    montage = utils.montage_filters(np.rollaxis(np.expand_dims(feature[0], 3), 3, 2))
+    plt.figure(figsize=(10, 10))
+    plt.imshow(montage, cmap='gray')
+#+END_SRC
+
+Out[18]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc560f98>
+#+END_SRC
+
+
+It's more difficult to tell what's going on in this case.
+
+<<visualizing-gradient>>
+
+** Visualizing Gradient[[Visualizing-Gradient][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Visualizing-Gradient
+   :END:
+
+\\
+Visualizing convolutional output is a pretty useful technique for
+visualizing shallow convolution layers, but when we get to the deeper
+layers we have many different channels of information being fed to
+deeper convolution filters of some very high dimensions. It's hard to
+understand them just by just looking at the convolution output.
+
+If we want to understand what the deeper layers are really doing, we can
+try to use backpropagation to show us the gradients of a particular
+neuron with respect to our input image. Let's visualize the network's
+gradient when backpropagated to the original input image. *This is
+telling us which pixels are responding to the predicted class or given
+neuron.*
+
+We will make a forward pass up to the layer that we are interested in,
+and then backpropagate to help us understand which pixels contributed
+the most to the final activation of that layer.
+
+We first create an operation which will find the maximum neuron of all
+activations in a layer, and then calculate the gradient of that
+objective with respect to the input image.
+
+In [19]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    feature = vgg.conv4_2
+    gradient = tf.gradients(tf.reduce_max(feature, axis=3), images)
+#+END_SRC
+
+\\
+When we run this network now, we will specify the gradient operation
+we've created, instead of the softmax layer of the network. This will
+run a forward prop up to the layer we asked to find the gradient with,
+and then run a back prop all the way to the input image.
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    res = sess.run(gradient, feed_dict={images: processed_img_4d, train_mode:True})[0]
+#+END_SRC
+
+In [21]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #look at the range of values
+    print(np.min(res[0]), np.max(res[0]))
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    -9221.37 10603.7
+#+END_SRC
+
+\\
+It will be hard to understand the gradient in that range of values. What
+we can do is normalize the gradient in a way that lets us see it more in
+terms of the normal range of color values. After normalizing the
+gradient values, let's visualize the original image and the output of
+the backpropagated gradient. .
+
+In [22]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    res_normalized = utils.normalize(res)
+
+    fig, axs = plt.subplots(1, 2)
+    plt.figure(figsize=(10,10))
+    axs[0].imshow(processed_img)
+    axs[1].imshow(res_normalized[0])
+#+END_SRC
+
+Out[22]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc410eb8>
+#+END_SRC
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.figure.Figure at 0x7f8cbc410860>
+#+END_SRC
+
+We can see that the edges of wonder woman triggers the neurons the most!
+
+Let's create utility functions which will help us visualize any single
+neuron in a layer.
+
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def compute_gradient_single_neuron(feature, neuron_i):
+      '''visualize a single neuron in a layer, with neuron_i specifying the index of the neuron'''
+      gradient = tf.gradients(tf.reduce_mean(feature[:, :, :, neuron_i]), images)
+      res = sess.run(gradient, feed_dict={images: processed_img_4d, train_mode: False})[0]
+      return res
+#+END_SRC
+
+In [24]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    gradient = compute_gradient_single_neuron(vgg.conv5_2, 77)
+    gradient_norm = utils.normalize(gradient)
+    montage = utils.montage(np.array(gradient_norm))
+    fig, axs = plt.subplots(1, 2)
+    axs[0].imshow(processed_img)
+    axs[1].imshow(montage)
+#+END_SRC
+
+Out[24]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    <matplotlib.image.AxesImage at 0x7f8cbc2f1390>
+#+END_SRC
+
+This neuron seems to capture face and hair!
+
+<<a-neural-algorithm-of-artistic-style>>
+
+* A Neural Algorithm of Artistic Style
+  :PROPERTIES:
+  :CUSTOM_ID: A-Neural-Algorithm-of-Artistic-Style
+  :END:
+
+Visualizing neural network gives us a better understanding of what's going in
+the mysterious huge network. Besides from this application, Leon Gatys and his
+co-authors has a very interesting work called [[https://arxiv.org/abs/1508.06576]["A Neural Algorithm of Artistic
+Style"]] that uses neural representations to separate and recombine content and
+style of arbitrary images, providing a neural algorithm for the creation of
+artistic images.
+
+It turns out the correlations between the different filter responses is a
+representation of styles. Fascinating, right?
+
+<<defining-the-content-features-and-style-features>>
+
+** Defining Content Features and Style Features
+   :PROPERTIES:
+   :CUSTOM_ID: Defining-Content-Features-and-Style-Features
+   :END:
+
+- Content features of the content image is calculated by feeding the content
+  image into the neural network, and extract the activations of those
+  CONTENT\_LAYERS.
+- For style features, we extract the correlation of the features of the
+  style-image layer-wise (the gram matrix). By adding up the feature
+  correlations of multiple layers, we obtain a multi-scale representation of the
+  input image, which captures its texture information instead of the object
+  arrangement in the input image.
+
+Given the content features and the stlye features, we can design a loss
+function that makes the final image contains the content but are
+illustrated in the style of the style-image.
+
+<<defining-the-loss>>
+
+** Defining the Loss[[Defining-the-Loss][¶]]
+   :PROPERTIES:
+   :CUSTOM_ID: Defining-the-Loss
+   :END:
+
+Our goal is to create an output image which is synthesized by finding an image
+that simultaneously matches the content features of the photograph and the style
+features of the respective piece of art. How can we do that? We can define the
+loss function as the composition of:
+
+1. The dissimilarity of the content features between the output image
+   and the content image; and
+2. The dissimilarity of the style features between the output image and
+   the style image to the loss function.
+
+The following figure gives a very good visualization of the process:
+
+[[file:fig-style-transfer-algorithm.png]]
+
+-  $G\^{l}\_{ij}$ is the inner product between the vectorised feature
+   maps of the initial image $i$ and $j$ in layer $l$,
+-  $w\_{l}$ is the weight of each style layers
+-  $A\^{l}$ is that of the style image
+-  $F\^{l}$ is layer-wise content features of the initial image
+-  $P\^{l}$ is that of the content image
+
+We start with a noisy initial image, then set it as tensorflow Variable, and
+instead of doing gradient descent on the weight, we fix the weight and do
+gradient descent on the initial image to minimize the loss function (which is
+the sum of style loss and content loss).
+
+It might be easier for you to understand through code. Let's start by preparing
+our favorite content image and style image from some great artists. Let's
+continue using wonder woman as the content image simply because she is awesome!
+For the style image let's use Van Gogh's classic work Starry Night.
+
+In [25]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import os
+    content_directory = 'contents/'
+    style_directory = 'styles/'
+
+    # This is the directory to store the final stylized images
+    output_directory = 'image_output/'
+    if not os.path.exists(output_directory):
+      os.makedirs(output_directory)
+        
+    # This is the directory to store the half-done images during the training.
+    checkpoint_directory = 'checkpoint_output/'
+    if not os.path.exists(checkpoint_directory):
+      os.makedirs(checkpoint_directory)
+        
+    content_path = os.path.join(content_directory, 'wonder-woman.jpg')
+    style_path = os.path.join(style_directory, 'starry-night.jpg')
+    output_path = os.path.join(output_directory, 'wonder-woman-starry-night-iteration-1000.jpg')
+
+    # please notice that the checkpoint_images_path has to contain %s in the file_name
+    checkpoint_path = os.path.join(checkpoint_directory, 'wonder-woman-starry-night-iteration-1000-%s.jpg')
+#+END_SRC
+
+In [26]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    content_image = utils.imread(content_path)
+
+    # You can pass several style images as a list, but let's use just one for now.
+    style_images = [utils.imread(style_path)]
+#+END_SRC
+
+Let's take a look at our content image and style image
+
+[[file:contents/wonder-woman.jpg]] [[file:styles/starry-night.jpg]]
+
+*** Utility functions for loading the convolution layers of VGG19 model
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import tensorflow as tf
+    import numpy as np
+    import scipy.io
+    import os
+
+    VGG_MEAN = [103.939, 116.779, 123.68]
+
+    VGG19_LAYERS = (
+      'conv1_1', 'relu1_1', 'conv1_2', 'relu1_2', 'pool1',
+
+      'conv2_1', 'relu2_1', 'conv2_2', 'relu2_2', 'pool2',
+
+      'conv3_1', 'relu3_1', 'conv3_2', 'relu3_2', 'conv3_3',
+      'relu3_3', 'conv3_4', 'relu3_4', 'pool3',
+
+      'conv4_1', 'relu4_1', 'conv4_2', 'relu4_2', 'conv4_3',
+      'relu4_3', 'conv4_4', 'relu4_4', 'pool4',
+
+      'conv5_1', 'relu5_1', 'conv5_2', 'relu5_2', 'conv5_3',
+    'relu5_3', 'conv5_4', 'relu5_4'
+    )
+
+    def net_preloaded(input_image, pooling):
+      data_dict = np.load('libs/vgg19.npy', encoding='latin1').item()
+      net = {}
+      current = input_image
+      for i, name in enumerate(VGG19_LAYERS):
+        kind = name[:4]
+        if kind == 'conv':
+          kernels = get_conv_filter(data_dict, name)
+          # kernels = np.transpose(kernels, (1, 0, 2, 3))
+
+          bias = get_bias(data_dict, name)
+          # matconvnet: weights are [width, height, in_channels, out_channels]
+          # tensorflow: weights are [height, width, in_channels, out_channels]
+
+          # bias = bias.reshape(-1)
+          current = conv_layer(current, kernels, bias)
+        elif kind == 'relu':
+          current = tf.nn.relu(current)
+        elif kind == 'pool':
+          current = pool_layer(current, pooling)
+        
+        net[name] = current
+
+      assert len(net) == len(VGG19_LAYERS)
+      return net
+
+    def conv_layer(input, weights, bias):
+      conv = tf.nn.conv2d(input, weights, strides=(1, 1, 1, 1), padding='SAME')
+      return tf.nn.bias_add(conv, bias)
+
+    def pool_layer(input, pooling):
+      if pooling == 'avg':
+        return tf.nn.avg_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
+                padding='SAME')
+      else:
+        return tf.nn.max_pool(input, ksize=(1, 2, 2, 1), strides=(1, 2, 2, 1),
+                padding='SAME')
+
+    # before we feed the image into the network, we preprocess it by 
+    # extracting the mean_pixel from it.
+    def preprocess(image):
+      return image - VGG_MEAN
+
+    # remember to unprocess it before you plot it out and save it.
+    def unprocess(image):
+      return image + VGG_MEAN
+
+    def get_conv_filter(data_dict, name):
+      return tf.constant(data_dict[name][0], name="filter")
+
+    def get_bias(data_dict, name):
+      return tf.constant(data_dict[name][1], name="biases")
+#+END_SRC
+
+<<the-algorithm>>
+
+** The Algorithm
+This is the main algorithm we will be using to stylize the network. There are a
+lot of hyper-parameters you can tune. The output image will be stored at
+=output_path=, and the checkpoint image (stylized images on every
+=checkpoint_iterations= steps) will be stored at =checkpoint_path= if specified.
+
+In [28]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import tensorflow as tf
+    import numpy as np
+    from functools import reduce
+    from PIL import Image
+
+    # feel free to try different layers
+    CONTENT_LAYERS = ('relu4_2', 'relu5_2')
+    STYLE_LAYERS = ('relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1')
+
+    VGG_MEAN = [103.939, 116.779, 123.68]
+
+    def stylize(content, styles, network_path='libs/imagenet-vgg-verydeep-19.mat', 
+                iterations=1000, content_weight=5e0, content_weight_blend=0.5, style_weight=5e2, 
+                style_layer_weight_exp=1,style_blend_weights=None, tv_weight=100,
+                learning_rate=0.001, beta1=0.9, beta2=0.999, epsilon=1e-08, pooling='avg',
+                print_iterations=100, checkpoint_iterations=100, checkpoint_path=None,
+                output_path=None):
+        
+        
+      shape = (1,) + content.shape                             #content image shape : (1,433,770,3)
+      style_shapes = [(1,) + style.shape for style in styles]  #style image shape : (1,600,800,3)
+      content_features = {}
+      style_features = [{} for _ in styles]
+
+      # scale the importance of each style layers according to their depth. 
+      # (deeper layers are more important if style_layers_weights > 1 (default = 1))
+      layer_weight = 1.0
+      style_layers_weights = {}                                # weight for different network layers
+      for style_layer in STYLE_LAYERS:                                    
+        style_layers_weights[style_layer] = layer_weight       #'relu1_1','relu2_1',...,'relu5_1'
+        layer_weight *= style_layer_weight_exp                 # 1.0
+
+      # normalize style layer weights
+      layer_weights_sum = 0
+      for style_layer in STYLE_LAYERS:                         #'relu1_1',..., 'relu5_1'
+        layer_weights_sum += style_layers_weights[style_layer] # 5.0
+      for style_layer in STYLE_LAYERS:
+        style_layers_weights[style_layer] /= layer_weights_sum
+
+      # FEATURE MAPS FROM CONTENT IMAGE
+      # compute the feature map of the content image by feeding it into the network
+      #the output net contains the features of each content layer
+      g = tf.Graph()
+      with g.as_default(), tf.Session() as sess:
+        image = tf.placeholder('float', shape=shape)
+
+        net = net_preloaded(image, pooling)             # {'conv1_1':Tensor,relu1_1:Tensor...}
+        content_pre = np.array([preprocess(content)])   # (1,433,770,3) subtract the mean pixel
+        for layer in CONTENT_LAYERS:                    #'relu4_2', 'relu5_2'
+          content_features[layer] = net[layer].eval(feed_dict={image: content_pre})
+
+      # FEATURE MAPS (GRAM MATRICES) FROM STYLE IMAGE
+      # compute style features of the style image by feeding it into the network
+      # and calculate the gram matrix
+      for i in range(len(styles)):
+        g = tf.Graph()
+        with g.as_default(), tf.Session() as sess:
+          image = tf.placeholder('float', shape=style_shapes[i])
+          net = net_preloaded(image, pooling)                           
+          style_pre = np.array([preprocess(styles[i])])
+          for layer in STYLE_LAYERS:              #'relu1_1', 'relu2_1',..., 'relu5_1'
+            features = net[layer].eval(feed_dict={image: style_pre})  # relu_1:(1,600,800,64)
+            features = np.reshape(features, (-1, features.shape[3]))  # (480000, 64)
+            gram = np.matmul(features.T, features) / features.size    # (64,64)
+            style_features[i][layer] = gram
+
+      # make stylized image using backpropogation
+      with tf.Graph().as_default():
+
+        # Generate a random image (the output image) with the same shape as the content image
+        initial = tf.random_normal(shape) * 0.256  
+        image = tf.Variable(initial)
+        net = net_preloaded(image, pooling)
+        
+
+        # CONTENT LOSS
+        # we can adjust the weight of each content layers
+        # content_weight_blend is the ratio of two used content layers in this example
+        content_layers_weights = {}
+        content_layers_weights['relu4_2'] = content_weight_blend 
+        content_layers_weights['relu5_2'] = 1.0 - content_weight_blend      
+
+        content_loss = 0
+        content_losses = []
+        for content_layer in CONTENT_LAYERS:
+          # Use MSE as content losses
+          # content weight is the coefficient for content loss
+          content_losses.append(content_layers_weights[content_layer] * content_weight * 
+                  (2 * tf.nn.l2_loss(net[content_layer] - content_features[content_layer]) /
+                  content_features[content_layer].size))
+        content_loss += reduce(tf.add, content_losses)
+
+        # STYLE LOSS
+        # We can specify different weight for different style images
+        # style_layers_weights => weight for different network layers
+        # style_blend_weights => weight between different style images
+
+        if style_blend_weights is None:
+          style_blend_weights = [1.0/len(styles) for _ in styles]
+        else:
+          total_blend_weight = sum(style_blend_weights)
+          # normalization
+          style_blend_weights = [weight/total_blend_weight
+                                 for weight in style_blend_weights]
+
+        style_loss = 0
+        # iterate to calculate style loss with multiple style images
+        for i in range(len(styles)):
+          style_losses = []
+          for style_layer in STYLE_LAYERS:             # e.g. relu1_1
+            layer = net[style_layer]                   # relu1_1 of output image:(1,433,770,64)
+            _, height, width, number = map(lambda i: i.value, layer.get_shape())  
+            size = height * width * number
+            feats = tf.reshape(layer, (-1, number))    # (333410,64)
+
+            # Gram matrix for the features in relu1_1 of the output image.
+            gram = tf.matmul(tf.transpose(feats), feats) / size
+            # Gram matrix for the features in relu1_1 of the style image
+            style_gram = style_features[i][style_layer]   
+
+            # Style loss is the MSE for the difference of the 2 Gram matrices
+            style_losses.append(style_layers_weights[style_layer] * 2 * 
+                                tf.nn.l2_loss(gram - style_gram) / style_gram.size)
+          style_loss += style_weight * style_blend_weights[i] * reduce(tf.add, style_losses)
+
+        # TOTAL VARIATION LOSS  
+        # Total variation denoising to do smoothing; cost to penalize neighboring pixel
+        # not used by the original paper by Gatys et al
+        # According to the paper Mahendran, Aravindh, and Andrea Vedaldi. "Understanding deep 
+        # image representations by inverting them."
+        # Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition. 2015.
+        tv_y_size = _tensor_size(image[:,1:,:,:])
+        tv_x_size = _tensor_size(image[:,:,1:,:])
+        tv_loss = tv_weight * 2 * (
+          (tf.nn.l2_loss(image[:,1:,:,:] - image[:,:shape[1]-1,:,:]) /
+              tv_y_size) +
+          (tf.nn.l2_loss(image[:,:,1:,:] - image[:,:,:shape[2]-1,:]) /
+              tv_x_size))
+
+        #OVERALL LOSS
+        loss = content_loss + style_loss + tv_loss
+
+        train_step = tf.train.AdamOptimizer(learning_rate, beta1, beta2, epsilon).minimize(loss)
+
+        def print_progress():
+          print('     iteration: %d\n' % i)
+          print('  content loss: %g\n' % content_loss.eval())
+          print('    style loss: %g\n' % style_loss.eval())
+          print('       tv loss: %g\n' % tv_loss.eval())
+          print('    total loss: %g\n' % loss.eval())
+
+        def imsave(path, img):
+          img = np.clip(img, 0, 255).astype(np.uint8)
+          Image.fromarray(img).save(path, quality=95)
+
+        # TRAINING
+        best_loss = float('inf')
+        best = None
+        
+        with tf.Session() as sess:
+            
+          sess.run(tf.global_variables_initializer())
+        
+          if (print_iterations and print_iterations != 0):
+            print_progress()
+            
+          for i in range(iterations):
+
+            train_step.run()
+
+            last_step = (i == iterations - 1)
+            if last_step or (print_iterations and i % print_iterations == 0):
+              print_progress()
+
+            # store output and checkpoint images
+            if (checkpoint_iterations and i % checkpoint_iterations == 0) or last_step:
+              this_loss = loss.eval()
+              if this_loss < best_loss:
+                best_loss = this_loss
+                best = image.eval()
+
+              img_out = unprocess(best.reshape(shape[1:]))
+
+              output_file = None
+              if not last_step:
+                if checkpoint_path:
+                    output_file = checkpoint_path % i
+              else:
+                output_file = output_path
+
+              if output_file:
+                imsave(output_file, img_out)
+                
+      print("finish stylizing.")
+
+    def _tensor_size(tensor):
+      from operator import mul
+      return reduce(mul, (d.value for d in tensor.get_shape()), 1)
+#+END_SRC
+
+The processing may take a while according to your machine, please be patient.
+
+In [29]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    checkpoint_path=None
+    output_path='image_output/wonder-woman-starry-night-tvweight-100.jpg'
+
+    stylize(content_image, style_images, iterations=1000,
+            content_weight=5e0, content_weight_blend=1, style_weight=5e2, 
+            style_layer_weight_exp=1, style_blend_weights=None, tv_weight=100,
+            learning_rate=1e1, beta1=0.9, beta2=0.999, epsilon=1e-08, pooling='avg',
+            print_iterations=100, checkpoint_iterations=100, checkpoint_path=checkpoint_path,
+            output_path=output_path)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+         iteration: 0
+
+      content loss: 383756
+
+        style loss: 1.51639e+06
+
+           tv loss: 26.1908
+
+        total loss: 1.90017e+06
+
+         iteration: 0
+
+      content loss: 366212
+
+        style loss: 1.27637e+06
+
+           tv loss: 15650.7
+
+        total loss: 1.65823e+06
+
+         iteration: 100
+
+      content loss: 87181.3
+
+        style loss: 24615.4
+
+           tv loss: 31960.5
+
+        total loss: 143757
+
+         iteration: 200
+
+      content loss: 77354.4
+
+        style loss: 24122
+
+           tv loss: 29072.6
+
+        total loss: 130549
+
+         iteration: 300
+
+      content loss: 75459.5
+
+        style loss: 25431.1
+
+           tv loss: 28450.4
+
+        total loss: 129341
+
+         iteration: 400
+
+      content loss: 75058.3
+
+        style loss: 24362.7
+
+           tv loss: 28024.1
+
+        total loss: 127445
+
+         iteration: 500
+
+      content loss: 73826.6
+
+        style loss: 25271
+
+           tv loss: 27823.4
+
+        total loss: 126921
+
+         iteration: 600
+
+      content loss: 75497.3
+
+        style loss: 24228.4
+
+           tv loss: 28309.1
+
+        total loss: 128035
+
+         iteration: 700
+
+      content loss: 75813.1
+
+        style loss: 28177.7
+
+           tv loss: 28192.3
+
+        total loss: 132183
+
+         iteration: 800
+
+      content loss: 73029.6
+
+        style loss: 27685.9
+
+           tv loss: 27797.1
+
+        total loss: 128513
+
+         iteration: 900
+
+      content loss: 72950
+
+        style loss: 28004.5
+
+           tv loss: 28212.3
+
+        total loss: 129167
+
+         iteration: 999
+
+      content loss: 74208.9
+
+        style loss: 25301.6
+
+           tv loss: 27782.2
+
+        total loss: 127293
+
+    finish stylizing.
+#+END_SRC
+
+[[file:image_output/wonder-woman-starry-night-tvweight-100.jpg]]
+
+Not bad!
+
+If you notice, besides from style loss and content loss, a total variational
+loss(=tv_loss=) is added to denoise. Here is an example without total variation
+loss.
+
+[[file:image_output/wonder-woman-starry-night-tvweight-0.jpg]]
+
+We can see there are more jiggling spots in the figure above.
+
+<<art-gallery>>
+
+** Art Gallery
+
+Let's combine Wonder Woman with "Rain Princess" by Leonid Afremov.
+
+[[file:styles/rain-princess.jpg]]
+[[file:image_output/wonder-woman-rain-princess-style-weight-2000-pooling-avg.jpg]]
+
+"Scream" by Edvard Munch
+
+[[file:styles/the-scream.jpg]]
+[[file:image_output/wonder-woman-the-scream-style-weight-1500-pooling-avg.jpg]]
+
+and mix two styles -- Starry Night and Rain Princess -- together!
+
+[[file:image_output/wonder-woman-starry-night-rain-princess-style-weight-2000-pooling-avg.jpg]]
+
+According to the original Style Transfer paper, replacing the maximum pooling
+operation by average pooling yields slightly more appealing results. So let's
+use average pooling as the default pooling operation. Here is an experiment
+using max(upper image) v.s. average(lower image) as the pooling operation.
+(style: Rain Princess)
+
+[[file:image_output/wonder-woman-rain-princess-style-weight-2000-pooling-max.jpg]]
+[[file:image_output/wonder-woman-rain-princess-style-weight-2000-pooling-avg.jpg]]
+
+There are a lot of different things you can play around with this Style
+Transfer algorithm. Feel free to add your own thoughts in it!
+
+<<references>>
+
+** References
+- VGG 19 model:
+[[https://github.com/machrisaa/tensorflow-vgg/blob/master/vgg19_trainable.py]]
+
+-  Most of the code is based from the free MOOC course in Kadenze called
+   "Creative Applications of Deep Learning w/ Tensorflow"
+   [[https://github.com/pkmital/CADL/blob/master/session-4/lecture-4.ipynb][(CADL)]].
+
+-  Refer to the original paper "A Neural Algorithm of Artistic Style" by
+   Gatys et al.: [[https://arxiv.org/abs/1508.06576]]
+
+-  Original work of Style Transfer's TensorFlow implementation is from
+   Anish Athalye's GitHub account
+   [[https://github.com/anishathalye/neural-style][anishathalye]]
+
+<<hw>>
+
+* Assignment
+*Do at least three of the following:*
+
+-  Use other pretrained neural networks to generate stylized images.
+-  Try changing the weights for the style, content, and denoising.
+-  Use different weights for the content and style layers.
+-  Try using other layers in the model.
+-  Use several style images. Be creative! :)
+-  Try changing the resolution of the content and style images.
+-  Create your own exploration --- something that is not mentioned above
+   and you think is interesting and worth sharing.
+
+*Requirements:*
+
+-  Submit on iLMS your code file (Lab13-學號.ipynb).
+-  For each of the things you tried above, give a *brief explanation or
+   discussion* of what you observed. For example, explain how the
+   results are affected when you change the weights, use several style
+   images, etc.
+-  Lastly, and very important, in the very first cell of your Notebook,
+   *list which ones you have accomplished*, an example:\\
+   These are what I did: - Use other pretrained neural networks. - Use
+   several style images. - Use different weights for the style layers.

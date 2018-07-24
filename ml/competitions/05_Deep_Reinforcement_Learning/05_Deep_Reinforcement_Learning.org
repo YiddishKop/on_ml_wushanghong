@@ -1,0 +1,235 @@
+
+
+* DataLab Cup 5: Deep Reinforcement Learning
+
+** Task: Flappy Bird[[Task:-Flappy-Bird][¶]]
+
+Given a screen shot of flappy bird, your task is to select action that maximize
+total reward.
+
+[[file:img/flappybird_comp.png]]
+
+** Environment[[Environment][¶]]
+
+We will use flappy bird in [[http://pygame-learning-environment.readthedocs.io/en/latest/user/home.html][pygame learning environment]] as our training
+environment, please install it before going through. The environment provide
+some useful function that can easily get screen for each step.
+
+To make thing easy, we replace background with black color and make all pipes
+and birds the same, please unzip the =asset.zip= file on [[https://www.kaggle.com/t/a7c350c765104cada44097b560238755][kaggle]] and overrite
+this folder in =PyGame-Learning-Environment\ple\games\flappybird\assets=.
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # import package needed
+    %matplotlib inline
+    import matplotlib.pyplot as plt
+    import os
+    os.environ["SDL_VIDEODRIVER"] = "dummy" # make window not appear
+    import tensorflow as tf
+    import numpy as np
+    import skimage.color
+    import skimage.transform
+    from ple.games.flappybird import FlappyBird
+    from ple import PLE
+    game = FlappyBird()
+    env = PLE(game, fps=30, display_screen=False) # environment interface to game
+    env.reset_game()
+    env.act(0) # dummy input to get screen correct
+
+    # get rgb screen
+    screen = env.getScreenRGB()
+    plt.imshow(screen)
+    print(screen.shape)
+
+    # get grayscale screen
+    plt.figure()
+    screen = env.getScreenGrayscale()
+    plt.imshow(screen, cmap='gray')
+    print(screen.shape)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    C:\Users\conjugate-forever\Anaconda3\lib\site-packages\h5py\__init__.py:34: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+      from ._conv import register_converters as _register_converters
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    couldn't import doomish
+    Couldn't import doom
+    (288, 512, 3)
+    (288, 512)
+#+END_SRC
+
+
+** Input/Output format
+
+We will give you a list of previous screen containing current screen,
+where dimension of frame is 288 x 512 (grayscale). The output of your
+agent is action to select (0 or 1).
+
+** Implementation[[Implementation][¶]]
+
+Your agent need to implement the following function:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class YourAgent:   
+        def select_action(self, input_screens, sess):
+            """
+            args:
+                input_screens: list of frames preprocessed by preprocess function
+                sess : tensorflow Session
+            output:
+                action: int (0 or 1)
+            """
+        def preprocess(self, screen):
+            """
+            this function preprocess screen that will be used in select_action function
+
+            args:
+                screen: screen to do some preprocessing
+            output:
+                preprocessed_screen 
+            """
+#+END_SRC
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # E.g.
+    class Agent:
+        def select_action(self, input_screens, sess):
+            # epsilon-greedy
+            if np.random.rand() < self.exploring_rate:
+                action = np.random.choice(num_action) # Select a random action
+            else:
+                input_screens = np.array(input_screen[-1]).transpose([1,2,0]) # select current screen
+                feed_dict = {
+                    self.input_screen: input_screen[None,:],
+                }
+                action = sess.run(self.pred, feed_dict=feed_dict)[0] # Select action with the highest q
+            return action
+        
+        def preprocess(self, screen):
+            screen = skimage.transform.resize(screen, [80, 80])
+            return screen
+#+END_SRC
+
+** Model[[Model][¶]]
+
+To achieve the task, you can use either DQN or Policy Network or combine
+both to train your agent. Please refer [[][lab16-2\_DQN & Policy
+Network]]
+
+*** DQN[[DQN][¶]]
+
+[[file:img/DQN_2.png]]
+
+*** Policy Network[[Policy-Network][¶]]
+
+[[file:img/policy.png]]
+
+*** Actor-Critic[[Actor-Critic][¶]]
+
+[[file:img/ac.png]]
+
+** Evaluation[[Evaluation][¶]]
+
+We will use the same scenes to evaluate performance of your agent.
+
+*** Evaluate sample code[[Evaluate-sample-code][¶]]
+
+The following are sample code for showing how will we evaluate your
+agent.
+
+In [ ]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def evaluate_step(agent, seed, sess):
+        game = FlappyBird()
+        env = PLE(game, fps=30, display_screen=False, rng=np.random.RandomState(seed))
+        env.reset_game()
+        env.act(0) # dummy input
+        # grayscale input screen for this episode  
+        input_screens = [agent.preprocess(env.getScreenGrayscale())]
+        t = 0
+        while not env.game_over():
+            # feed four previous screen, select an action
+            action = agent.select_action(input_screens, sess)
+            # execute the action and get reward
+            reward = env.act(env.getActionSet()[action])  # reward = +1 when pass a pipe, -5 when die       
+            # observe the result
+            screen_plum = env.getScreenGrayscale()  # get next screen
+            # append grayscale screen for this episode
+            input_screens.append(agent.preprocess(screen_plum))
+            t+=1
+            if t >= 1000: # maximum score to prevent run forever
+                break
+        return t
+    def evaluate(agent, sess):
+        scores = []
+        for seed in [...some hidden seed...]:
+            score = evaluate_step(agent, seed, sess)
+            scores.append(score)
+        return scores
+#+END_SRC
+
+Above code with hidden seed is compiled in *evaluate.pyc*, to use it,
+run following code.
+
+In [ ]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from evaluate import evaluate
+    agent = YourAgent() # init your agent, load checkpoint...
+    scores = evaluate(agent, sess) # evaluate
+#+END_SRC
+
+*** Submission[[Submission][¶]]
+
+submmit scores.csv generated by the following code to [[https://www.kaggle.com/t/a7c350c765104cada44097b560238755][DataLabCup: Deep
+Reinforcement Learning]]
+
+In [ ]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import pandas as pd
+    df = pd.DataFrame({
+        'scores': scores
+    })
+    df.to_csv('./scores.csv')
+#+END_SRC
+
+** Hints[[Hints][¶]]
+
+I collect some papers that may useful in this task
+
+**** Training: [[https://arxiv.org/abs/1511.06581][Dueling Network Architectures for Deep Reinforcement Learning]][[Training:-Dueling-Network-Architectures-for-Deep-Reinforcement-Learning][¶]]
+
+The paper propose a model architecture that learn a state-value for each
+state and give a baseline to action-value. The result speed up training.
+[[file:img/duel.png]]
+
+**** Training: [[https://arxiv.org/abs/1602.01783][Asynchronous Methods for Deep Reinforcement Learning]][[Training:-Asynchronous-Methods-for-Deep-Reinforcement-Learning][¶]]
+
+The paper using asychronous agent in different environment, which collect
+different experience and therefore stabilize training.
+
+[[file:img/a3c.png]]
+
+**** Training: [[https://arxiv.org/abs/1511.05952][Prioritized Experience Replay]][[Training:-Prioritized-Experience-Replay][¶]]
+
+The paper give priority to experiences in replay buffer. The higher loss
+with higher priority, which give scene unseen before more chance to
+train.
+
+**** Training: [[https://arxiv.org/abs/1509.06461][Deep Reinforcement Learning with Double Q-learning]][[Training:-Deep-Reinforcement-Learning-with-Double-Q-learning][¶]]
+
+The paper say that origin Q-learning over-estimate Q-value and propose a
+mitigated function. which stabilize training.
+
+**** Training: [[https://arxiv.org/abs/1609.05521][Playing FPS Games with Deep Reinforcement Learning]][[Training:-Playing-FPS-Games-with-Deep-Reinforcement-Learning][¶]]
+
+The paper add a auxiliary layer to model and claim that it speed up
+training.

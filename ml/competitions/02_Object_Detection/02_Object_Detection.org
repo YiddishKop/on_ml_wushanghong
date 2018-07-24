@@ -1,0 +1,840 @@
+
+
+* DataLab Cup 2: CNN for Object Detection
+
+** Competition
+
+In this competition, you have to train a model that recognizes objects in an
+image. Your goal is to output bounding boxes for objects.
+
+** Problem description
+
+   Given an image(shape = [undefined, undefined, 3]), you need to output
+   bounding box ($x\_1$, $y\_1$, $x\_2$, $y\_2$), for upper-left point and
+   bottom-right point) for objects shown in image and its class.([[https://leonardoaraujosantos.gitbooks.io/artificial-inteligence/content/object_localization_and_detection.html][picture source]])
+
+[[https://leonardoaraujosantos.gitbooks.io/artificial-inteligence/content/more_images/LocalizationDetection.png]]
+
+*** Data provided[[Data-provided][¶]]
+
+**** dataset: [[http://host.robots.ox.ac.uk/pascal/VOC/voc2012/][pascal voc 2012]][[dataset:-pascal-voc-2012][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: dataset:-pascal-voc-2012
+     :END:
+
+The dataset contains 20 classes. The train/val data has 11,530 images containing
+27,450 ROI annotated objects and 6,929 segmentations. We have preprocessed
+training dataset(10398) and testing dataset(1132) for you. You can download them
+on [[https://www.kaggle.com/t/8701e91b9255481e82c5eac9aa98c80a][kaggle]]
+
+**** Selective search data
+
+In methods RCNN and Fast-RCNN, selective search is a common way to propose
+region of interests. It proposes several regions on the image, and merge similar
+regions based on these kind of similarities:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    1.color similarity
+    2.texture similarity
+    3.size similarity (merge small ones)
+    4.fill similarity
+#+END_SRC
+
+In this competition, we provide you precalculated [[https://github.com/rbgirshick/fast-rcnn/blob/master/data/scripts/fetch_selective_search_data.sh][selective search data]], which
+have been included in your training/testing pickle files.
+
+In [1]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #the classes ordered by index
+    classes = [
+        '__background__',  # always index 0
+        'aeroplane',
+        'bicycle',
+        'bird',
+        'boat',
+        'bottle',
+        'bus',
+        'car',
+        'cat',
+        'chair',
+        'cow',
+        'diningtable',
+        'dog',
+        'horse',
+        'motorbike',
+        'person',
+        'pottedplant',
+        'sheep',
+        'sofa',
+        'train',
+        'tvmonitor'
+    ]
+#+END_SRC
+
+*** Preprocessing[[Preprocessing][¶]]
+
+**** Prepare bounding boxes for their class and regression data[[Prepare-bounding-boxes-for-their-class-and-regression-data][¶]]
+
+In object detection, we have two goals. One is to detect what the
+objects are, the other is to detect where they are. The first one is
+simply a classification problem. However, the second one can be seem as
+a regression problem.
+
+Assume we have some box proposals(roi, region of interst), after the
+machine seeing this region of the image, the machine should know how to
+move and resize the box proposal to output bounding box, which boxes the
+object.
+
+In [2]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import pandas as pd
+    import numpy as np
+#+END_SRC
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    df_ = pd.read_pickle('./dataset/train_data.pkl')
+    df_.head()
+#+END_SRC
+
+Out[3]:
+
+|     | image\_name        | boxes                                          | gt\_classes   | gt\_overlaps                  | flipped   | seg\_areas            | num\_objs   | selective\_search\_boxes                            |
+|-----+--------------------+------------------------------------------------+---------------+-------------------------------+-----------+-----------------------+-------------+-----------------------------------------------------|
+| 0   | 2008\_000002.jpg   | [[33, 10, 447, 292]]                           | [20]          | (0, 20)\t1.0                  | False     | [117445.0]            | 1           | [[204, 318, 361, 361], [0, 0, 499, 374], [298,...   |
+| 1   | 2008\_000003.jpg   | [[45, 10, 499, 332], [61, 189, 82, 242]]       | [19, 15]      | (0, 19)\t1.0\n (1, 15)\t1.0   | False     | [146965.0, 1188.0]    | 2           | [[0, 0, 281, 332], [162, 51, 499, 133], [39, 0...   |
+| 2   | 2008\_000007.jpg   | [[0, 229, 427, 292]]                           | [4]           | (0, 4)\t1.0                   | False     | [27392.0]             | 1           | [[0, 184, 423, 374], [273, 189, 380, 234], [0,...   |
+| 3   | 2008\_000008.jpg   | [[52, 86, 470, 419], [157, 43, 288, 166]]      | [13, 15]      | (0, 13)\t1.0\n (1, 15)\t1.0   | False     | [139946.0, 16368.0]   | 2           | [[259, 147, 399, 441], [124, 198, 272, 276], [...   |
+| 4   | 2008\_000009.jpg   | [[216, 160, 293, 220], [464, 166, 499, 217]]   | [10, 10]      | (0, 10)\t1.0\n (1, 10)\t1.0   | False     | [4758.0, 1872.0]      | 2           | [[211, 309, 420, 374], [0, 271, 499, 374], [0,...   |
+
+We can prepare our training data by transforming coordinates [x1, y1, x2, y2]
+into [delta\_x, delta\_y, log(delta\_w), log(delta\_h)]
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def bbox_transform(ex_rois, gt_rois):
+
+      ex_widths = ex_rois[2] - ex_rois[0] + 1.0
+      ex_heights = ex_rois[3] - ex_rois[1] + 1.0
+      ex_ctr_x = ex_rois[0] + 0.5 * ex_widths
+      ex_ctr_y = ex_rois[1] + 0.5 * ex_heights
+
+      gt_widths = gt_rois[2] - gt_rois[0] + 1.0
+      gt_heights = gt_rois[3] - gt_rois[1] + 1.0
+      gt_ctr_x = gt_rois[0] + 0.5 * gt_widths
+      gt_ctr_y = gt_rois[1] + 0.5 * gt_heights
+
+      targets_dx = (gt_ctr_x - ex_ctr_x) / ex_widths
+      targets_dy = (gt_ctr_y - ex_ctr_y) / ex_heights
+      targets_dw = np.log(gt_widths / ex_widths)
+      targets_dh = np.log(gt_heights / ex_heights)
+
+      targets = np.array([targets_dx, targets_dy, targets_dw, targets_dh])
+      return targets
+#+END_SRC
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    from PIL import Image
+    # Here we also resize the images into fixed 500*300 since the size of images are not the same
+    width = 500
+    height = 300
+    boxes_resize = df_['boxes'].copy()
+    for img in range(len(boxes_resize)):
+      imgage = Image.open("./dataset/JPEGImages/" + df_['image_name'][img])
+      w = imgage.size[0]
+      h = imgage.size[1]
+      boxes = boxes_resize[img]
+
+      boxes[:, [0, 2]] = boxes[:, [0, 2]] * (width / w)
+      boxes[:, [1, 3]] = boxes[:, [1, 3]] * (height / h)
+      boxes_resize[img] = np.array([df_['gt_classes'][img][0]] + bbox_transform(
+          np.array([0, 0, width - 1, height - 1]), boxes[0]).tolist())
+
+    df_['one_gt'] = boxes_resize
+    df_.head()
+#+END_SRC
+
+Out[5]:
+
+|     | image\_name        | boxes                                          | gt\_classes   | gt\_overlaps                  | flipped   | seg\_areas            | num\_objs   | selective\_search\_boxes                            | one\_gt                                             |
+|-----+--------------------+------------------------------------------------+---------------+-------------------------------+-----------+-----------------------+-------------+-----------------------------------------------------+-----------------------------------------------------|
+| 0   | 2008\_000002.jpg   | [[33, 8, 447, 233]]                            | [20]          | (0, 20)\t1.0                  | False     | [117445.0]            | 1           | [[204, 318, 361, 361], [0, 0, 499, 374], [298,...   | [20.0, -0.019, -0.0966666666667, -0.1863295781...   |
+| 1   | 2008\_000003.jpg   | [[45, 9, 499, 299], [61, 170, 82, 218]]        | [19, 15]      | (0, 19)\t1.0\n (1, 15)\t1.0   | False     | [146965.0, 1188.0]    | 2           | [[0, 0, 281, 332], [162, 51, 499, 133], [39, 0...   | [19.0, 0.045, 0.015, -0.0943106794712, -0.0304...   |
+| 2   | 2008\_000007.jpg   | [[0, 183, 427, 233]]                           | [4]           | (0, 4)\t1.0                   | False     | [27392.0]             | 1           | [[0, 184, 423, 374], [273, 189, 380, 234], [0,...   | [4.0, -0.072, 0.195, -0.15548490284, -1.771956...   |
+| 3   | 2008\_000008.jpg   | [[52, 58, 470, 284], [157, 29, 288, 112]]      | [13, 15]      | (0, 13)\t1.0\n (1, 15)\t1.0   | False     | [139946.0, 16368.0]   | 2           | [[259, 147, 399, 441], [124, 198, 272, 276], [...   | [13.0, 0.023, 0.0716666666667, -0.1767371785, ...   |
+| 4   | 2008\_000009.jpg   | [[216, 128, 293, 176], [464, 132, 499, 173]]   | [10, 10]      | (0, 10)\t1.0\n (1, 10)\t1.0   | False     | [4758.0, 1872.0]      | 2           | [[211, 309, 420, 374], [0, 271, 499, 374], [0,...   | [10.0, 0.01, 0.00833333333333, -1.85789927173,...   |
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class_count = [300 for i in range(21)]
+    df_select = df_.copy()
+    for img in range(len(df_select)):
+      if class_count[int(df_select['one_gt'][img][0])] > 0:
+        class_count[int(df_select['one_gt'][img][0])] -= 1
+      else:
+        df_select = df_select.drop(img)
+
+    df_select.reset_index(drop=True)
+    print(class_count)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    [300, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26, 71, 0, 0, 0, 0, 68, 24, 0, 0, 0]
+#+END_SRC
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    df_.to_pickle('./dataset/data_train_one.pkl')
+#+END_SRC
+
+*** Hyperparameters
+
+In [3]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #hyperparameters
+    batch_size = 16
+    img_width = 500
+    img_height = 300
+    num_classes = 21
+#+END_SRC
+
+*** Data loader
+
+In the following, we will introduce how we load data using tensorflow api.
+
+In [4]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import tensorflow as tf
+    import random
+    from tensorflow.contrib.data import Dataset, Iterator
+#+END_SRC
+
+**** Split training data into train/valid sets[[Split-training-data-into-train/valid-sets][¶]]
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def _train_valid_split(df, valid_ratio):
+      valid_random = np.random.rand(len(df)) < valid_ratio
+      return df[~valid_random].reset_index(drop=True), df[valid_random].reset_index(
+          drop=True)
+
+    df = pd.read_pickle('./dataset/data_train_one.pkl')
+    valid_ratio = 0.1
+    df_train, df_valid = _train_valid_split(df, valid_ratio)
+#+END_SRC
+
+**** Define data\_generator
+     :PROPERTIES:
+     :CUSTOM_ID: Define-data_generator
+     :END:
+
+For each image, we generate an image array and its name. As a generator
+for =tf.contrib.data.dataset= to use.
+
+In [5]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def data_generator(image_name):
+      file_path = './dataset/JPEGImages/'
+      img_file = tf.read_file(file_path + image_name)
+
+      img = tf.image.decode_image(img_file, channels=3)
+      img = tf.image.convert_image_dtype(img, tf.float32)
+
+      img.set_shape([None, None, 3])
+      img = tf.image.resize_images(img, size=[img_width, img_height])
+
+      return img, image_name
+#+END_SRC
+
+In [6]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    tf.reset_default_graph()
+#+END_SRC
+
+**** Create tensorflow iterator to process data loading[[Create-tensorflow-iterator-to-process-data-loading][¶]]
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    X_train_image_name = tf.constant(df_train['image_name'].as_matrix())
+    X_valid_image_name = tf.constant(df_valid['image_name'].as_matrix())
+
+    train_dataset = Dataset.from_tensor_slices((X_train_image_name))
+    valid_dataset = Dataset.from_tensor_slices((X_valid_image_name))
+
+    train_dataset = train_dataset.map(
+        data_generator, num_threads=4, output_buffer_size=8 * batch_size)
+    train_dataset = train_dataset.shuffle(8 * batch_size)
+    train_dataset = train_dataset.batch(batch_size)
+
+    valid_dataset = valid_dataset.map(
+        data_generator, num_threads=4, output_buffer_size=8 * batch_size)
+    valid_dataset = valid_dataset.shuffle(8 * batch_size)
+    valid_dataset = valid_dataset.batch(batch_size)
+
+    #create TensorFlow Iterator object
+    iterator = Iterator.from_structure(train_dataset.output_types,
+                                       train_dataset.output_shapes)
+    next_element = iterator.get_next()
+
+    #create two initialization ops to switch between the datasets
+    training_init_op = iterator.make_initializer(train_dataset)
+    validation_init_op = iterator.make_initializer(valid_dataset)
+
+    #for each image, get the ground truth target to feed when training
+    def get_ground_truth(x_indx, dataframe):
+      target_batch = []
+      for indx in x_indx:
+        target_batch.append(dataframe['one_gt'][indx])
+      return np.array(target_batch)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    WARNING:tensorflow:From <ipython-input-13-0a72a235adfc>:4: Dataset.from_tensor_slices (from tensorflow.contrib.data.python.ops.dataset_ops) is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Use `tf.data.Dataset.from_tensor_slices()`.
+    WARNING:tensorflow:From <ipython-input-13-0a72a235adfc>:7: calling Dataset.map (from tensorflow.contrib.data.python.ops.dataset_ops) with num_threads is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Replace `num_threads=T` with `num_parallel_calls=T`. Replace `output_buffer_size=N` with `ds.prefetch(N)` on the returned dataset.
+    WARNING:tensorflow:From <ipython-input-13-0a72a235adfc>:7: calling Dataset.map (from tensorflow.contrib.data.python.ops.dataset_ops) with output_buffer_size is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Replace `num_threads=T` with `num_parallel_calls=T`. Replace `output_buffer_size=N` with `ds.prefetch(N)` on the returned dataset.
+#+END_SRC
+
+** Simplified Object detection model
+
+*** Define single layers[[Define-single-layers][¶]]
+
+In [7]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    # convolution
+    def conv2d(name, input_layer, kernel_size, filters, padding='same', relu=True):
+      if relu:
+        output = tf.layers.conv2d(
+            inputs=input_layer,
+            filters=filters,
+            kernel_size=kernel_size,
+            padding=padding,
+            activation=tf.nn.relu,
+            name=name)
+      else:
+        output = tf.layers.conv2d(
+            inputs=input_layer,
+            filters=filters,
+            kernel_size=kernel_size,
+            padding=padding,
+            name=name)
+      return output
+
+    # max pooling
+    def max_pool(name, input_layer, window):
+      return tf.layers.max_pooling2d(
+          inputs=input_layer, pool_size=[window, window], strides=window)
+
+    def norm(name, input_layer):
+      return tf.layers.batch_normalization(input_layer)
+#+END_SRC
+
+*** Define CNN model[[Define-CNN-model][¶]]
+
+In [8]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    class CNNModel(object):
+
+      def __init__(self, name='cnn'):
+        self.name = name
+        self.istrain = True
+        with tf.variable_scope(self.name):
+          self.build_model()
+
+      def build_model(self):
+
+        #input image and roiboxes
+        self.input_layer = tf.placeholder(
+            dtype=tf.float32, shape=[None, img_width, img_height, 3])
+        #input traning ground truth [batch_numer, [label, 4]]
+        self.gt_bbox_targets = tf.placeholder(dtype=tf.float32, shape=[None, 5])
+
+        #conv 1
+        conv1_1 = conv2d('conv1_1', self.input_layer, [3, 3], 64)
+        pool1 = max_pool('pool1', conv1_1, 2)
+        norm1 = norm('norm1', pool1)
+
+        conv1_2 = conv2d('conv1_2', norm1, [3, 3], 64)
+        pool2 = max_pool('pool2', conv1_2, 2)
+        norm2 = norm('norm2', pool2)
+
+        conv2_1 = conv2d('conv2_1', norm2, [3, 3], 64)
+        pool2_2 = max_pool('pool2_2', conv2_1, 2)
+        norm2_2 = norm('norm2_2', pool2_2)
+
+        conv3_1 = conv2d('conv3_1', norm2_2, [3, 3], 64)
+        pool3_1 = max_pool('pool3_1', conv3_1, 2)
+        norm3_1 = norm('norm3_1', pool3_1)
+
+        conv3_2 = conv2d('conv3_2', norm3_1, [3, 3], 64)
+        pool3_2 = max_pool('pool3_2', conv3_2, 4)
+        norm3_2 = norm('norm3_2', pool3_2)
+
+        flatten = tf.reshape(norm3_2, [-1, 1792])
+
+        #dense layers
+        dense1 = tf.layers.dense(flatten, 128, activation=tf.nn.relu)
+        dropout1 = tf.layers.dropout(dense1, rate=0.4, training=self.istrain)
+
+        dense2 = tf.layers.dense(dropout1, 256, activation=tf.nn.relu)
+        dropout2 = tf.layers.dropout(dense2, rate=0.4, training=self.istrain)
+
+        #box and class predication
+        ##for object classification
+        self.logits_cls = tf.layers.dense(dropout2, num_classes)
+        self.out_cls = tf.nn.softmax(self.logits_cls)
+
+        ##for bounding box prediction
+        self.logits_reg = tf.layers.dense(dropout2, 4)
+
+        #calculate loss
+        gt_cls, gt_reg = tf.split(self.gt_bbox_targets, [1, 4], 1)
+
+        gt_cls_raw = tf.cast(gt_cls, tf.int64)
+        gt_cls = tf.reshape(tf.one_hot(gt_cls_raw, num_classes), [-1, num_classes])
+
+        self.loss_cls = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(
+                labels=gt_cls, logits=self.logits_cls))
+
+        self.loss_reg = tf.losses.mean_squared_error(gt_reg, self.logits_reg)
+
+        self.loss = self.loss_cls + 2 * self.loss_reg
+
+        self.lr = tf.placeholder(tf.float32, [])
+        self.global_step = tf.Variable(0, name="global_step", trainable=False)
+        optimizer = tf.train.AdamOptimizer(self.lr)
+        self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
+
+      def save_model(self, sess, global_step):
+        var_list = [v for v in tf.global_variables() if self.name in v.name]
+        saver = tf.train.Saver(var_list)
+        saver.save(sess, './checkpoint/cnn', global_step)
+
+      def load_model(self, sess):
+        var_list = [v for v in tf.global_variables() if self.name in v.name]
+        saver = tf.train.Saver(var_list)
+        ckpt = tf.train.get_checkpoint_state('./checkpoint/')
+        tf.logging.info('Loading model %s.', ckpt.model_checkpoint_path)
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+      def test_mode(self):
+        self.istrain = False
+
+      def train_mode(self):
+        self.istrain = True
+#+END_SRC
+
+*** Training[[Training][¶]]
+
+**** load the ground truth[[load-the-ground-truth][¶]]
+
+In [9]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def get_ground_truth(x_indx, dataframe):
+      target_batch = []
+      for indx in x_indx:
+        target_batch.append(dataframe['one_gt'][indx])
+      return np.array(target_batch)
+#+END_SRC
+
+**** Define training function[[Define-training-function][¶]]
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def train_model(sess, model, epoch=5):
+      for e in range(epoch):
+        model.train_mode()
+        sess.run(training_init_op)
+        losses = []
+        while True:
+
+          try:
+            x_img, x_img_names = sess.run(next_element)
+            x_indx = [
+                df_train.index[df_train['image_name'] == name.decode("utf-8")]
+                .tolist()[0] for name in x_img_names
+            ]
+
+            y_gt = get_ground_truth(x_indx, df_train)
+            feed_dict = {
+                model.input_layer: x_img,
+                model.gt_bbox_targets: y_gt,
+                model.lr: 0.0001,
+            }
+
+            _, loss, step = sess.run(
+                [model.train_op, model.loss, model.global_step],
+                feed_dict=feed_dict)
+            losses.append(loss)
+
+          except tf.errors.OutOfRangeError:
+            print('%d epoch with training loss %f' % (e, np.mean(losses)))
+            break
+
+        model.test_mode()
+        sess.run(validation_init_op)
+        losses_v = []
+        while True:
+          try:
+            x_img, x_img_names = sess.run(next_element)
+            x_indx = [
+                df_valid.index[df_valid['image_name'] == name.decode("utf-8")]
+                .tolist()[0] for name in x_img_names
+            ]
+            y_gt = get_ground_truth(x_indx, df_valid)
+
+            feed_dict = {
+                model.input_layer: x_img,
+                model.gt_bbox_targets: y_gt,
+            }
+
+            loss = sess.run([model.loss], feed_dict=feed_dict)
+
+            losses_v.append(loss)
+          except tf.errors.OutOfRangeError:
+            print('%d epoch with validation loss %f\n' % (e, np.mean(losses_v)))
+            break
+
+      return step
+#+END_SRC
+
+**** Train[[Train][¶]]
+
+In [18]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    model = CNNModel()
+    sess = tf.Session()
+    with tf.device('/device:GPU:0'):
+      sess.run(tf.global_variables_initializer())
+      step = train_model(sess, model)
+    model.save_model(sess, step)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    0 epoch with training loss 3.578939
+    0 epoch with validation loss 3.581664
+
+    1 epoch with training loss 3.445138
+    1 epoch with validation loss 3.531630
+
+    2 epoch with training loss 3.360459
+    2 epoch with validation loss 3.468754
+
+    3 epoch with training loss 3.264085
+    3 epoch with validation loss 3.379761
+
+    4 epoch with training loss 3.172552
+    4 epoch with validation loss 3.326659
+#+END_SRC
+
+*** Testing and run evaluation function
+
+In [10]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    df_test = pd.read_pickle('./dataset/test_data.pkl')
+#+END_SRC
+
+In [11]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    tf.reset_default_graph()
+    #read testing data
+    X_test_image_name = tf.constant(df_test['image_name'].as_matrix())
+    test_dataset = Dataset.from_tensor_slices((X_test_image_name))
+
+    test_dataset = test_dataset.map(
+        data_generator, num_threads=4, output_buffer_size=20)
+    test_dataset = test_dataset.batch(1)
+
+    iterator = Iterator.from_structure(test_dataset.output_types,
+                                       test_dataset.output_shapes)
+    next_element = iterator.get_next()
+    testing_init_op = iterator.make_initializer(test_dataset)
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    WARNING:tensorflow:From <ipython-input-11-11e3e9dad86f>:4: Dataset.from_tensor_slices (from tensorflow.contrib.data.python.ops.dataset_ops) is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Use `tf.data.Dataset.from_tensor_slices()`.
+    WARNING:tensorflow:From <ipython-input-11-11e3e9dad86f>:6: calling Dataset.map (from tensorflow.contrib.data.python.ops.dataset_ops) with num_threads is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Replace `num_threads=T` with `num_parallel_calls=T`. Replace `output_buffer_size=N` with `ds.prefetch(N)` on the returned dataset.
+    WARNING:tensorflow:From <ipython-input-11-11e3e9dad86f>:6: calling Dataset.map (from tensorflow.contrib.data.python.ops.dataset_ops) with output_buffer_size is deprecated and will be removed in a future version.
+    Instructions for updating:
+    Replace `num_threads=T` with `num_parallel_calls=T`. Replace `output_buffer_size=N` with `ds.prefetch(N)` on the returned dataset.
+#+END_SRC
+
+In [12]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    #load model
+    model = CNNModel()
+
+    result_cls, result_reg = [], []
+    with tf.Session() as sess:
+      model.load_model(sess)
+      model.test_mode()
+      with tf.device('/gpu:0'):
+        sess.run(testing_init_op)
+        while True:
+          try:
+            x_img, x_img_name = sess.run(next_element)
+
+            feed_dict = {model.input_layer: x_img}
+
+            logits_cls, logits_reg = sess.run(
+                [model.out_cls, model.logits_reg], feed_dict=feed_dict)
+
+            result_cls.append(logits_cls)
+            result_reg.append(logits_reg)
+          except tf.errors.OutOfRangeError:
+            break
+#+END_SRC
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    INFO:tensorflow:Loading model ./checkpoint/cnn-2910.
+    INFO:tensorflow:Restoring parameters from ./checkpoint/cnn-2910
+#+END_SRC
+
+**** Function from regression output to bounding box
+
+In [13]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    def reg_to_bbox(reg, box):
+      bbox_width = box[2] - box[0] + 1.0
+      bbox_height = box[3] - box[1] + 1.0
+      bbox_ctr_x = box[0] + 0.5 * bbox_width
+      bbox_ctr_y = box[1] + 0.5 * bbox_height
+
+      out_ctr_x = reg[0] * bbox_width + bbox_ctr_x
+      out_ctr_y = reg[1] * bbox_height + bbox_ctr_y
+
+      out_width = bbox_width * 10**reg[2]
+      out_height = bbox_height * 10**reg[3]
+
+      return np.array([
+          max(0, out_ctr_x - 0.5 * out_width),
+          max(0, out_ctr_y - 0.5 * out_height),
+          min(img_width, out_ctr_x + 0.5 * out_width),
+          min(img_height, out_ctr_y + 0.5 * out_height)
+      ])
+#+END_SRC
+
+**** Output bounding boxes[[Output-bounding-boxes][¶]]
+     :PROPERTIES:
+     :CUSTOM_ID: Output-bounding-boxes
+     :END:
+
+output bbox\_preds should be a list with length number\_of\_test\_case, each
+element in the list is an array : [number of output boxes, 4] which dimension 1
+is bounding box coordinates [x1, y1, x2, y2]
+
+output bbox\_cls should be a list with length number\_of\_test\_case, each
+element in the list is an array:[number of output boxes, 1], dimension 1 is the
+classification result of the bounding box.
+
+In [16]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    num_test_img = df_test.shape[0]
+
+    bbox_preds = []
+    bbox_cls = []
+    for img in range(num_test_img):
+      bbox_pred = []
+      bbox_c = []
+      bbox_pred.append(
+          reg_to_bbox(result_reg[img][0], np.array([0, 0, img_width, img_height])))
+      bbox_c.append(np.argmax(result_cls[img]))
+
+      bbox_cls.append(np.array(bbox_c))
+      bbox_preds.append(np.array(bbox_pred))
+#+END_SRC
+
+In [17]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    for img in range(num_test_img):
+      imgage = Image.open("./dataset/JPEGImages/" + df_test['image_name'][img])
+      w = imgage.size[0]
+      h = imgage.size[1]
+      boxes = bbox_preds[img]
+
+      boxes[:, [0, 2]] = boxes[:, [0, 2]] * (w / img_width)
+      boxes[:, [1, 3]] = boxes[:, [1, 3]] * (h / img_height)
+      bbox_preds[img] = boxes
+#+END_SRC
+
+**** Run evaluation function and get csv file
+
+The evaluation metric for this competition is comparing with ground truth[[https://www.kaggle.com/wiki/MeanFScore][Mean
+F1-Score]]. The F1 score, commonly used in information retrieval, measures
+accuracy using the statistics precision p and recall r. Precision is the ratio
+of true positives (tp, hit rate of your prediction) to all predicted positives
+(tp + fp). Recall is the ratio of true positives to all actual positives (tp +
+fn)(predicted/total objects of image). The F1 score is given by:
+
+$$ F1 = 2\frac{p \cdot r}{p+r}\ \ \mathrm{where}\ \ p =
+\frac{tp}{tp+fp},\ \ r = \frac{tp}{tp+fn} $$ The F1 metric weights
+recall and precision equally, and a good retrieval algorithm will
+maximize both precision and recall simultaneously. Thus, moderately good
+performance on both will be favored over extremely good performance on
+one and poor performance on the other.
+
+Use "evaluate()" in evaluate.py we provided to come out submission csv
+file './output.csv'
+
+Pleas do not cheat, you'll be penalized if we found it
+
+In [20]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import sys
+    #please ad ./evaluate file into your system path
+    sys.path.insert(0, './evaluate')
+    import evaluate
+    evaluate.evaluate(bbox_preds, bbox_cls)
+#+END_SRC
+
+*** Visualization
+
+In [49]:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+    from PIL import Image
+    import numpy as np
+    show = 21
+    im = np.array(
+        Image.open("./dataset/JPEGImages/" + df_test['image_name'][show]),
+        dtype=np.uint8)
+
+    # Create figure and axes
+    fig, ax = plt.subplots(1)
+
+    # Show the image
+    ax.imshow(im)
+
+    # Create a Rectangle patch
+    x1, y1, x2, y2 = bbox_preds[show][0].astype(int)
+
+    rect = patches.Rectangle(
+        (x1, y1),
+        x2 - x1,
+        y2 - y1,
+        linewidth=2,
+        edgecolor='r',
+        facecolor='none',
+        label=classes[int(bbox_cls[show])])
+
+    # Add the bounding box to the Axes
+    ax.add_patch(rect)
+    plt.text(x1, y1, classes[int(bbox_cls[show])], color='blue', fontsize=15)
+
+    plt.show()
+#+END_SRC
+
+
+*** HINT
+
+**** [[https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Girshick_Fast_R-CNN_ICCV_2015_paper.pdf][Fast-RCNN]][[Fast-RCNN][¶]]
+
+***** Roi pooling ([[https://github.com/deepsense-ai/roi-pooling][api source]])
+
+Region of interest pooling (RoI pooling) is an operation widely used in object
+detecion tasks using convolutional neural networks. It was proposed by Ross
+Girshick ([[https://arxiv.org/pdf/1504.08083.pdf][paper]]) and it achieves a significant speedup of both training and
+testing. It also maintains a high detection accuracy. The layer takes two
+inputs:
+
+1. A fixed-size feature map obtained from a deep convolutional network
+   with many convolutions and max pooling layers.
+2. An N-by-5 matrix of representing a list of regions, where N is a
+   number of RoIs. The first columns represents the image index and the
+   remaining four are the coordinates of the top left and bottom right
+   corners of the region.
+
+#+CAPTION: roi\_pooling-1
+[[https://leonardoaraujosantos.gitbooks.io/artificial-inteligence/content/more_images/RoiPoolingLayer.png]]
+
+What does the RoI pooling actually do? For every region of interest from
+the input list, it takes a section of the input feature map that
+corresponds to it and scales it to some pre-defined size (e.g., 7×7).
+The scaling is done by:
+
+1. Dividing the region proposal into equal-sized sections (the number of
+   which is the same as the dimension of the output)
+2. Finding the largest value in each section
+3. Copying these max values to the output buffer
+
+The result is that from a list of rectangles with different sizes we can quickly
+get a list of corresponding feature maps with a fixed size.
+[[https://blog.deepsense.ai/wp-content/uploads/2017/02/roi_pooling-1.gif]] (source:
+[[https://blog.deepsense.ai/region-of-interest-pooling-explained][great article]])
+
+**** [[http://www.cvlibs.net/projects/autonomous_vision_survey/literature/Ren2015NIPS.pdf][Faster-RCNN]][[Faster-RCNN][¶]]
+
+The main idea is use the last conv layers to infer region proposals. Faster-RCNN
+consists of two modules.
+
+-  Region Proposal Network (RPN): Gives a set of rectangles based on
+   deep convolution layer.
+-  Fast-RCNN RoI Pooling layer: Classify each proposal, and refining
+   proposal location.
+   [[https://leonardoaraujosantos.gitbooks.io/artificial-inteligence/content/more_images/Faster_Rcnn.png]]
+
+**** Yolo[[Yolo][¶]]
+
+-  [[https://arxiv.org/pdf/1506.02640.pdf][paper]]
+-  [[https://pjreddie.com/darknet/yolo/][reference]]
+
+**** SSD[[SSD][¶]]
+
+-  [[https://arxiv.org/pdf/1512.02325.pdf][paper]]
+-  [[https://github.com/weiliu89/caffe/tree/ssd][reference]]
+
+*** Scoring[[Scoring][¶]]
+
+Your score willl be 50% of the final result on kaggle and 50% of your report.
+
+Your report(.ipynb file) should have:
+
+-  Your code
+-  What kind of models you have tried and how did they work.
+-  Anything you've done and want to tell us.
+-  What problems you occured and how did you solve them.
+
+*** Competition timeline
+
+-  11/14 competition announced.
+-  11/26 23:59 competition deadline.
+-  11/28 winners share.
+-  11/30 23:59 report deadline.
+
