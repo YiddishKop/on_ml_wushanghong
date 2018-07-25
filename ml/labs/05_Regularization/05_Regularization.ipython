@@ -1,0 +1,512 @@
+# %matplotlib inline
+import yapf
+
+from pylab import *
+from sklearn.model_selection import train_test_split
+
+def gen_data(num_data, sigma):
+  x = 2 * np.pi * (np.random.rand(num_data) - 0.5)
+  y = np.sin(x) + np.random.normal(0, sigma, num_data)
+  return (x, y)
+
+num_data = 30
+sigma = 0.2
+x, y = gen_data(num_data, sigma)
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size=0.3, random_state=0)
+
+plt.scatter(x_train, y_train, color='blue')
+plt.scatter(x_test, y_test, color='green')
+
+x_grid = np.linspace(-1 * np.pi, 1 * np.pi)
+sin_x = np.sin(x_grid)
+plt.plot(x_grid, sin_x, color='red', linewidth=2)
+
+plt.xlabel('x')
+plt.ylabel('y')
+plt.xlim(-np.pi, np.pi)
+plt.ylim(-2, 2)
+plt.tight_layout()
+plt.savefig('./output/fig-dataset-sin.png', dpi=300)
+plt.show()
+
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+
+degree = [1, 3, 10]
+std_list = []
+for d in degree:
+  X_fit = np.arange(-np.pi, np.pi, .1)[:, np.newaxis]
+  poly = PolynomialFeatures(degree=d)
+
+  for i in range(20):
+    x, y = gen_data(num_data, sigma)
+    x_train, x_test, y_train, y_test = train_test_split(
+        x, y, test_size=0.3, random_state=0)
+
+    regr = LinearRegression()
+    regr = regr.fit(
+        poly.fit_transform(x_train[:, np.newaxis]), y_train[:, np.newaxis])
+
+    y_fit = regr.predict(poly.transform(X_fit))
+    plt.plot(X_fit, y_fit, color='green', lw=1)
+
+  x_grid = np.linspace(-1 * np.pi, 1 * np.pi)
+  sin_x = np.sin(x_grid)
+  plt.plot(x_grid, sin_x, color='red', linewidth=2)
+
+  plt.title('Degree: %d' % d)
+  plt.xlim(-np.pi, np.pi)
+  plt.ylim(-2, 2)
+  plt.tight_layout()
+  plt.savefig('./output/fig-polyreg-%d.png' % d, dpi=300)
+  plt.show()
+
+from sklearn.metrics import mean_squared_error
+
+num_data = 50
+x, y = gen_data(num_data, sigma)
+x_train, x_test, y_train, y_test = train_test_split(
+    x, y, test_size=0.3, random_state=0)
+
+mse_train = []
+mse_test = []
+
+max_degree = 12
+
+for d in range(1, max_degree):
+  poly = PolynomialFeatures(degree=d)
+  X_train_poly = poly.fit_transform(x_train[:, newaxis])
+  X_test_poly = poly.transform(x_test[:, newaxis])
+
+  regr = LinearRegression()
+  regr = regr.fit(X_train_poly, y_train)
+  y_train_pred = regr.predict(X_train_poly)
+  y_test_pred = regr.predict(X_test_poly)
+
+  mse_train.append(mean_squared_error(y_train, y_train_pred))
+  mse_test.append(mean_squared_error(y_test, y_test_pred))
+
+plt.plot(
+    range(1, max_degree),
+    mse_train,
+    label='Training error',
+    color='blue',
+    linewidth=2)
+plt.plot(
+    range(1, max_degree),
+    mse_test,
+    label='Testing error',
+    color='red',
+    linewidth=2)
+plt.legend(loc='upper right')
+plt.xlabel('Model complexity (polynomial degree)')
+plt.ylabel('$MSE$')
+plt.tight_layout()
+plt.savefig('./output/fig-error-curve.png', dpi=300)
+plt.show()
+
+def mse(model, X, y):
+  return ((model.predict(X) - y)**2).mean()
+
+from sklearn.learning_curve import learning_curve
+
+num_data = 120
+sigma = 1
+degree = [1, 3, 10]
+x, y = gen_data(num_data, sigma)
+for d in degree:
+  poly = PolynomialFeatures(degree=d)
+  X = poly.fit_transform(x[:, np.newaxis])
+
+  lr = LinearRegression()
+  train_sizes, train_scores, test_scores = learning_curve(
+      estimator=lr, X=X, y=y, scoring=mse)
+
+  train_mean = np.mean(train_scores, axis=1)
+  train_std = np.std(train_scores, axis=1)
+  test_mean = np.mean(test_scores, axis=1)
+  test_std = np.std(test_scores, axis=1)
+
+  plt.plot(
+      train_sizes,
+      train_mean,
+      color='blue',
+      marker='o',
+      markersize=5,
+      label='Training error')
+  plt.fill_between(
+      train_sizes,
+      train_mean + train_std,
+      train_mean - train_std,
+      alpha=0.15,
+      color='blue')
+
+  plt.plot(
+      train_sizes,
+      test_mean,
+      color='green',
+      linestyle='--',
+      marker='s',
+      markersize=5,
+      label='Testing error')
+  plt.fill_between(
+      train_sizes,
+      test_mean + test_std,
+      test_mean - test_std,
+      alpha=0.15,
+      color='green')
+
+  plt.hlines(y=sigma, xmin=0, xmax=80, color='red', linewidth=2, linestyle='--')
+
+  plt.title('Degree: %d' % d)
+  plt.grid()
+  plt.xlabel('Number of training samples')
+  plt.ylabel('MSE')
+  plt.legend(loc='upper right')
+  plt.ylim([0, 3])
+  plt.tight_layout()
+  plt.savefig('./output/fig-learning-curve-%d.png' % d, dpi=300)
+  plt.show()
+
+/anaconda3/lib/python3.6/site-packages/sklearn/cross_validation.py:41: DeprecationWarning: This module was deprecated in version 0.18 in favor of the model_selection module into which all the refactored classes and functions are moved. Also note that the interface of the new CV iterators are different from that of this module. This module will be removed in 0.20.
+  "This module will be removed in 0.20.", DeprecationWarning)
+/anaconda3/lib/python3.6/site-packages/sklearn/learning_curve.py:22: DeprecationWarning: This module was deprecated in version 0.18 in favor of the model_selection module into which all the functions are moved. This module will be removed in 0.20
+  DeprecationWarning)
+
+import pandas as pd
+
+df = pd.read_csv(
+    'https://archive.ics.uci.edu/ml/machine-learning-databases/'
+    'housing/housing.data',
+    header=None,
+    sep='\s+')
+
+df.columns = [
+    'CRIM', 'ZN', 'INDUS', 'CHAS', 'NOX', 'RM', 'AGE', 'DIS', 'RAD', 'TAX',
+    'PTRATIO', 'B', 'LSTAT', 'MEDV'
+]
+df.head()
+
+from sklearn.preprocessing import StandardScaler
+
+X = df.iloc[:, :-1].values
+y = df['MEDV'].values
+
+sc_x = StandardScaler()
+X_std = sc_x.fit_transform(X)
+
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_squared_error
+
+poly = PolynomialFeatures(degree=3)
+X_poly = poly.fit_transform(X_std)
+X_train, X_test, y_train, y_test = train_test_split(
+    X_poly, y, test_size=0.3, random_state=0)
+
+for a in [0, 1, 10, 100, 1000]:
+  lr_rg = Ridge(alpha=a)
+  lr_rg.fit(X_train, y_train)
+
+  y_train_pred = lr_rg.predict(X_train)
+  y_test_pred = lr_rg.predict(X_test)
+
+  print('\n[Alpha = %d]' % a)
+  print('MSE train: %.2f, test: %.2f' %
+        (mean_squared_error(y_train, y_train_pred),
+         mean_squared_error(y_test, y_test_pred)))
+
+[Alpha = 0]
+MSE train: 0.00, test: 19958.68
+
+[Alpha = 1]
+MSE train: 0.73, test: 23.05
+
+[Alpha = 10]
+MSE train: 1.66, test: 16.83
+
+[Alpha = 100]
+MSE train: 3.60, test: 15.16
+
+[Alpha = 1000]
+MSE train: 8.81, test: 19.22
+
+/anaconda3/lib/python3.6/site-packages/scipy/linalg/basic.py:223: RuntimeWarning: scipy.linalg.solve
+Ill-conditioned matrix detected. Result is not guaranteed to be accurate.
+Reciprocal condition number: 2.1950685223682956e-20
+  ' condition number: {}'.format(rcond), RuntimeWarning)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_std, y, test_size=0.3, random_state=0)
+
+max_alpha = 1000
+coef_ = np.zeros((max_alpha, 13))
+
+for a in range(1, max_alpha):
+  lr_rg = Ridge(alpha=a)
+  lr_rg.fit(X_train, y_train)
+
+  y_train_pred = lr_rg.predict(X_train)
+  y_test_pred = lr_rg.predict(X_test)
+  coef_[a, :] = lr_rg.coef_.reshape(1, -1)
+
+plt.hlines(
+    y=0, xmin=0, xmax=max_alpha, color='red', linewidth=2, linestyle='--')
+
+for i in range(13):
+  plt.plot(range(max_alpha), coef_[:, i])
+
+plt.ylabel('Coefficients')
+plt.xlabel('Alpha')
+plt.tight_layout()
+plt.savefig('./output/fig-ridge-decay.png', dpi=300)
+plt.show()
+
+from sklearn.linear_model import Lasso
+from sklearn.metrics import mean_squared_error
+
+for a in [0.001, 0.01, 0.1, 1, 10]:
+  lr_rg = Lasso(alpha=a)
+  lr_rg.fit(X_train, y_train)
+
+  y_train_pred = lr_rg.predict(X_train)
+  y_test_pred = lr_rg.predict(X_test)
+
+  print('\n[Alpha = %.2f]' % a)
+  print('MSE train: %.2f, test: %.2f' %
+        (mean_squared_error(y_train, y_train_pred),
+         mean_squared_error(y_test, y_test_pred)))
+
+[Alpha = 0.00]
+MSE train: 19.96, test: 27.20
+
+[Alpha = 0.01]
+MSE train: 19.96, test: 27.28
+
+[Alpha = 0.10]
+MSE train: 20.42, test: 28.33
+
+[Alpha = 1.00]
+MSE train: 26.04, test: 33.41
+
+[Alpha = 10.00]
+MSE train: 84.76, test: 83.77
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X_std, y, test_size=0.3, random_state=0)
+
+max_alpha = 10
+coef_ = np.zeros((max_alpha, 13))
+
+for a in range(10):
+  lr_rg = Lasso(alpha=a + 0.1)
+  lr_rg.fit(X_train, y_train)
+
+  y_train_pred = lr_rg.predict(X_train)
+  y_test_pred = lr_rg.predict(X_test)
+  coef_[a, :] = lr_rg.coef_.reshape(1, -1)
+
+plt.hlines(
+    y=0, xmin=0, xmax=max_alpha, color='red', linewidth=2, linestyle='--')
+
+for i in range(13):
+  plt.plot(range(max_alpha), coef_[:, i])
+
+plt.ylabel('Coefficients')
+plt.xlabel('Alpha')
+plt.tight_layout()
+plt.savefig('./output/fig-ridge-decay.png', dpi=300)
+plt.show()
+
+var_num = X_train.shape[1]
+
+lr_lasso = Lasso(alpha=1)
+lr_lasso.fit(X_train, y_train)
+lr_ridge = Ridge(alpha=1)
+lr_ridge.fit(X_train, y_train)
+
+plt.scatter(range(var_num), lr_lasso.coef_, label='LASSO', color='blue')
+plt.scatter(range(var_num), lr_ridge.coef_, label='Ridge', color='green')
+plt.hlines(y=0, xmin=0, xmax=var_num - 1, color='red', linestyle='--')
+plt.xlim(0, 12)
+plt.legend(loc='upper right')
+plt.xlabel('Coefficients index')
+plt.ylabel('Coefficients')
+plt.tight_layout()
+plt.show()
+
+epsilon = 1e-4
+idxs = np.where(abs(lr_lasso.coef_) > epsilon)
+print('Selected attributes: {}'.format(df.columns.values[idxs]))
+
+Selected attributes: ['RM' 'TAX' 'PTRATIO' 'LSTAT']
+
+import seaborn as sns
+
+print('All attributes:')
+sns.set(style='whitegrid', context='notebook')
+sns.pairplot(df, x_vars=df.columns[:-1], y_vars=['MEDV'], size=2.5)
+plt.tight_layout()
+plt.show()
+
+print('Selected attributes:')
+sns.set(style='whitegrid', context='notebook')
+sns.pairplot(df, x_vars=df.columns[idxs], y_vars=['MEDV'], size=2.5)
+plt.tight_layout()
+plt.show()
+sns.reset_orig()
+
+All attributes:
+
+Selected attributes:
+
+from sklearn.linear_model import RANSACRegressor
+
+X = df['RM'].values[:, np.newaxis]
+y = df['MEDV'].values
+
+ransac = RANSACRegressor(
+    LinearRegression(),
+    max_trials=100,
+    min_samples=50,
+    residual_threshold=16.0,
+    random_state=0)
+ransac.fit(X, y)
+
+inlier_mask = ransac.inlier_mask_
+outlier_mask = np.logical_not(inlier_mask)
+line_X = np.arange(3, 10, 1)
+line_y_ransac = ransac.predict(line_X[:, np.newaxis])
+plt.scatter(
+    X[inlier_mask], y[inlier_mask], c='blue', marker='o', label='Inliers')
+plt.scatter(
+    X[outlier_mask],
+    y[outlier_mask],
+    c='lightgreen',
+    marker='s',
+    label='Outliers')
+plt.plot(line_X, line_y_ransac, color='red')
+plt.xlabel('Average number of rooms [RM]')
+plt.ylabel('Price in $1000\'s [MEDV]')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
+print('\n[RANSAC]')
+print('Slope (w_1): {:.2f}    Intercept (w_0): {:.2f}'.format(
+    ransac.estimator_.coef_[0], ransac.estimator_.intercept_))
+
+slr = LinearRegression()
+slr.fit(X, y)
+print('\n[Ordinary least square]')
+y_pred = slr.predict(X)
+print('Slope (w_1): {:.2f}    Intercept (w_0): {:.2f}'.format(
+    slr.coef_[0], slr.intercept_))
+
+[RANSAC]
+Slope (w_1): 10.22    Intercept (w_0): -41.93
+
+[Ordinary least square]
+Slope (w_1): 9.10    Intercept (w_0): -34.67
+
+from sklearn.linear_model import Ridge
+from sklearn.preprocessing import StandardScaler
+
+X = df.iloc[:, :-1].values
+y = df['MEDV'].values
+
+sc_x = StandardScaler()
+X_std = sc_x.fit_transform(X)
+
+for d in range(1, 7):
+  poly = PolynomialFeatures(degree=d)
+  X_poly = poly.fit_transform(X_std)
+
+  X_train, X_test, y_train, y_test = train_test_split(
+      X_poly, y, test_size=0.3, random_state=0)
+
+  X_train, X_valid, y_train, y_valid = train_test_split(
+      X_train, y_train, test_size=0.3, random_state=0)
+
+  rg = Ridge(alpha=100)
+  rg.fit(X_train, y_train)
+
+  y_train_pred = rg.predict(X_train)
+  y_valid_pred = rg.predict(X_valid)
+  y_test_pred = rg.predict(X_test)
+
+  print('\n[Degree = %d]' % d)
+  print('MSE train: %.2f, valid: %.2f, test: %.2f' %
+        (mean_squared_error(y_train, y_train_pred),
+         mean_squared_error(y_valid, y_valid_pred),
+         mean_squared_error(y_test, y_test_pred)))
+
+[Degree = 1]
+MSE train: 25.00, valid: 21.43, test: 32.09
+
+[Degree = 2]
+MSE train: 9.68, valid: 14.24, test: 20.24
+
+[Degree = 3]
+MSE train: 3.38, valid: 17.74, test: 18.63
+
+[Degree = 4]
+MSE train: 1.72, valid: 16.67, test: 30.98
+
+[Degree = 5]
+MSE train: 0.97, valid: 59.73, test: 57.02
+
+[Degree = 6]
+MSE train: 0.60, valid: 1444.08, test: 33189.41
+
+import pandas as pd
+import numpy as np
+
+X_train = pd.read_csv('./data/nba/X_train.csv')
+y_train = pd.read_csv('./data/nba/y_train.csv')
+
+X_test = pd.read_csv('./data/nba/X_test.csv')
+
+print(X_train.shape)
+print(X_train.columns)
+print(y_train.columns)
+
+(52399, 8)
+Index(['PERIOD', 'GAME_CLOCK', 'SHOT_CLOCK', 'DRIBBLES', 'TOUCH_TIME',
+       'SHOT_DIST', 'PTS_TYPE', 'CLOSE_DEF_DIST'],
+      dtype='object')
+Index(['FGM'], dtype='object')
+
+print(X_train[:4])
+print(y_train[:4])
+
+PERIOD  GAME_CLOCK  SHOT_CLOCK  DRIBBLES  TOUCH_TIME  SHOT_DIST  PTS_TYPE  \
+0       2         557        15.5         0         0.7        2.1         2   
+1       2         151        20.1         0         0.8        2.7         2   
+2       3         448        14.2         0         0.8        5.1         2   
+3       1         279        10.6         0         0.6        1.9         2   
+
+   CLOSE_DEF_DIST  
+0             0.0  
+1             3.4  
+2             0.1  
+3             2.7  
+   FGM
+0    1
+1    1
+2    0
+3    1
+
+def pd2np(df):
+  return df.as_matrix()
+
+X_train = pd2np(X_train)
+y_train = pd2np(y_train)
+
+X_test = pd2np(X_test)
+
+print(type(X_train))
+print(X_train.shape)
+
+<class 'numpy.ndarray'>
+(52399, 8)

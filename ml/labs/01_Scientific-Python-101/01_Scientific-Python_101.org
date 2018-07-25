@@ -1859,10 +1859,7 @@ A similar function (=scipy.spatial.distance.cdist=) computes the distance
 between all pairs across two sets of points; you can read about it in the
 [[http://docs.scipy.org/doc/scipy/reference/generated/scipy.spatial.distance.cdist.html][documentation]].
 
-** Matplotlib[[Matplotlib][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Matplotlib
-   :END:
+** Matplotlib
 
 [[http://matplotlib.org/][Matplotlib]] is a plotting library. In this section give a brief introduction to
 the =matplotlib.pyplot= module, which provides a plotting system similar to that
@@ -1922,7 +1919,6 @@ In [16]:
 #+END_SRC
 
 
-
 *** Subplots[[Subplots][¶]]
     :PROPERTIES:
     :CUSTOM_ID: Subplots
@@ -1967,7 +1963,6 @@ You can read much more about the =subplot= function in the [[http://matplotlib.o
 
     You can use the =imshow= function to show images. Here is an example:
 
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import numpy as np
     from scipy.misc import imread, imresize
@@ -1990,7 +1985,6 @@ You can read much more about the =subplot= function in the [[http://matplotlib.o
     plt.imshow(np.uint8(img_tinted))
     plt.show()
 #+END_SRC
-
 
 ** Assignment (Optional)
 

@@ -1,0 +1,897 @@
+# import package needed
+%matplotlib inline
+import matplotlib.pyplot as plt
+import os
+os.environ["SDL_VIDEODRIVER"] = "dummy"  # this line make pop-out window not appear
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import tensorflow as tf
+import numpy as np
+import skimage.color
+import skimage.transform
+from ple.games.flappybird import FlappyBird
+from ple import PLE
+game = FlappyBird()
+env = PLE(game, fps=30, display_screen=False)  # environment interface to game
+
+C:\Users\conjugate-forever\Anaconda3\lib\site-packages\h5py\__init__.py:34: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+
+couldn't import doomish
+Couldn't import doom
+
+# define input size
+screen_width = 80
+screen_height = 80
+num_stack = 4
+
+def preprocess(screen):
+  #screen = skimage.color.rgb2gray(screen)
+  screen = skimage.transform.resize(screen, [screen_width, screen_height])
+  return screen
+
+import math
+import copy
+from collections import defaultdict
+MIN_EXPLORING_RATE = 10e-4
+
+class Agent:
+
+  def __init__(self, name, num_action, t=0, discount_factor=0.99):
+    self.exploring_rate = 0.1
+    self.discount_factor = discount_factor
+    self.num_action = num_action
+    self.name = name
+    with tf.variable_scope(name):
+      self.build_model()
+
+  def build_model(self):
+
+    # input: current screen, selected action and reward
+    self.input_screen = tf.placeholder(
+        tf.float32, shape=[None, screen_width, screen_height, num_stack])
+    self.action = tf.placeholder(tf.int32, [None])
+    self.reward = tf.placeholder(tf.float32, [None])
+    self.is_training = tf.placeholder(tf.bool, shape=[])
+
+    def net(screen, reuse=False):
+      with tf.variable_scope(
+          "layers",
+          reuse=reuse,
+          initializer=tf.truncated_normal_initializer(stddev=1e-2)):
+        conv1 = tf.layers.conv2d(
+            inputs=screen,
+            filters=32,
+            kernel_size=[8, 8],
+            strides=[4, 4],
+            padding='SAME',
+            activation=tf.nn.relu)
+        pool1 = tf.layers.max_pooling2d(
+            conv1, pool_size=[2, 2], strides=[2, 2], padding='SAME')
+
+        conv2 = tf.layers.conv2d(
+            inputs=pool1,
+            filters=64,
+            kernel_size=[4, 4],
+            strides=[2, 2],
+            padding='SAME',
+            activation=tf.nn.relu)
+        conv3 = tf.layers.conv2d(
+            inputs=conv2,
+            filters=64,
+            kernel_size=[3, 3],
+            strides=[1, 1],
+            padding='SAME',
+            activation=tf.nn.relu)
+        flat = tf.contrib.layers.flatten(conv3)
+        dense = tf.layers.dense(inputs=flat, units=512, activation=tf.nn.relu)
+        Q = tf.layers.dense(
+            inputs=dense, units=self.num_action, activation=None)
+
+        return Q
+
+    # optimize
+    self.output = net(self.input_screen
+                     )  # Q(s,a,theta) for all a, shape (batch_size, num_action)
+    index = tf.stack([tf.range(tf.shape(self.action)[0]), self.action], axis=1)
+    self.esti_Q = tf.gather_nd(
+        self.output,
+        index)  # Q(s,a,theta) for selected action, shape (batch_size, 1)
+
+    self.max_Q = tf.reduce_max(
+        self.output, axis=1)  # max(Q(s',a',theta')), shape (batch_size, 1)
+    self.tar_Q = tf.placeholder(tf.float32, [None])
+
+    # loss = E[r+max(Q(s',a',theta'))-Q(s,a,theta)]
+    self.loss = tf.reduce_mean(
+        tf.square(self.reward + self.discount_factor * self.tar_Q -
+                  self.esti_Q))
+
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-5)
+    self.g_gvs = optimizer.compute_gradients(
+        self.loss,
+        var_list=[v for v in tf.global_variables() if self.name in v.name])
+    self.train_op = optimizer.apply_gradients(self.g_gvs)
+    self.pred = tf.argmax(
+        self.output, axis=1
+    )  # select action with highest action-value, only used in inference
+
+  def select_action(self, input_screen, sess):
+    # epsilon-greedy
+    if np.random.rand() < self.exploring_rate:
+      action = np.random.choice(num_action)  # Select a random action
+    else:
+      input_screen = np.array(input_screen).transpose([1, 2, 0])
+      feed_dict = {
+          self.input_screen: input_screen[None, :],
+          self.is_training: False,
+      }
+      action = sess.run(
+          self.pred,
+          feed_dict=feed_dict)[0]  # Select the action with the highest q
+    return action
+
+  def update_policy(self, input_screens, actions, rewards, input_screens_plum,
+                    terminal, target_netwrok):
+    # use max_Q estimate from target one to update online one
+    feed_dict = {
+        target_netwrok.input_screen:
+            np.array(input_screens_plum).transpose([0, 2, 3, 1]),
+        target_netwrok.is_training:
+            True,
+    }
+    max_Q = sess.run(target_netwrok.max_Q, feed_dict=feed_dict)
+    max_Q *= ~np.array(terminal)
+    feed_dict = {
+        self.input_screen: np.array(input_screens).transpose([0, 2, 3, 1]),
+        self.tar_Q: max_Q,
+        self.action: actions,
+        self.reward: rewards,
+        self.is_training: True,
+    }
+    loss, _ = sess.run([self.loss, self.train_op], feed_dict=feed_dict)
+    return loss
+
+  def update_parameters(self, episode):
+    if self.exploring_rate > MIN_EXPLORING_RATE:
+      self.exploring_rate -= (0.1 - MIN_EXPLORING_RATE) / 3000000
+
+  def shutdown_explore(self):
+    # make action selection greedy
+    self.exploring_rate = 0
+
+def get_update_ops():
+  # return operations assign weight to target network
+  src_vars = [v for v in tf.global_variables() if 'online' in v.name]
+  tar_vars = [v for v in tf.global_variables() if 'target' in v.name]
+  update_ops = []
+  for src_var, tar_var in zip(src_vars, tar_vars):
+    update_ops.append(tar_var.assign(src_var))
+  return update_ops
+
+def update_target(update_ops, sess):
+  sess.run(update_ops)
+
+# init agent
+tf.reset_default_graph()
+num_action = len(env.getActionSet())
+
+# agent for frequently updating
+online_agent = Agent('online', num_action)
+
+# agent for slow updating
+target_agent = Agent('target', num_action)
+update_ops = get_update_ops()
+
+class Replay_buffer():
+
+  def __init__(self, buffer_size=50000):
+    self.experiences = []
+    self.buffer_size = buffer_size
+
+  def add(self, experience):
+    if len(self.experiences) >= self.buffer_size:
+      self.experiences.pop(0)
+    self.experiences.append(experience)
+
+  def sample(self, size):
+    """
+        sameple experience from buffer
+        """
+    if size > len(self.experiences):
+      experiences_idx = np.random.choice(len(self.experiences), size=size)
+    else:
+      experiences_idx = np.random.choice(
+          len(self.experiences), size=size, replace=False)
+    # from all sampled experiences, extract a tuple of (s,a,r,s')
+    screens = []
+    actions = []
+    rewards = []
+    screens_plum = []
+    terminal = []
+    for i in range(size):
+      screens.append(self.experiences[experiences_idx[i]][0])
+      actions.append(self.experiences[experiences_idx[i]][1])
+      rewards.append(self.experiences[experiences_idx[i]][2])
+      screens_plum.append(self.experiences[experiences_idx[i]][3])
+      terminal.append(self.experiences[experiences_idx[i]][4])
+    return screens, actions, rewards, screens_plum, terminal
+
+# init buffer
+buffer = Replay_buffer()
+
+def make_anim(images, fps=60, true_image=False):
+  duration = len(images) / fps
+  import moviepy.editor as mpy
+
+  def make_frame(t):
+    try:
+      x = images[int(len(images) / duration * t)]
+    except:
+      x = images[-1]
+
+    if true_image:
+      return x.astype(np.uint8)
+    else:
+      return ((x + 1) / 2 * 255).astype(np.uint8)
+
+  clip = mpy.VideoClip(make_frame, duration=duration)
+  clip.fps = fps
+  return clip
+
+# init all
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.InteractiveSession(config=config)
+sess.run(tf.global_variables_initializer())
+
+from IPython.display import Image, display
+
+update_every_t_step = 3
+print_every_episode = 10
+save_video_every_episode = 100
+NUM_EPISODE = 100
+NUM_EXPLORE = 20
+
+# we can redefine origin reward function
+reward_values = {
+    "positive": 1,  # reward pass a pipe
+    "tick": 0.1,  # reward per timestamp
+    "loss": -1,  # reward of gameover
+}
+for episode in range(0, NUM_EPISODE + 1):
+
+  # Reset the environment
+  game = FlappyBird()
+  # for demo purpose, the following code is trained in the same scene,
+  env = PLE(
+      game,
+      fps=30,
+      display_screen=False,
+      reward_values=reward_values,
+      rng=np.random.RandomState(1))
+  env.reset_game()
+  env.act(0)  # dummy input to make sure input screen is correct
+
+  # record frame
+  if episode % save_video_every_episode == 0:
+    frames = [env.getScreenRGB()]
+
+  # for every 500 episodes, shutdown exploration to see performance of greedy action
+  if episode % print_every_episode == 0:
+    online_agent.shutdown_explore()
+
+  # grayscale input screen for this episode
+  input_screens = [preprocess(env.getScreenGrayscale())] * 4
+
+  # experience for this episode, store all (s,a,r,s') tuple
+  experience = []
+
+  # cumulate reward for this episode
+  cum_reward = 0
+
+  t = 0
+  while not env.game_over():
+
+    # feed four previous screen, select an action
+    action = online_agent.select_action(input_screens[-4:], sess)
+
+    # execute the action and get reward
+    reward = env.act(env.getActionSet()[action])
+
+    # record frame
+    if episode % save_video_every_episode == 0:
+      frames.append(env.getScreenRGB())
+
+    # cumulate reward
+    cum_reward += reward
+
+    # append grayscale screen for this episode
+    input_screens.append(preprocess(env.getScreenGrayscale()))
+
+    # append experience for this episode
+    buffer.add((input_screens[-5:-1], action, reward, input_screens[-4:],
+                env.game_over()))
+    t += 1
+
+    # update agent
+  if episode > NUM_EXPLORE:
+    train_screens, train_actions, train_rewards, train_screens_plum, terminal = buffer.sample(
+        32)
+    loss = online_agent.update_policy(train_screens, train_actions,
+                                      train_rewards, train_screens_plum,
+                                      terminal, target_agent)
+  if t % update_every_t_step == 0 and episode > NUM_EXPLORE:
+    update_target(update_ops, sess)
+
+  # update explore rating and learning rate
+  online_agent.update_parameters(episode)
+  target_agent.update_parameters(episode)
+
+  if episode % print_every_episode == 0 and episode > NUM_EXPLORE:
+    print(
+        "[{}] time live:{}, cumulated reward: {}, exploring rate: {}, loss: {}".
+        format(episode, t, cum_reward, target_agent.exploring_rate, loss))
+
+  if episode % save_video_every_episode == 0:  # for every 100 episode, record an animation
+    clip = make_anim(frames, fps=60, true_image=True).rotate(-90)
+    clip.write_videofile("movie/DQN-{}.webm".format(episode), fps=60)
+
+[MoviePy] >>>> Building video movie/DQN-0.webm
+[MoviePy] Writing video movie/DQN-0.webm
+
+100%|██████████████████████████████████████████████████████████████████████████████████| 63/63 [00:00<00:00, 73.53it/s]
+
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: movie/DQN-0.webm 
+
+[30] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999769000000025, loss: 0.0002737562172114849
+[40] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999736000000028, loss: 0.00012698033242486417
+[50] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999703000000032, loss: 0.00016153350588865578
+[60] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999670000000035, loss: 0.024776915088295937
+[70] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999637000000039, loss: 0.00035773846320807934
+[80] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999604000000042, loss: 0.00021525012562051415
+[90] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.09999571000000046, loss: 0.02522600255906582
+[100] time live:61, cumulated reward: 5.099999999999994, exploring rate: 0.0999953800000005, loss: 0.024692703038454056
+[MoviePy] >>>> Building video movie/DQN-100.webm
+[MoviePy] Writing video movie/DQN-100.webm
+
+100%|██████████████████████████████████████████████████████████████████████████████████| 63/63 [00:00<00:00, 72.93it/s]
+
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: movie/DQN-100.webm
+
+from moviepy.editor import *
+clip = VideoFileClip("movie/DQN-100.webm")
+display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+
+98%|███████████████████████████████████████████████████████████████████████████████▋ | 63/64 [00:00<00:00, 416.57it/s]
+
+import math
+import copy
+from collections import defaultdict
+MIN_EXPLORING_RATE = 0.01
+MIN_LEARNING_RATE = 0.1
+
+class Policy_Gradiebt_Agent:
+
+  def __init__(self, name, num_action, t=0, discount_factor=0.99):
+    self.discount_factor = discount_factor
+    self.num_action = num_action
+    self.name = name
+    with tf.variable_scope(name):
+      self.build_model()
+
+  def build_model(self):
+
+    # input: current screen, selected action and reward
+    self.input_screen = tf.placeholder(
+        tf.float32, shape=[None, screen_width, screen_height, num_stack])
+    self.action = tf.placeholder(tf.int32, [None])
+    self.reward = tf.placeholder(tf.float32, [None])
+    self.is_training = tf.placeholder(tf.bool, shape=[])
+
+    def net(screen, reuse=False):
+      with tf.variable_scope("layers", reuse=reuse):
+        conv1 = tf.layers.conv2d(
+            inputs=screen,
+            filters=32,
+            kernel_size=[8, 8],
+            strides=[4, 4],
+            padding='SAME',
+            activation=tf.nn.relu)
+        pool1 = tf.layers.max_pooling2d(
+            conv1, pool_size=[2, 2], strides=[2, 2], padding='SAME')
+
+        conv2 = tf.layers.conv2d(
+            inputs=pool1,
+            filters=64,
+            kernel_size=[4, 4],
+            strides=[2, 2],
+            padding='SAME',
+            activation=tf.nn.relu)
+        conv3 = tf.layers.conv2d(
+            inputs=conv2,
+            filters=64,
+            kernel_size=[3, 3],
+            strides=[1, 1],
+            padding='SAME',
+            activation=tf.nn.relu)
+        self.flat = tf.contrib.layers.flatten(conv3)
+
+        self.dense1 = tf.layers.dense(
+            inputs=self.flat, units=512, activation=tf.nn.relu)
+        self.dense2 = tf.layers.dense(
+            inputs=self.dense1, units=self.num_action, activation=None)
+        return self.dense2
+
+    # optimize
+    self.output_logit = net(
+        self.input_screen
+    )  # logit of probility(P(s,a,theta)) for all a, shape (batch_size, num_action)
+    index = tf.stack([tf.range(tf.shape(self.action)[0]), self.action], axis=1)
+    self.prob = tf.gather_nd(
+        tf.nn.softmax(self.output_logit),
+        index)  # P(s,a,theta) for selected action, shape (batch_size, 1)
+
+    # loss = E[log(p(s,a))*r]
+    # because we want to maximize objective, add negative sign before loss
+    self.loss = -tf.reduce_mean(tf.log(self.prob + 0.00000001) * self.reward)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-6)
+    g_gvs = optimizer.compute_gradients(
+        self.loss,
+        var_list=[v for v in tf.global_variables() if self.name in v.name])
+    self.train_op = optimizer.apply_gradients(g_gvs)
+
+    self.pred = tf.multinomial(self.output_logit,
+                               1)  # sample action from distribution
+
+  def select_action(self, input_screen, sess):
+    input_screen = np.array(input_screen).transpose([1, 2, 0])
+    feed_dict = {
+        self.input_screen: input_screen[None, :],
+        self.is_training: False,
+    }
+    action = sess.run(
+        self.pred,
+        feed_dict=feed_dict)[0][0]  # sameple action from distribution
+    return action
+
+  def update_policy(self, input_screens, actions, rewards, input_screens_plum):
+    feed_dict = {
+        self.input_screen: np.array(input_screens).transpose([0, 2, 3, 1]),
+        self.action: actions,
+        self.reward: rewards,
+        self.is_training: True,
+    }
+    loss, _ = sess.run([self.loss, self.train_op], feed_dict=feed_dict)
+    return loss
+
+# init agent
+tf.reset_default_graph()
+# agent for frequently updating
+pg_agent = Policy_Gradiebt_Agent('PG_Agent', num_action)
+# init all
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.InteractiveSession(config=config)
+sess.run(tf.global_variables_initializer())
+
+from IPython.display import Image, display
+
+update_every_episode = 1
+print_every_episode = 10
+save_video_every_episode = 100
+NUM_EPISODE = 100
+NUM_EXPLORE = 10
+NUM_PASS = 20
+reward_values = {
+    "positive": 1,
+    "tick": 0.1,  # reward per timestamp
+    "loss": -1,
+}
+for episode in range(0, NUM_EPISODE + 1):
+
+  # Reset the environment
+  game = FlappyBird()
+  env = PLE(
+      game,
+      fps=30,
+      display_screen=False,
+      reward_values=reward_values,
+      rng=np.random.RandomState(1))
+  env.reset_game()
+  env.act(0)  # dummy input to make sure input screen is correct
+
+  # record frame
+  if episode % save_video_every_episode == 0:
+    frames = [env.getScreenRGB()]
+
+  # grayscale input screen for this episode
+  input_screens = [preprocess(env.getScreenGrayscale())] * 4
+
+  # cumulate reward for this episode
+  cum_reward = 0
+
+  experiences = []
+  t = 0
+  while not env.game_over():
+    # feed four previous screen, select an action
+    action = pg_agent.select_action(input_screens[-4:], sess)
+
+    # execute the action and get reward
+    reward = env.act(env.getActionSet()[action])
+
+    # record frame
+    if episode % save_video_every_episode == 0:
+      frames.append(env.getScreenRGB())
+
+    # cumulate reward
+    cum_reward += reward
+
+    # append grayscale screen for this episode
+    input_screens.append(preprocess(env.getScreenGrayscale()))
+
+    # append experience for this episode
+    experiences.append(
+        [input_screens[-5:-1], action, reward, input_screens[-4:]])
+
+    t += 1
+
+  def discount_reward(x, discount_rate):
+    discounted_r = np.zeros(len(x))
+    num_r = len(x)
+    for i in range(num_r):
+      discounted_r[i] = x[i] * math.pow(discount_rate, i)
+    discounted_r = np.cumsum(discounted_r[::-1])
+    return discounted_r[::-1]
+
+  rewards = [e[2] for e in experiences]
+  discounted_reward = discount_reward(rewards, pg_agent.discount_factor)
+
+  # normalize
+  discounted_reward -= np.mean(discounted_reward)
+  discounted_reward /= np.std(discounted_reward)
+  train_screens = []
+  train_actions = []
+  train_rewards = []
+  train_input_screens_plum = []
+  for i in range(len(experiences)):
+    experiences[i][2] = discounted_reward[i]
+    train_screens.append(experiences[i][0])
+    train_actions.append(experiences[i][1])
+    train_rewards.append(experiences[i][2])
+    train_input_screens_plum.append(experiences[i][3])
+  loss = pg_agent.update_policy(train_screens, train_actions, train_rewards,
+                                train_input_screens_plum)
+
+  if episode % print_every_episode == 0 and episode > NUM_EXPLORE:
+    print("[{}] time live:{}, cumulated reward: {}, loss: {}".format(
+        episode, t, cum_reward, loss))
+
+  if episode % save_video_every_episode == 0 and episode > NUM_EXPLORE:  # for every 5000 episode, record an animation
+    clip = make_anim(frames, fps=60, true_image=True).rotate(-90)
+    clip.write_videofile("movie/pg_{}.webm".format(episode), fps=60)
+    #display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+
+[20] time live:55, cumulated reward: 4.4999999999999964, loss: -7.795853889547288e-05
+[30] time live:56, cumulated reward: 4.599999999999996, loss: -0.006820865906774998
+[40] time live:61, cumulated reward: 5.099999999999994, loss: 0.0015863199951127172
+[50] time live:61, cumulated reward: 5.099999999999994, loss: 0.004410946741700172
+[60] time live:44, cumulated reward: 3.4000000000000004, loss: 0.009978272952139378
+[70] time live:40, cumulated reward: 3.0000000000000018, loss: 0.008945846930146217
+[80] time live:54, cumulated reward: 4.399999999999997, loss: 0.009017308242619038
+[90] time live:61, cumulated reward: 5.099999999999994, loss: -0.012033211998641491
+[100] time live:46, cumulated reward: 3.5999999999999996, loss: -0.009211954660713673
+[MoviePy] >>>> Building video movie/pg_100.webm
+[MoviePy] Writing video movie/pg_100.webm
+
+98%|████████████████████████████████████████████████████████████████████████████████▎ | 47/48 [00:00<00:00, 71.59it/s]
+
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: movie/pg_100.webm
+
+from moviepy.editor import *
+clip = VideoFileClip("movie/pg_100.webm")
+display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+
+100%|█████████████████████████████████████████████████████████████████████████████████| 47/47 [00:00<00:00, 387.83it/s]
+
+class Actor_critic:
+
+  def __init__(self, name, num_action, discount_factor=0.99):
+    self.exploring_rate = 0.1
+    self.discount_factor = discount_factor
+    self.num_action = num_action
+    self.name = name
+    with tf.variable_scope(name):
+      self.build_model()
+
+  def build_model(self):
+    # input: current screen, selected action and reward
+    self.input_screen = tf.placeholder(
+        tf.float32, shape=[None, screen_width, screen_height, num_stack])
+    self.action = tf.placeholder(tf.int32, [None])
+    self.reward = tf.placeholder(tf.float32, [None])
+    self.is_training = tf.placeholder(tf.bool, shape=[])
+
+    def value_net(screen, reuse=False):
+      with tf.variable_scope(
+          "value_net",
+          reuse=reuse,
+          initializer=tf.truncated_normal_initializer(stddev=1e-2)):
+        conv1 = tf.layers.conv2d(
+            inputs=screen,
+            filters=32,
+            kernel_size=[8, 8],
+            strides=[4, 4],
+            padding='SAME',
+            activation=tf.nn.relu)
+        pool1 = tf.layers.max_pooling2d(
+            conv1, pool_size=[2, 2], strides=[2, 2], padding='SAME')
+
+        conv2 = tf.layers.conv2d(
+            inputs=pool1,
+            filters=64,
+            kernel_size=[4, 4],
+            strides=[2, 2],
+            padding='SAME',
+            activation=tf.nn.relu)
+        conv3 = tf.layers.conv2d(
+            inputs=conv2,
+            filters=64,
+            kernel_size=[3, 3],
+            strides=[1, 1],
+            padding='SAME',
+            activation=tf.nn.relu)
+        flat = tf.contrib.layers.flatten(conv3)
+        dense = tf.layers.dense(inputs=flat, units=512, activation=tf.nn.relu)
+        V = tf.layers.dense(inputs=dense, units=1, activation=None)
+        return V
+
+    def policy_net(screen, reuse=False):
+      with tf.variable_scope("policy_net", reuse=reuse):
+        conv1 = tf.layers.conv2d(
+            inputs=screen,
+            filters=32,
+            kernel_size=[8, 8],
+            strides=[4, 4],
+            padding='SAME',
+            activation=tf.nn.relu)
+        pool1 = tf.layers.max_pooling2d(
+            conv1, pool_size=[2, 2], strides=[2, 2], padding='SAME')
+
+        conv2 = tf.layers.conv2d(
+            inputs=pool1,
+            filters=64,
+            kernel_size=[4, 4],
+            strides=[2, 2],
+            padding='SAME',
+            activation=tf.nn.relu)
+        conv3 = tf.layers.conv2d(
+            inputs=conv2,
+            filters=64,
+            kernel_size=[3, 3],
+            strides=[1, 1],
+            padding='SAME',
+            activation=tf.nn.relu)
+        self.flat = tf.contrib.layers.flatten(conv3)
+
+        self.dense1 = tf.layers.dense(
+            inputs=self.flat, units=512, activation=tf.nn.relu)
+        self.dense2 = tf.layers.dense(
+            inputs=self.dense1, units=self.num_action, activation=None)
+        return self.dense2
+
+    # value
+    self.v_output = value_net(
+        self.input_screen
+    )  # Q(s,a,theta) for all a, shape (batch_size, num_action)
+    self.tar_V = tf.placeholder(tf.float32, [None])
+    self.V_loss = tf.reduce_mean(
+        tf.square(self.reward + self.discount_factor * self.tar_V -
+                  self.v_output))
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-6)
+    g_gvs = optimizer.compute_gradients(
+        self.V_loss,
+        var_list=[v for v in tf.global_variables() if 'value_net' in v.name])
+    self.V_train_op = optimizer.apply_gradients(g_gvs)
+
+    # policy
+    self.policy_logit = policy_net(
+        self.input_screen
+    )  # logit of probility(P(s,a,theta)) for all a, shape (batch_size, num_action)
+    index = tf.stack([tf.range(tf.shape(self.action)[0]), self.action], axis=1)
+    self.prob = tf.gather_nd(
+        tf.nn.softmax(self.policy_logit),
+        index)  # P(s,a,theta) for selected action, shape (batch_size, 1)
+
+    # loss = E[log(p(s,a))*r]
+    self.policy_loss = -tf.reduce_mean(
+        tf.log(self.prob + 0.00000001) * self.reward)
+    optimizer = tf.train.AdamOptimizer(learning_rate=1e-6)
+    g_gvs = optimizer.compute_gradients(
+        self.policy_loss,
+        var_list=[v for v in tf.global_variables() if 'policy_net' in v.name])
+    self.train_op = optimizer.apply_gradients(g_gvs)
+    self.pred = tf.multinomial(self.policy_logit,
+                               1)  # sample action from distribution
+
+  def select_action(self, input_screen, sess):
+    input_screen = np.array(input_screen).transpose([1, 2, 0])
+    feed_dict = {
+        self.input_screen: input_screen[None, :],
+    }
+    action = sess.run(
+        self.pred,
+        feed_dict=feed_dict)[0][0]  # sameple action from distribution
+    return action
+
+  def update_policy(self, input_screens, actions, rewards, input_screens_plum):
+    feed_dict = {
+        self.input_screen: np.array(input_screens_plum).transpose([0, 2, 3, 1]),
+    }
+    esti_V = sess.run(self.v_output, feed_dict=feed_dict).flatten()
+    td_target = rewards + self.discount_factor * esti_V
+
+    feed_dict = {
+        self.input_screen: np.array(input_screens).transpose([0, 2, 3, 1]),
+    }
+    esti_V = sess.run(self.v_output, feed_dict=feed_dict).flatten()
+    td_error = td_target - esti_V
+    feed_dict = {
+        self.input_screen: np.array(input_screens_plum).transpose([0, 2, 3, 1]),
+    }
+    feed_dict = {
+        self.input_screen: np.array(input_screens).transpose([0, 2, 3, 1]),
+        self.tar_V: td_target,
+        self.reward: rewards,
+    }
+
+    V_loss, _ = sess.run([self.V_loss, self.V_train_op], feed_dict=feed_dict)
+
+    feed_dict = {
+        self.input_screen: np.array(input_screens).transpose([0, 2, 3, 1]),
+        self.action: actions,
+        self.reward: td_error,
+    }
+    policy_loss, _ = sess.run(
+        [self.policy_loss, self.train_op], feed_dict=feed_dict)
+    return V_loss, policy_loss
+
+  def update_parameters(self, episode):
+    if self.exploring_rate > MIN_EXPLORING_RATE:
+      self.exploring_rate -= (0.1 - MIN_EXPLORING_RATE) / 3000000
+
+  def shutdown_explore(self):
+    # make action selection greedy
+    self.exploring_rate = 0
+
+# init agent
+tf.reset_default_graph()
+# agent for frequently updating
+ac_agent = Actor_critic('PG_Agent', num_action)
+# init all
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+sess = tf.InteractiveSession(config=config)
+sess.run(tf.global_variables_initializer())
+
+from IPython.display import Image, display
+
+update_every_episode = 1
+print_every_episode = 10
+save_video_every_episode = 100
+NUM_EPISODE = 100
+NUM_EXPLORE = 0
+reward_values = {
+    "positive": 1,
+    "tick": 0.1,  # reward per timestamp
+    "loss": -1,
+}
+for episode in range(0, NUM_EPISODE + 1):
+
+  # Reset the environment
+  game = FlappyBird()
+  env = PLE(
+      game,
+      fps=30,
+      display_screen=False,
+      reward_values=reward_values,
+      rng=np.random.RandomState(1))
+  env.reset_game()
+  env.act(0)  # dummy input to make sure input screen is correct
+
+  # record frame
+  if episode % save_video_every_episode == 0:
+    frames = [env.getScreenRGB()]
+
+  # grayscale input screen for this episode
+  input_screens = [preprocess(env.getScreenGrayscale())] * 4
+
+  # cumulate reward for this episode
+  cum_reward = 0
+
+  experiences = []
+  t = 0
+  while not env.game_over():
+    # feed four previous screen, select an action
+    action = ac_agent.select_action(input_screens[-4:], sess)
+
+    # execute the action and get reward
+    reward = env.act(env.getActionSet()[action])
+
+    # record frame
+    if episode % save_video_every_episode == 0:
+      frames.append(env.getScreenRGB())
+
+    # cumulate reward
+    cum_reward += reward
+
+    # append grayscale screen for this episode
+    input_screens.append(preprocess(env.getScreenGrayscale()))
+
+    # append experience for this episode
+    experiences.append(
+        [input_screens[-5:-1], action, reward, input_screens[-4:]])
+
+    t += 1
+
+  def discount_reward(x, discount_rate):
+    discounted_r = np.zeros(len(x))
+    num_r = len(x)
+    for i in range(num_r):
+      discounted_r[i] = x[i] * math.pow(discount_rate, i)
+    discounted_r = np.cumsum(discounted_r[::-1])
+    return discounted_r[::-1]
+
+  rewards = [e[2] for e in experiences]
+  discounted_reward = discount_reward(rewards, ac_agent.discount_factor)
+
+  # normalize
+  discounted_reward -= np.mean(discounted_reward)
+  discounted_reward /= np.std(discounted_reward)
+  train_screens = []
+  train_actions = []
+  train_rewards = []
+  train_input_screens_plum = []
+  for i in range(len(experiences)):
+    experiences[i][2] = discounted_reward[i]
+    train_screens.append(experiences[i][0])
+    train_actions.append(experiences[i][1])
+    train_rewards.append(experiences[i][2])
+    train_input_screens_plum.append(experiences[i][3])
+  loss = ac_agent.update_policy(train_screens, train_actions, train_rewards,
+                                train_input_screens_plum)
+
+  if episode % print_every_episode == 0 and episode > NUM_EXPLORE:
+    print("[{}] time live:{}, cumulated reward: {}, loss: {}".format(
+        episode, t, cum_reward, loss))
+
+  if episode % save_video_every_episode == 0 and episode > NUM_EXPLORE:  # for every 5000 episode, record an animation
+    clip = make_anim(frames, fps=60, true_image=True).rotate(-90)
+    clip.write_videofile("movie/ac_{}.webm".format(episode), fps=60)
+    #display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+
+[10] time live:47, cumulated reward: 3.6999999999999993, loss: (3.960096, 0.00069147476)
+[20] time live:61, cumulated reward: 5.099999999999994, loss: (3.9600956, 0.001197471)
+[30] time live:47, cumulated reward: 3.6999999999999993, loss: (3.9600954, -0.0019298716)
+[40] time live:61, cumulated reward: 5.099999999999994, loss: (3.960097, 0.002000121)
+[50] time live:57, cumulated reward: 4.699999999999996, loss: (3.960095, -0.00077314547)
+[60] time live:53, cumulated reward: 4.299999999999997, loss: (3.9600947, -0.0008383517)
+[70] time live:61, cumulated reward: 5.099999999999994, loss: (3.9600954, -0.0004024193)
+[80] time live:49, cumulated reward: 3.8999999999999986, loss: (3.9600964, 4.599046e-05)
+[90] time live:54, cumulated reward: 4.399999999999997, loss: (3.9600952, -0.0033372066)
+[100] time live:62, cumulated reward: 5.199999999999994, loss: (3.9600966, -0.0007000585)
+[MoviePy] >>>> Building video movie/ac_100.webm
+[MoviePy] Writing video movie/ac_100.webm
+
+98%|████████████████████████████████████████████████████████████████████████████████▋ | 63/64 [00:00<00:00, 82.17it/s]
+
+[MoviePy] Done.
+[MoviePy] >>>> Video ready: movie/ac_100.webm
+
+from moviepy.editor import *
+clip = VideoFileClip("movie/ac_100.webm")
+display(clip.ipython_display(fps=60, autoplay=1, loop=1))
+
+98%|███████████████████████████████████████████████████████████████████████████████▋ | 63/64 [00:00<00:00, 419.36it/s]

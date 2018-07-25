@@ -1,5 +1,3 @@
-
-
 * Sentiment Analysis & Neural Machine Translation
 
 Here we want to show how to use *recurrent neural networks* (*rnn*) to model
@@ -51,7 +49,7 @@ In [2]:
     LSTMStateTuple(c=<tf.Tensor 'rnn/while/Exit_2:0' shape=(4, 128) dtype=float32>, h=<tf.Tensor 'rnn/while/Exit_3:0' shape=(4, 128) dtype=float32>)
 #+END_SRC
 
-** Sentiment Analysis
+** ---- Sentiment Analysis ----
 
 We try to do sentiment analysis using RNN for *modeling a movie review* and
 judege it's *a favorable comment or not*.
@@ -143,10 +141,7 @@ Just like [[https://nthu-datalab.github.io/ml/competitions/01_Response_Selection
     [['remarkable fact participation klaus kinski plays priest ask bad bad movie overall', 0], ['bought movie watched first time night fan tolkien work years ever since got high school grow movie perhaps mother kept away definitely children bad graphic sense themes would go right year olds heads overall animation excellent considering made thought story followed book fairly well loose sense bothered add another minutes tack return king parts would made ultimate movie bothered abrupt end heard return king sucked bothered even bad one great animation film might garnered higher vote give hope peter jackson books justice new live action', 1], ['movie proves judge movie awesome artwork cover also goes show learn movie buy get someone christmas beginning movie actually looks somewhat promising well meet characters pumpkin jack old guy street brings college co eds book full witch spells leaves annual haunted house movie takes place drinking fighting soft core porn action movie finally takes place hour overall end predictable reminiscent soft core porn movie probably best viewed group friends nothing better good movie make fun first time viewers really fun making predictions order people die', 0]]
 #+END_SRC
 
-** Padding and Bucketing[[Padding-and-Bucketing][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Padding-and-Bucketing
-   :END:
+** Padding and Bucketing
 
 [[file:imgs/padding_and_bucketing.png]]
 
@@ -407,7 +402,7 @@ summarization. Seq2Seq is constructed of two RNNs, *encoder and decoder*.
 Encoder encodes input sequence into a hidden vector first, and decoder will
 gererate words one by one based on it.
 
-** Neural Machine Translation
+** ---- Neural Machine Translation ----
 
 *Neural Machine Translation (NMT)* is one of NLP tasks, which uses deep learning
 to solve language translation. Here we use [[http://www.lrec-conf.org/proceedings/lrec2014/pdf/774_Paper.pdf][UM-Corpus]] and typical Seq2Seq with
@@ -494,19 +489,16 @@ In [19]:
     <BEG> 和 其他人 一样 我 有 能力 完成 这份 工作 <END>
 #+END_SRC
 
-** Prepare Translation Batch[[Prepare-Translation-Batch][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Prepare-Translation-Batch
-   :END:
+** Prepare Translation Batch
 
-In this lab, we use [[https://www.tensorflow.org/api_docs/python/tf/contrib/legacy_seq2seq/embedding_attention_seq2seq][legacy\_seq2seq]] which provides a fasy way to build up
-seq2seq model with attention. Be careful that legacy\_seq2seq is *time major*
-which means the *input and output should be a list* contains word batch.
+In this lab, we use [[https://www.tensorflow.org/api_docs/python/tf/contrib/legacy_seq2seq/embedding_attention_seq2seq][legacy_seq2seq]] which provides a fasy way to build up seq2seq
+model with attention. Be careful that ~legacy_seq2seq~ is *time major* which
+means the *input and output should be a list* contains word batch.
 
 [[file:imgs/machine_translation.png]]
+
 [[file:imgs/time_major.png]]
 
-In [20]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     en_max_len = 0

@@ -1,5 +1,3 @@
-
-
 * Autoencoder & GANs
 
 In this lab, we are going to introduce two types of unsupervised learning model:
@@ -9,6 +7,7 @@ Autoencoder and Generative Adversarial Networks (GANs)
 
 Autoencoder is a popular unsupervised learning model, which is used to reduce
 data dimension or used in some end2end learning model, like img2img translation.
+
 Autoencoder has two compoments encoder and decoder. Encoder learns a code
 representation c of input data, and decoder learns to reconstruct input data
 from c. As we have the pretrained encoder we can reduce the data dimension to
@@ -40,9 +39,11 @@ our setting of model initializer, the reconstruction results and the
 manifold learning performance(which can be compared to denoising
 autoencoder latter).
 
+#+BEGIN_QUOTE
 Note: In MNIST dataset, although the pixels are ranged in [0,1], we
 recommand to use binary cross entropy loss to have sharper reconstructed
 results.
+#+END_QUOTE
 
 Some setting is referenced from [[https://blog.keras.io/building-autoencoders-in-keras.html][The Keras Blog: Autoencoder]]
 
@@ -349,7 +350,6 @@ In [6]:
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     (16, 784)
 #+END_SRC
-
 
 
 
