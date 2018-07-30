@@ -1,10 +1,4 @@
 * Scientific Python 101
-  :PROPERTIES:
-  :CUSTOM_ID: Scientific-Python-101
-  :END:
-
-Shan-Hung Wu & DataLab
-
 Python is one of the most popular programming languages for data
 science.
 
@@ -159,11 +153,7 @@ And also the packages we are going to use:
     > pip install matplotlib
 #+END_SRC
 
-** Opening Lab Notes and Running
-Code
-   :PROPERTIES:
-   :CUSTOM_ID: Opening-Lab-Notes-and-Running-Code
-   :END:
+** Opening Lab Notes and Running Code
 
 All lab notes, including this doc, are written and released in the [[https://ipython.org/notebook.html][Jupyter
 Notebook]] format (with file extension =*.ipynb=). Jupyter Notebook is a web
@@ -192,37 +182,22 @@ this by adding the following as the first line of the code:
 
 This is one of the built-in [[http://ipython.readthedocs.io/en/stable/interactive/magics.html][magic commands]].
 
-** Readings[[Readings][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Readings
-   :END:
+** Readings
 
-If you are not familiar with Python yet, you may read this
-[[https://docs.python.org/3/tutorial/][tutorial]]. If you already know
-Java and don't want to start over everything from scratch, you may read
-this [[https://antrix.net/static/pages/python-for-java/online/][tutorial
-for busy Java developers]].
+If you are not familiar with Python yet, you may read this [[https://docs.python.org/3/tutorial/][tutorial]]. If you
+already know Java and don't want to start over everything from scratch, you may
+read this [[https://antrix.net/static/pages/python-for-java/online/][tutorial for busy Java developers]].
 
-*** Scientific Python[[Scientific-Python][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Scientific-Python
-    :END:
+*** Scientific Python
 
 To have an overview of the scientific packages like NumPy, SciPy, and
-Matlibplot, we will follow this
-[[http://cs231n.github.io/python-numpy-tutorial/][tutorial]] for this
-class. This tutorial has recently been translated from Python 2 to
-Python 3, but note that their provided Jupyter Notebook is still in
-Python 2. We have included the Python 3 version of the code in this
-Notebook. If you want to see the differences between Python 2 and 3,
-check
-[[http://sebastianraschka.com/Articles/2014_python_2_3_key_diff.html][this]]
-source.
+Matlibplot, we will follow this [[http://cs231n.github.io/python-numpy-tutorial/][tutorial]] for this class. This tutorial has
+recently been translated from Python 2 to Python 3, but note that their provided
+Jupyter Notebook is still in Python 2. We have included the Python 3 version of
+the code in this Notebook. If you want to see the differences between Python 2
+and 3, check [[http://sebastianraschka.com/Articles/2014_python_2_3_key_diff.html][this]] source.
 
-*** Calculus[[Calculus][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Calculus
-    :END:
+*** Calculus
 
 Don't forget to grab your favorite Calculus book and read again the
 topics about *multivariate* calculus:
@@ -234,19 +209,12 @@ topics about *multivariate* calculus:
 -  Hessian matrix
 -  Taylor's theorem.
 
-If you don't know where to start, follow
-[[http://wiki.fast.ai/index.php/Calculus_for_Deep_Learning][this]] and
-[[https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant][that]].
+If you don't know where to start, follow [[http://wiki.fast.ai/index.php/Calculus_for_Deep_Learning][this]] and [[https://en.wikipedia.org/wiki/Jacobian_matrix_and_determinant][that]].
 
 If you think you have a good understanding of the above topics,
 congrats! You are now ready for the [Deep Learning] course!
 
-** Basic Python[[Basic-Python][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Basic-Python
-   :END:
-
-In [1]:
+** Basic Python
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print ("Hello world!")
@@ -257,9 +225,6 @@ In [1]:
 #+END_SRC
 
 *** Basic data types[[Basic-data-types][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Basic-data-types
-    :END:
 
 **** Numbers[[Numbers][¶]]
      :PROPERTIES:
@@ -439,9 +404,6 @@ You can find a list of all string methods in the
 [[https://docs.python.org/3.5/library/stdtypes.html#string-methods][documentation]].
 
 *** Containers[[Containers][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Containers
-    :END:
 
 Python includes several built-in container types: lists, dictionaries,
 sets, and tuples.
@@ -861,13 +823,8 @@ The
 has more information about tuples.
 
 *** Functions[[Functions][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Functions
-    :END:
 
 Python functions are defined using the =def= keyword. For example:
-
-In [77]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     def sign(x):
@@ -910,13 +867,8 @@ In [79]:
 #+END_SRC
 
 *** Classes[[Classes][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Classes
-    :END:
-
 The syntax for defining classes in Python is straightforward:
 
-In [80]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class Greeter:
@@ -943,20 +895,13 @@ In [80]:
 #+END_SRC
 
 ** Numpy[[Numpy][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Numpy
-   :END:
 
-Numpy is the core library for scientific computing in Python. It
-provides a high-performance multidimensional array object, and tools for
-working with these arrays. If you are already familiar with MATLAB, you
-might find this
-[[http://wiki.scipy.org/NumPy_for_Matlab_Users][tutorial]] useful to get
-started with Numpy.
+Numpy is the core library for scientific computing in Python. It provides a
+high-performance multidimensional array object, and tools for working with these
+arrays. If you are already familiar with MATLAB, you might find this [[http://wiki.scipy.org/NumPy_for_Matlab_Users][tutorial]]
+useful to get started with Numpy.
 
 To use Numpy, we first need to import the =numpy= package:
-
-In [3]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import numpy as np
@@ -1754,10 +1699,6 @@ need to know about numpy, but is far from complete. Check out the
 out much more about numpy.
 
 ** SciPy[[SciPy][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: SciPy
-   :END:
-
 Numpy provides a high-performance multidimensional array and basic tools to
 compute with and manipulate these arrays. [[http://docs.scipy.org/doc/scipy/reference/][SciPy]] builds on this, and provides a
 large number of functions that operate on numpy arrays and are useful for
@@ -1767,16 +1708,15 @@ The best way to get familiar with SciPy is to [[http://docs.scipy.org/doc/scipy/
 highlight some parts of SciPy that you might find useful for this class.
 
 *** Image Operations[[Image-Operations][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Image-Operations
-    :END:
 
 SciPy provides some basic functions to work with images. For example, it
-has functions to read images from disk into numpy arrays, to write numpy
-arrays to disk as images, and to resize images. Here is a simple example
-that showcases these functions:
+has functions to
 
-In [7]:
+- read images from disk into numpy arrays
+- write numpy arrays to disk as images
+- resize images.
+
+Here is a simple example that showcases these functions:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from scipy.misc import imread, imsave, imresize
@@ -1811,9 +1751,6 @@ In [7]:
 Top: The original image. Bottom: The tinted and resized image.
 
 *** Distance between Points[[Distance-between-Points][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Distance-between-Points
-    :END:
 
 SciPy defines some useful functions for computing distances between sets of
 points.
@@ -1871,10 +1808,7 @@ By running this special iPython command, we will be displaying plots inline:
     %matplotlib inline
 #+END_SRC
 
-*** Plotting[[Plotting][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Plotting
-    :END:
+*** Plotting
 
 The most important function in =matplotlib= is plot, which allows you to
 plot 2D data. Here is a simple example:
@@ -1918,11 +1852,7 @@ In [16]:
     plt.show()
 #+END_SRC
 
-
-*** Subplots[[Subplots][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Subplots
-    :END:
+*** Subplots
 
 You can plot different things in the same figure using the subplot
 function. Here is an example:
@@ -2038,10 +1968,6 @@ would look like the following:
 #+END_SRC
 
 *** Task
-    :PROPERTIES:
-    :CUSTOM_ID: Task
-    :END:
-
 Your task will be to use the numpy array for the loaded image, reshape it into
 an image vector with shape =(length∗height∗3,1)= and then plot it as a
 histogram. The expected plot would look like the histogram plotted above.
@@ -2051,7 +1977,6 @@ histogram. The expected plot would look like the histogram plotted above.
     # Reshape the image to (length*height*depth,1)
     image_reshaped = None
 #+END_SRC
-
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Plot the vector as a histogram

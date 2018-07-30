@@ -1,8 +1,4 @@
-
-
 * DataLab Cup 3: Image Caption
-
-In [1]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import os
@@ -1063,7 +1059,6 @@ In [24]:
 *3. Submit generated score.csv to [[https://www.kaggle.com/t/78763137b2cf498387141e9e56491bb9][DataLabCup: Image Caption]]*
 
 ** Hints[[Hints][¶]]
-
 *** Training: Gradient-Clipping[[Training:-Gradient-Clipping][¶]]
 
 When training RNN, the gradient easily explodes on the cliff-like error surface.
@@ -1130,7 +1125,6 @@ choose the one with least NLL as our final caption.
 [[https://arxiv.org/pdf/1606.02960.pdf][Sequence-to-Sequence Learning as Beam-Search Optimization]]
 
 ** Other reference[[Other-reference][¶]]
-
 *** Training: Scheduled Sampling
 
 Curriculum learning strategy to gently change the training process from a fully

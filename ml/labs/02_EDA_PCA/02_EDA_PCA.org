@@ -1,5 +1,4 @@
 * Exploring and Visualizing Data
-
 ** Exploratory Data Analysis
 
 Exploratory Data Analysis (EDA) is an important and recommended first step of
@@ -327,7 +326,6 @@ Finally, let's save the compressed dataset for future use.
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
 np.save('./output/Z_pca.npy', Z_pca)
 #+END_SRC
-
 
 * Assignment
 Here's a generated dataset, with 3 classes and 15 attributes. Your goal is to

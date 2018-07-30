@@ -591,7 +591,7 @@ the model, we still want the process of loading data is efficient.
 
 *** Queues[[Queues][¶]]
 
-Because tf.Session objects are designed to be *multithreaded* and thread-safe,
+Because ~tf.Session~ objects are designed to be *multithreaded* and thread-safe,
 so multiple threads can easily use the same session and run ops in parallel.
 [[https://www.tensorflow.org/programmers_guide/threading_and_queues][Queues]] are useful because of the ability to *compute tensor asynchronously* in a
 graph. Most of the time, we use queues to handle inputs. In this way, multiple

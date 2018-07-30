@@ -90,7 +90,17 @@ Out[3]:
 Please download the weights [[https://mega.nz/#!xZ8glS6J!MAnE91ND_WyfZ_8mvkuSa2YcA7q-1ehfSm-Q1fxOvvs][(vgg19.npy)]] and put it in the libs directory as
 where this notebook is.
 
-In [4]:
+
+#+BEGIN_QUOTE
+*Session vs. InteractiveSession*
+
+A TensorFlow Session for use in interactive contexts, such as a shell. The only
+difference with a regular Session is that an InteractiveSession *installs itself
+as the default session* on construction. The methods ~tf.Tensor.eval~ and
+~tf.Operation.run~ will use that session to run ops. This is convenient in
+interactive shells and IPython notebooks, as it avoids having to pass an
+explicit Session object to run ops.
+#+END_QUOTE
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from libs import vgg19
