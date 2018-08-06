@@ -1,4 +1,14 @@
-
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: logistic regression
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
 
 * Logistic Regression (with Regularization) and Evaluation Metrics
 
@@ -18,9 +28,7 @@
     from lib import *
 #+END_SRC
 
-In this lab, we will guide you through the practice of Logistic
-Regression.
-
+In this lab, we will guide you through the practice of Logistic Regression.
 
 ** Logistic Regression
 
@@ -32,16 +40,22 @@ Learning.
 As discussed in the lecture, Logistic Regression predicts the label $\hat{y}$ of
 a given point $\boldsymbol{x}$ by
 
-$$\hat{y}=\arg\max\_{y}\mathrm{P}(y\,|\,\boldsymbol{x};\boldsymbol{w})$$
+$$\hat{y}=\arg\max_{y}\mathrm{P}(y|\boldsymbol{x};\boldsymbol{w})$$
 
 and the condition probability is defined as
 
-$$\mathrm{P}(y\,|\,\boldsymbol{x};\boldsymbol{w})=\sigma(\boldsymbol{w}\^{\top}\boldsymbol{x})\^{y'}[1-\sigma(\boldsymbol{w}\^{\top}\boldsymbol{x})]\^{(1-y')},$$
+$$\mathrm{P}(y\,|\,\boldsymbol{x};\boldsymbol{w})=\sigma(\boldsymbol{w}^{\top}\boldsymbol{x})^{y'}[1-\sigma(\boldsymbol{w}^{\top}\boldsymbol{x})]^{(1-y')}$$
 
-where $y'=\frac{y+1}{2}$. Let's first plot the logistic function $\sigma$ over
+where
+
+$y'=\frac{y+1}{2}$.
+
+Let's first plot the logistic function $\sigma$ over
+
+
 $z=\boldsymbol{w}\^{\top}\boldsymbol{x}$
 
-$$\sigma\left(z\right)=\frac{\exp(z)}{\exp(z)+1}=\frac{1}{1+\exp(-z)}$$\\
+$$\sigma\left(z\right)=\frac{\exp(z)}{\exp(z)+1}=\frac{1}{1+\exp(-z)}$$
 
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -71,13 +85,18 @@ $$\sigma\left(z\right)=\frac{\exp(z)}{\exp(z)+1}=\frac{1}{1+\exp(-z)}$$\\
     plt.show()
 #+END_SRC
 
+#+RESULTS:
+:RESULTS:
+29 - d89c5a77-f141-446d-bd38-6eaa6f8a89f4
+:END:
 
-We can see that $\sigma(z)$ approaches $1$ when $(z \rightarrow
-\infty)$, since $e\^{-z}$ becomes very small for large values of $z$.
-Similarly, $\sigma(z)$ goes downward to $0$ for $ z \rightarrow -\infty$
-as the result of an increasingly large denominator. The logistic
-function takes real number values as input and transforms them to values
-in the range $[0, 1]$ with an intercept at $\sigma(z) = 0.5$.
+
+We can see that $\sigma(z)$ approaches $1$ when $(z \rightarrow \infty)$, since
+$e\^{-z}$ becomes very small for large values of $z$. Similarly, $\sigma(z)$
+goes downward to $0$ for $ z \rightarrow -\infty$ as the result of an
+increasingly large denominator. The logistic function takes real number values
+as input and transforms them to values in the range $[0, 1]$ with an intercept
+at $\sigma(z) = 0.5$.
 
 To learn the weights $\boldsymbol{w}$ from the training set
 $\mathbb{X}$, we can use ML estimation:
@@ -108,16 +127,11 @@ below:
 
 [[file:fig-logistic-regression.png]]\\
 
-*** Predicting Class-Membership
-Probability[[Predicting-Class-Membership-Probability][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Predicting-Class-Membership-Probability
-    :END:
+*** Predicting Class-Membership Probability
 
-One benefit of using Logistic Regression is that it is able to output
-the *class-membership probability* (i.e., probability of a class to
-which a point $\boldsymbol{x}$ belongs) via
-$\sigma(\boldsymbol{w}\^{\top}\boldsymbol{x})$ and
+One benefit of using Logistic Regression is that it is able to output the
+*class-membership probability* (i.e., probability of a class to which a point
+$\boldsymbol{x}$ belongs) via $\sigma(\boldsymbol{w}\^{\top}\boldsymbol{x})$ and
 $1-\sigma(\boldsymbol{w}\^{\top}\boldsymbol{x})$.
 
 In fact, there are many applications where we are not only interested in
@@ -130,10 +144,9 @@ Regression enjoys wide popularity in the field of medicine.
 
 *** Training a Logistic Regression Model with Scikit-learn
 
-Scikit-learn implements a highly optimized version of logistic
-regression that also supports multiclass classification off-the-shelf.
-Let's use it to make predictions on the standardized Iris training
-dataset.
+Scikit-learn implements a highly optimized version of logistic regression that
+also supports multiclass classification off-the-shelf. Let's use it to make
+predictions on the standardized Iris training dataset.
 
 NOTE: Logistic Regression, like many other binary classification models, can be
 easily extended to multiclass classification via [[http://scikit-learn.org/stable/modules/multiclass.html#one-vs-the-rest][One-vs-All]] or other similar
@@ -216,9 +229,9 @@ techniques.
 #+END_SRC
 
 
-The =Logistic Regression= class can predict the class-membership
-probability via the =predict_proba()= method. For example, we can
-predict the probabilities of the first testing point:
+The =Logistic Regression= class can predict the class-membership probability via
+the =predict_proba()= method. For example, we can predict the probabilities of
+the first testing point:
 
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -242,10 +255,7 @@ The =prob= array tells us that the model predicts a 99% chance that the sample
 belongs to the Iris-Virginica class, and a 1% chance that the sample is a
 Iris-Versicolor flower.
 
-*** Regularization[[Regularization][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Regularization
-    :END:
+*** Regularization
 
 One way to regularize a logistic regression classifier is to add a *weight
 decay* term in the objective (or cost function), as in Ridge regression:
@@ -289,12 +299,12 @@ $C=1/\alpha$ due to convention.
     plt.show()
 #+END_SRC
 
-*** Evaluation Metrics for Binary Classifiers
+* Evaluation Metrics for Binary Classifiers
 
-So far, we evaluate the performance of a classifier using the *accuracy*
-metric. Although accuracy is a general and common metric, there are
-several other evaluation metrics that allow us to quantify the
-performance of a model from different aspects.
+So far, we evaluate the performance of a classifier using the *accuracy* metric.
+Although accuracy is a general and common metric, there are several other
+evaluation metrics that allow us to quantify the performance of a model from
+different aspects.
 
 *** Confusion Matrix
 
@@ -368,7 +378,7 @@ predictions will be able to achieve 90% accuracy. The accuracy metric is
 misleading in this case. On the other hand, by checking the TPR which
 equals to 0%, we learn that the dummy classifier is not performing well.
 
-*** Precision, Recall, and $F\_1$-Score[[Precision,-Recall,-and-$F_1$-Score][¶]]
+*** Precision, Recall, and $F_1$ -Score
 
 The *Precision (PRE)* and *recall (REC)* metrics are defines as:
 
@@ -383,7 +393,7 @@ metrics if we care specifically about the performance of positive
 predictions.
 
 In practice, we may combine PRE and REC into a single score called the
-*$F\_1$-score*:
+*$F_1$ -score*:
 
 $$F\_1 = 2\frac{(PRE * REC)}{PRE+REC},\enspace\text{ (the higher, the
 better)}$$
@@ -392,7 +402,6 @@ which reaches its best value at $1$ and worst at $0$.
 
 * Evaluation Metrics for Soft Classifiers
 
-\\
 Many classifiers, such as Adaline and Logistic Regression, can make
 "soft" predictions (i.e., real values instead of the "hard" 1 or -1). We
 may "harden" the soft predictions by defining a *decision threshold
@@ -421,8 +430,6 @@ ROC curve by following the steps:
    connect the points to get an ROC curve.
 
 Let's plot the ROC curve of our logistic regressor:
-
-In [8]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.metrics import roc_curve
@@ -501,9 +508,6 @@ how about $B$ and $C$? This can also be answered by ROC curves:
    $\theta=0.4\vert\mathbb{X}\vert$, which gives 90% TPR.
 
 *** Area Under the Curve (AUC)
-    :PROPERTIES:
-    :CUSTOM_ID: area-under-the-curve-auc-area-under-the-curve-auc
-    :END:
 
 We can reduce an ROC curve to a single value by calculating the *area
 under the curve (AUC)*. A perfect classifier has $AUC=1.0$, and random
@@ -513,7 +517,6 @@ instance higher than a randomly chosen negative one.
 
 Let's compute the AUC of our logistic regressor:
 
-In [9]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.metrics import auc
@@ -685,13 +688,12 @@ Let's train a multiclass logistic regressor and see how it performs:
     Macro: 0.96
 #+END_SRC
 
-We can see that the micro average reports more conservative scores. This
-is because it takes into account the class size. In our testing set, the
-first class is smaller than the others so its score (1.00) contributes
-less to the final score.
+We can see that the micro average reports more conservative scores. This is
+because it takes into account the class size. In our testing set, the first
+class is smaller than the others so its score (1.00) contributes less to the
+final score.
 
 * Assignment
-
 *** Goal
 
 Predict the presence or absence of cardiac arrhythmia in a patient.
@@ -766,8 +768,6 @@ How big is the dataset?
 The last column of the dataset is the class label. It contains the 16
 ECG classifications:
 
-In [13]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     np.unique(data[len(data.columns)-1])
 #+END_SRC
@@ -781,7 +781,6 @@ Out[13]:
 Let's make that column (class label) dichotomous.\\
 Value is 0 if ECG is normal, 1 otherwise
 
-In [14]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     data['arrhythmia'] = data[len(data.columns)-1].map(lambda x: 0 if x==1 else 1)
@@ -789,13 +788,11 @@ In [14]:
 
 Are the groups balanced?
 
-In [15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     data.groupby(['arrhythmia']).size()
 #+END_SRC
 
-Out[15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     arrhythmia
@@ -808,7 +805,6 @@ Some columns have missing values denoted as '?'\\
 To make the preprocessing simpler, let's just retain the columns with
 numeric values.
 
-In [16]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     data = data._get_numeric_data()
@@ -819,13 +815,11 @@ In [16]:
     452 rows and 276 columns
 #+END_SRC
 
-In [17]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     data.head(3)
 #+END_SRC
 
-Out[17]:
 
 |     | 0    | 1   | 2     | 3    | 4     | 5     | 6     | 7     | 8     | 9     | ...   | 271   | 272    | 273   | 274   | 275   | 276   | 277    | 278    | 279   | arrhythmia   |
 |-----+------+-----+-------+------+-------+-------+-------+-------+-------+-------+-------+-------+--------+-------+-------+-------+-------+--------+--------+-------+--------------|
@@ -835,7 +829,6 @@ Out[17]:
 
 3 rows × 276 columns
 
-In [18]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X = data.iloc[:, :-2]  # The first to third-last columns are the features
@@ -847,7 +840,6 @@ In [18]:
     [0 1]
 #+END_SRC
 
-In [19]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # splitting the dataset to training and validation datasets
@@ -855,7 +847,6 @@ In [19]:
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=20171012)
 #+END_SRC
 
-In [21]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Standardizing the training and test datasets
@@ -871,6 +862,3 @@ In [21]:
 #+END_SRC
 
 *** Please continue working from here.
-    :PROPERTIES:
-    :CUSTOM_ID: Please-continue-working-from-here.
-    :END:

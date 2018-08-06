@@ -22,7 +22,6 @@ In the following, we will use network architecture similar to this [[https://www
 
 [[file:img/DQN.png]]
 
-In [1]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # import package needed
@@ -802,8 +801,6 @@ tell if the action lead to a good state.
 
 [[file:img/ac_algo.png]]
 
-In [93]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class Actor_critic:
 
@@ -976,7 +973,6 @@ In [93]:
         self.exploring_rate = 0
 #+END_SRC
 
-In [94]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # init agent
@@ -990,7 +986,6 @@ In [94]:
     sess.run(tf.global_variables_initializer())
 #+END_SRC
 
-In [95]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from IPython.display import Image, display
@@ -1114,7 +1109,6 @@ In [95]:
     [MoviePy] >>>> Video ready: movie/ac_100.webm 
 #+END_SRC
 
-In [96]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from moviepy.editor import *

@@ -1,3 +1,15 @@
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: Reularization
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
 * Regularization
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -5,34 +17,47 @@
     import yapf
 #+END_SRC
 
-Regularization refers to techniques that improve the generalizability of
-a trained model. In this lab, we will guide you through some common
-regularization techniques such as weight decay, sparse weight, and
-validation.
+#+RESULTS:
+:RESULTS:
+29 - 24e44319-332b-478f-b73a-e34d2559f6d3
+:END:
 
-* Learning Theory[[Learning-Theory][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Learning-Theory
-  :END:
+Regularization refers to techniques that improve the generalizability of a
+trained model. In this lab, we will guide you through some common regularization
+techniques such as weight decay, sparse weight, and validation.
 
-Learning theory provides a means to understand the generalizability of
-trained model. As explained in the lecture, it turns out that *model
-comlexity* plays a crucial role: too simple a model leads to *high bias*
-and *underfitting* because it cannot capture the trends or patterns in
-the underlying data generating distribution; while too complex a model
-leads to *high variance* and *overfitting* because it captures not only
-the trends of the underlying data generating distribution but also some
-patterns local to the training data.
+* Learning Theory
+
+Learning theory provides a means to understand the generalizability of trained
+model. As explained in the lecture, it turns out that *model comlexity* plays a
+crucial role: too simple a model leads to *high bias* and *underfitting* because
+it cannot capture the trends or patterns in the underlying data generating
+distribution; while too complex a model leads to *high variance* and
+*overfitting* because it captures not only the trends of the underlying data
+generating distribution but also some patterns local to the training data.
 
 Let's see the problems of overfitting and underfitting from a toy regression
 problem. Suppose we know the underlying data generating distribution:
 
-$$\mathrm{P}(\mathrm{x},
-\mathrm{y})=\mathrm{P}(\mathrm{y}\,|\,\mathrm{x})\mathrm{P}(\mathrm{x}),$$where$$\mathrm{P}(\mathrm{x})\sim\mathrm{Uniform}$$and$$\mathrm{P}(\mathrm{y}|\mathrm{x})
-= \sin(x) + \epsilon, \epsilon\sim\mathcal{N}(0,\sigma\^2)$$
+$$
+\mathrm{P}(\mathrm{x},
+\mathrm{y})=\mathrm{P}(\mathrm{y}|\mathrm{x})\mathrm{P}(\mathrm{x}),
+$$
+
+where
+
+$$
+\mathrm{P}(\mathrm{x})\sim\mathrm{Uniform}
+$$
+
+and
+
+$$
+\mathrm{P}(\mathrm{y}|\mathrm{x})
+=\sin(x) + \epsilon, \epsilon\sim\mathcal{N}(0,\sigma^2)
+$$
 
 We can generate a synthetic dataset as follows:
-
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from pylab import *
@@ -65,16 +90,20 @@ We can generate a synthetic dataset as follows:
     plt.show()
 #+END_SRC
 
-The blue points are training examples and the green ones are testing
-points. The red curve is the $\sin$ function, which is the function
-$f\^*$ that has the minimal generalization error $C[f\^*]$ (called the
-Bayes error).
+#+RESULTS:
+:RESULTS:
+29 - 42a51ef6-fc4b-46ad-b707-d306596d6ff7
+:END:
 
-In regression, the degree $P$ of a polynomial (polynomial regression)
-and the depth of a decision tree (decision tree regression) are both
-hyperparameters that relate to model complexity. Let's consider the
-polynomial regression here and fit polynomials of degrees $1$, $5$, and
-$10$ to 20 randomly generated training data of the same distribution:
+The blue points are training examples and the green ones are testing points. The
+red curve is the $\sin$ function, which is the function $f\^*$ that has the
+minimal generalization error $C[f\^*]$ (called the Bayes error).
+
+In regression, the degree $P$ of a polynomial (polynomial regression) and the
+depth of a decision tree (decision tree regression) are both hyperparameters
+that relate to model complexity. Let's consider the polynomial regression here
+and fit polynomials of degrees $1$, $5$, and $10$ to 20 randomly generated
+training data of the same distribution:
 
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -112,26 +141,21 @@ $10$ to 20 randomly generated training data of the same distribution:
       plt.show()
 #+END_SRC
 
-When $P=1$, the polynomial is too simple to capture the trend of the
-$\sin$ function. On the other hand, when $P=10$, the polynomial becomes
-too complex such that it captures the undesirable patterns of noises.
+When $P=1$, the polynomial is too simple to capture the trend of the $\sin$
+function. On the other hand, when $P=10$, the polynomial becomes too complex
+such that it captures the undesirable patterns of noises.
 
-NOTE: regression is bad at extrapolation. You can see that the shape of
-a fitted polynomial differs a lot from the $\sin$ function outside the
-region where training points reside.
+NOTE: regression is bad at extrapolation. You can see that the shape of a fitted
+polynomial differs a lot from the $\sin$ function outside the region where
+training points reside.
 
-*** Error Curves and Model
-Complexity[[Error-Curves-and-Model-Complexity][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Error-Curves-and-Model-Complexity
-    :END:
+*** Error Curves and Model Complexity
 
 One important conclusion we get from learning theory is that the model
-complexity plays a key role in generalization performance of a model.
-Let's plot the training and testing errors over different model
-complexities in our regression problem:
+complexity plays a key role in generalization performance of a model. Let's plot
+the training and testing errors over different model complexities in our
+regression problem:
 
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.metrics import mean_squared_error
@@ -180,93 +204,87 @@ In [4]:
 #+END_SRC
 
 
-We can see that the training error (blue curve) decrease as the model
-complexity increases. However, the testing error (red curve) decreases
-at the beginning but increases latter. We see a clear bias-variance
-tradeoff as discussed in the lecture.
+We can see that the training error (blue curve) decrease as the model complexity
+increases. However, the testing error (red curve) decreases at the beginning but
+increases latter. We see a clear bias-variance tradeoff as discussed in the
+lecture.
 
-*** Learning Curves and Sample
-Complexity[[Learning-Curves-and-Sample-Complexity][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Learning-Curves-and-Sample-Complexity
-    :END:
+*** Learning Curves and Sample Complexity
 
-Although the error curve above visualizes the impact of model
-complexity, the bias-variance tradeoff holds only when you have
-sufficient training examples. The bounding methods of learning theory
-tell us that a model is likely to overfit regardless of it complexity
-*when the size of training set is small*. The *learning curves* are a
-useful tool for understanding how much training examples are sufficient:
+Although the error curve above visualizes the impact of model complexity, the
+bias-variance tradeoff holds only when you have sufficient training examples.
+The bounding methods of learning theory tell us that a model is likely to
+overfit regardless of it complexity *when the size of training set is small*.
+The *learning curves* are a useful tool for understanding how much training
+examples are sufficient:
 
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     def mse(model, X, y):
       return ((model.predict(X) - y)**2).mean()
 #+END_SRC
 
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    from sklearn.learning_curve import learning_curve
+  from sklearn.learning_curve import learning_curve
 
-    num_data = 120
-    sigma = 1
-    degree = [1, 3, 10]
-    x, y = gen_data(num_data, sigma)
-    for d in degree:
-      poly = PolynomialFeatures(degree=d)
-      X = poly.fit_transform(x[:, np.newaxis])
+  num_data = 120
+  sigma = 1
+  degree = [1, 3, 10]
+  x, y = gen_data(num_data, sigma)
+  for d in degree:
+    poly = PolynomialFeatures(degree=d)
+    X = poly.fit_transform(x[:, np.newaxis])
 
-      lr = LinearRegression()
-      train_sizes, train_scores, test_scores = learning_curve(
-          estimator=lr, X=X, y=y, scoring=mse)
+    lr = LinearRegression()
+    train_sizes, train_scores, test_scores = learning_curve(
+        estimator=lr, X=X, y=y, scoring=mse)
 
-      train_mean = np.mean(train_scores, axis=1)
-      train_std = np.std(train_scores, axis=1)
-      test_mean = np.mean(test_scores, axis=1)
-      test_std = np.std(test_scores, axis=1)
+    train_mean = np.mean(train_scores, axis=1)
+    train_std = np.std(train_scores, axis=1)
+    test_mean = np.mean(test_scores, axis=1)
+    test_std = np.std(test_scores, axis=1)
 
-      plt.plot(
-          train_sizes,
-          train_mean,
-          color='blue',
-          marker='o',
-          markersize=5,
-          label='Training error')
-      plt.fill_between(
-          train_sizes,
-          train_mean + train_std,
-          train_mean - train_std,
-          alpha=0.15,
-          color='blue')
+    plt.plot(
+        train_sizes,
+        train_mean,
+        color='blue',
+        marker='o',
+        markersize=5,
+        label='Training error')
+    plt.fill_between(
+        train_sizes,
+        train_mean + train_std,
+        train_mean - train_std,
+        alpha=0.15,
+        color='blue')
 
-      plt.plot(
-          train_sizes,
-          test_mean,
-          color='green',
-          linestyle='--',
-          marker='s',
-          markersize=5,
-          label='Testing error')
-      plt.fill_between(
-          train_sizes,
-          test_mean + test_std,
-          test_mean - test_std,
-          alpha=0.15,
-          color='green')
+    plt.plot(
+        train_sizes,
+        test_mean,
+        color='green',
+        linestyle='--',
+        marker='s',
+        markersize=5,
+        label='Testing error')
+    plt.fill_between(
+        train_sizes,
+        test_mean + test_std,
+        test_mean - test_std,
+        alpha=0.15,
+        color='green')
 
-      plt.hlines(y=sigma, xmin=0, xmax=80, color='red', linewidth=2, linestyle='--')
+    plt.hlines(y=sigma, xmin=0, xmax=80, color='red', linewidth=2, linestyle='--')
 
-      plt.title('Degree: %d' % d)
-      plt.grid()
-      plt.xlabel('Number of training samples')
-      plt.ylabel('MSE')
-      plt.legend(loc='upper right')
-      plt.ylim([0, 3])
-      plt.tight_layout()
-      plt.savefig('./output/fig-learning-curve-%d.png' % d, dpi=300)
-      plt.show()
+    plt.title('Degree: %d' % d)
+    plt.grid()
+    plt.xlabel('Number of training samples')
+    plt.ylabel('MSE')
+    plt.legend(loc='upper right')
+    plt.ylim([0, 3])
+    plt.tight_layout()
+    plt.savefig('./output/fig-learning-curve-%d.png' % d, dpi=300)
+    plt.show()
 #+END_SRC
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -276,18 +294,14 @@ In [6]:
       DeprecationWarning)
 #+END_SRC
 
-We can see that, our regression task, a polynomial of any degree almost
-always overfit the training data when it's size is small, resulting in
-poor testing performance. This indicates that we should collect more
-data instead of sitting in front of the computer and play with the
-models. You may also try other models as different models has different
-*sample complexity* (i.e., number of samples required to successfully
-train a model).
+We can see that, our regression task, a polynomial of any degree almost always
+overfit the training data when it's size is small, resulting in poor testing
+performance. This indicates that we should collect more data instead of sitting
+in front of the computer and play with the models. You may also try other models
+as different models has different *sample complexity* (i.e., number of samples
+required to successfully train a model).
 
-* Weigh Decay[[Weigh-Decay][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Weigh-Decay
-  :END:
+* Weigh Decay
 
 OK, we have verified the learning theory discussed in the lecture. Let's
 move on to the regularization techniques. Weight decay is a common
@@ -295,14 +309,18 @@ regularization approach. The idea is to add a term in the cost function
 against complexity. In regression, this leads to two well-known models:
 
 Ridge regression:
-$$\arg\min\_{\boldsymbol{w},b}\Vert\boldsymbol{y}-(\boldsymbol{X}\boldsymbol{w}-b\boldsymbol{1})\Vert\^{2}+\alpha\Vert\boldsymbol{w}\Vert\^{2}$$
+
+$$
+\arg\min\_{\boldsymbol{w},b}\Vert\boldsymbol{y}-(\boldsymbol{X}\boldsymbol{w}-b\boldsymbol{1})\Vert^{2}+\alpha\Vert\boldsymbol{w}\Vert^{2}
+$$
 
 LASSO:
-$$\arg\min\_{\boldsymbol{w},b}\Vert\boldsymbol{y}-(\boldsymbol{X}\boldsymbol{w}-b\boldsymbol{1})\Vert\^{2}+\alpha\Vert\boldsymbol{w}\Vert\_{1}$$
+
+$$
+\arg\min\_{\boldsymbol{w},b}\Vert\boldsymbol{y}-(\boldsymbol{X}\boldsymbol{w}-b\boldsymbol{1})\Vert^{2}+\alpha\Vert\boldsymbol{w}\Vert_{1}
+$$
 
 Let's see how they work using the Housing dataset:
-
-In [7]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import pandas as pd
@@ -330,10 +348,8 @@ Out[7]:
 | 3   | 0.03237   | 0.0    | 2.18    | 0      | 0.458   | 6.998   | 45.8   | 6.0622   | 3     | 222.0   | 18.7      | 394.63   | 2.94    | 33.4   |
 | 4   | 0.06905   | 0.0    | 2.18    | 0      | 0.458   | 7.147   | 54.2   | 6.0622   | 3     | 222.0   | 18.7      | 396.90   | 5.33    | 36.2   |
 
-Remember that for weight decay to work properly, we need to ensure that
-all our features are on comparable scales:
-
-In [8]:
+Remember that for weight decay to work properly, we need to ensure that all our
+features are on comparable scales:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import StandardScaler
@@ -345,16 +361,11 @@ In [8]:
     X_std = sc_x.fit_transform(X)
 #+END_SRC
 
-*** Ridge Regression[[Ridge-Regression][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Ridge-Regression
-    :END:
+*** Ridge Regression
 
-We know that an unregularized polynomial regressor with degree $P=3$
-will overfit the training data and has bad generalizability. Let's
-regularize its $L\^2$-norm to see if we can get a better testing error:
-
-In [9]:
+We know that an unregularized polynomial regressor with degree $P=3$ will
+overfit the training data and has bad generalizability. Let's regularize its
+$L^2$ -norm to see if we can get a better testing error:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import Ridge
@@ -402,15 +413,12 @@ In [9]:
       ' condition number: {}'.format(rcond), RuntimeWarning)
 #+END_SRC
 
-We can see that a small value $\alpha$ drastically reduces the testing
-error. In addition, $\alpha = 100$ seems to be a good decay strength. As
-we can see, it's not a good idea to increase $\alpha$ forever, since it
-will over-shrink the coefficients of $\boldsymbol{w}$ and result in
-underfit.
+We can see that a small value $\alpha$ drastically reduces the testing error. In
+addition, $\alpha = 100$ seems to be a good decay strength. As we can see, it's
+not a good idea to increase $\alpha$ forever, since it will over-shrink the
+coefficients of $\boldsymbol{w}$ and result in underfit.
 
 Let's see the rate of weight decay as $\alpha$ grows:
-
-In [10]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_train, X_test, y_train, y_test = train_test_split(
@@ -440,21 +448,16 @@ In [10]:
     plt.show()
 #+END_SRC
 
-*** LASSO[[LASSO][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: LASSO
-    :END:
+*** LASSO
 
-An alternative weight decay approach that can lead to sparse
-$\boldsymbol{w}$ is the LASSO. Depending on the value of $\alpha$,
-certain weights can become zero much faster than others, which makes the
-LASSO also useful as a supervised feature selection technique.
+An alternative weight decay approach that can lead to sparse $\boldsymbol{w}$ is
+the LASSO. Depending on the value of $\alpha$, certain weights can become zero
+much faster than others, which makes the LASSO also useful as a supervised
+feature selection technique.
 
-NOTE: since $L\^1$-norm has non differentiable points, the solver
-(optimization method) is different from the one used in the Ridge
-regression. It would take much more time to train model weights.
-
-In [11]:
+NOTE: since $L\^1$-norm has non differentiable points, the solver (optimization
+method) is different from the one used in the Ridge regression. It would take
+much more time to train model weights.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import Lasso
@@ -490,7 +493,6 @@ In [11]:
     MSE train: 84.76, test: 83.77
 #+END_SRC
 
-In [12]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_train, X_test, y_train, y_test = train_test_split(
@@ -524,16 +526,11 @@ In [12]:
 The result shows that as the $\alpha$ increases, the coefficients shrink
 *faster* and become *exactly zero* when $\alpha=8$.
 
-*** LASSO for Feature Selection[[LASSO-for-Feature-Selection][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: LASSO-for-Feature-Selection
-    :END:
+*** LASSO for Feature Selection
 
-Since we can choose a suitable regularization strength $\alpha$ to make
-only part of coefficients become exactly zeros, LASSO can also be
-treated as a feature selection technique.
-
-In [13]:
+Since we can choose a suitable regularization strength $\alpha$ to make only
+part of coefficients become exactly zeros, LASSO can also be treated as a
+feature selection technique.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     var_num = X_train.shape[1]
@@ -563,10 +560,9 @@ In [13]:
     Selected attributes: ['RM' 'TAX' 'PTRATIO' 'LSTAT']
 #+END_SRC
 
-We can plot the pairwise distributions to see the correlation between
-the selected attributes and =MEDV=:
+We can plot the pairwise distributions to see the correlation between the
+selected attributes and =MEDV=:
 
-In [14]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import seaborn as sns
@@ -585,40 +581,33 @@ In [14]:
     sns.reset_orig()
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     All attributes:
-#+END_SRC
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     Selected attributes:
-#+END_SRC
 
 
 As we can see, LASSO extracted attributes that have more significant
 correlations with =MEDV=.
 
-*** Ignoring Outliers using RANSAC[[Ignoring-Outliers-using-RANSAC][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Ignoring-Outliers-using-RANSAC
-    :END:
+*** Ignoring Outliers using RANSAC
 
-Linear regression models can be heavily impacted by the presence of
-outliers. In certain situations, a very small subset of our data can
-have a big effect on the estimated model coefficients, as shown below:
+Linear regression models can be heavily impacted by the presence of outliers. In
+certain situations, a very small subset of our data can have a big effect on the
+estimated model coefficients, as shown below:
 
 #+CAPTION: alt text
 [[file:fig-outlier.png]]
 
-There are many statistical tests that can be used to detect outliers,
-which are beyond the scope of our course. However, removing outliers
-usually requires our human judgment as well as domain knowledge.
+There are many statistical tests that can be used to detect outliers, which are
+beyond the scope of our course. However, removing outliers usually requires our
+human judgment as well as domain knowledge.
 
-Next, we present the RANdom SAmple Consensus (RANSAC) algorithm for
-regression that can completely ignore the outliers and making them
-irrelevant to final predictions. RANSAC fits a regression model only to
-a subset of the data, the so-called *inliers*. RANSAC is an iterative
-algorithm, which can be summarized as follows:
+Next, we present the *RANdom SAmple Consensus (RANSAC)* algorithm for regression
+that can *completely ignore the outliers and making them irrelevant to final
+predictions*. ~RANSAC~ fits a regression model only to a subset of the data, the
+so-called *inliers*. ~RANSAC~ is an iterative algorithm, which can be summarized
+as follows:
 
 1. Select a random number of samples to be inliers and fit the model.
 2. Test all other data points against the fitted model and add those
@@ -629,7 +618,6 @@ algorithm, which can be summarized as follows:
    user-defined threshold or if a fixed number of iterations has been
    reached; go back to step 1 otherwise.
 
-In [15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import RANSACRegressor
@@ -698,10 +686,7 @@ value for the inlier threshold is problem-specific, which is one disadvantage of
 RANSAC. Many different approaches have been developed over the recent years to
 select a good inlier threshold automatically.
 
-* Validation[[Validation][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Validation
-  :END:
+* Validation
 
 *Hyperperemeters*, i.e. model constants, may have impact on the model complexity
 and generalization performance. Validation is another useful regularization
@@ -712,8 +697,6 @@ So, you don't peep testing set and report optimistic testing performance.
 
 Let's follow the structural risk minimization framework to pick a right degree
 $P$ in polynomial regression:
-
-In [16]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import Ridge
@@ -769,27 +752,24 @@ In [16]:
     MSE train: 0.60, valid: 1444.08, test: 33189.41
 #+END_SRC
 
-We pick $P=2$ because it gives a low enough validation error at the
-simplest complexity. Then, we report the testing error over the test
-set. In general, you may not be able to pick the $P$ that gives the
-lowest testing performance. In this case you get the 20.24% testing
-error instead of 18.63%. But that's the right way to do error reporting.
+We pick $P=2$ because it gives a low enough validation error at the simplest
+complexity. Then, we report the testing error over the test set. In general, you
+may not be able to pick the $P$ that gives the lowest testing performance. In
+this case you get the 20.24% testing error instead of 18.63%. But that's the
+right way to do error reporting.
 
-* Assignment[[Assignment][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Assignment
-  :END:
+* Assignment
 
 In this assignment, you should train a model to predict if a shot can make under
 specific circumstance. You can download the dataset [[https://drive.google.com/file/d/0BwGWe6FelX1kbTNRMTAwX2poMkE/view?usp=sharing][here]] first.
 
-1. The *y\_test is hidden* this time.
+1. The *y_test is hidden* this time.
 2. You can use *any model* you have learned before to achieve the best
    accuracy.
 3. Then, you need to select the best *3 features*, and show the accuracy
    with only those.
 
-Submit your *ipynb* and *y\_pred.csv* to iLMS, and ipynb should contain:
+Submit your *ipynb* and *y_pred.csv* to iLMS, and ipynb should contain:
 
 1. How you *evaluate* your model
 2. *All models* you have tried and the result
@@ -801,18 +781,14 @@ Submit your *ipynb* and *y\_pred.csv* to iLMS, and ipynb should contain:
 *Notification:*
 
 1. In the task1, you can *preprocess the data* to help your training.
-2. Since you don't have y\_test this time, you may need to *split a
-   validation set* for checking your performance.
-3. The deadline will be *2017/10/09 (TUE)*, please don't be late.
-
-In [17]:
+2. Since you don't have ~y_test~ this time, you may need to *split a validation
+   set* for checking your performance.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import pandas as pd
     import numpy as np
 #+END_SRC
 
-In [18]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_train = pd.read_csv('./data/nba/X_train.csv')
@@ -821,7 +797,6 @@ In [18]:
     X_test = pd.read_csv('./data/nba/X_test.csv')
 #+END_SRC
 
-In [19]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print(X_train.shape)
@@ -837,14 +812,13 @@ In [19]:
     Index(['FGM'], dtype='object')
 #+END_SRC
 
-In [20]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print(X_train[:4])
     print(y_train[:4])
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_EXAMPLE
        PERIOD  GAME_CLOCK  SHOT_CLOCK  DRIBBLES  TOUCH_TIME  SHOT_DIST  PTS_TYPE  \
     0       2         557        15.5         0         0.7        2.1         2   
     1       2         151        20.1         0         0.8        2.7         2   
@@ -861,16 +835,14 @@ In [20]:
     1    1
     2    0
     3    1
-#+END_SRC
+#+END_EXAMPLE
 
-In [21]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     def pd2np(df):
       return df.as_matrix()
 #+END_SRC
 
-In [22]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_train = pd2np(X_train)
@@ -879,7 +851,6 @@ In [22]:
     X_test = pd2np(X_test)
 #+END_SRC
 
-In [23]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print(type(X_train))

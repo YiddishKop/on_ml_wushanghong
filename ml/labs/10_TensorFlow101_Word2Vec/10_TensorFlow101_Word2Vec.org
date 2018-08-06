@@ -1,734 +1,583 @@
-* TensorFlow 101 & Word2Vec[[TensorFlow-101-&-Word2Vec][¶]]
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: TensorFlow 101 & Word2Vec
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
 
+
+* TensorFlow 101
 TensorFlow is a powerful open source libraray used for large-scale machine
 learning.In this lab, we will first go through some basic concepts of
 TensorFlow. We will then look at the word2vec model and the =Dataset= API.
 
-* Environment Setup[[Environment-Setup][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Environment-Setup
-  :END:
+** Environment Setup
+*** Installing CUDA and CuDNN
 
-** Installing CUDA and CuDNN[[Installing-CUDA-and-CuDNN][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Installing-CUDA-and-CuDNN
-   :END:
+ In order to use NVIDIA GPUs to train your model, CUDA and CuDNN are required.
+ The installation guide can be found [[https://www.nvidia.com/en-us/data-center/gpu-accelerated-applications/tensorflow/][here]].
 
-In order to use NVIDIA GPUs to train your model, CUDA and CuDNN are required.
-The installation guide can be found [[https://www.nvidia.com/en-us/data-center/gpu-accelerated-applications/tensorflow/][here]].
+*** Installing TensorFlow
 
-** Installing TensorFlow[[Installing-TensorFlow][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Installing-TensorFlow
-   :END:
+ There are several ways to install TensorFlow which can be found [[https://www.tensorflow.org/install/][here]]. One way is
+ to install TensorFlow in a conda virtual environment. First, we create a new
+ environment called =tensorflow=.
 
-There are several ways to install TensorFlow which can be found [[https://www.tensorflow.org/install/][here]]. One way is
-to install TensorFlow in a conda virtual environment. First, we create a new
-environment called =tensorflow=.
+#+BEGIN_EXAMPLE
+     > conda create -n tensorflow
+#+END_EXAMPLE
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > conda create -n tensorflow
-#+END_SRC
+ Then we activate the environment:
 
-Then we activate the environment:
+#+BEGIN_EXAMPLE
+     > source activate tensorflow (Linux or Mac)
+     > activate tensorflow (Windows)
+#+END_EXAMPLE
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > source activate tensorflow (Linux or Mac)
-    > activate tensorflow (Windows)
-#+END_SRC
+ According to the TensorFlow official webpage, it is recommended installing
+ TensorFlow with =pip install= command instead of =conda install=. Since the
+ conda package is community supported, not officially supported, we will stick to
+ =pip install=.
 
-According to the TensorFlow official webpage, it is recommended
-installing TensorFlow with =pip install= command instead of
-=conda install=. Since the conda package is community supported, not
-officially supported, we will stick to =pip install=.
+ First, make sure that =pip3= is installed:
 
-First, make sure that =pip3= is installed:
+ #+BEGIN_EXAMPLE
+     > pip3 -V
+ #+END_EXAMPLE
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > pip3 -V
-#+END_SRC
+ Install TensorFlow with =pip install=:
 
-Install TensorFlow with =pip install=:
+ #+BEGIN_EXAMPLE
+     > pip3 install tensorflow-gpu # Python 3.n; GPU support
+ #+END_EXAMPLE
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > pip3 install tensorflow-gpu # Python 3.n; GPU support
-#+END_SRC
+ Then we can verify the installation by entering a short program in the
+ python interactive shell.
 
-Then we can verify the installation by entering a short program in the
-python interactive shell.
+ #+BEGIN_EXAMPLE
+     > python
+ #+END_EXAMPLE
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > python
-#+END_SRC
+ Type in the following program:
 
-Type in the following program:
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+   import tensorflow as tf
+   hello = tf.constant('Hello, TensorFlow!')
+   sess = tf.Session()
+   print(sess.run(hello))
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    import tensorflow as tf
-    hello = tf.constant('Hello, TensorFlow!')
-    sess = tf.Session()
-    print(sess.run(hello))
-#+END_SRC
+ #+RESULTS:
+ :RESULTS:
+ # Out[1]:
+ :END:
 
-* Getting Started with TensorFlow[[Getting-Started-with-TensorFlow][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Getting-Started-with-TensorFlow
-  :END:
+** Getting Started with TensorFlow
 
-Originally developed by Google Brain, TensorFlow is an open source
-library which provides a variety of functions and classes used to
-conduct machine learning.
+ Originally developed by Google Brain, TensorFlow is an open source
+ library which provides a variety of functions and classes used to
+ conduct machine learning.
 
-The benefits of using TensorFlow include:
+ The benefits of using TensorFlow include:
 
--  Python API
--  Portability: can be used on multiple CPUs or GPUs as well as on
-   mobile devices
--  Flexibility: can run on different devices e.g. Raspberry Pi, Android,
-   iOS, Windows, Linux
--  Visualization: visualize the training process via TensorBoard
--  Checkpoints: manage trained models
--  Auto-differentiation
--  Large community
+ -  Python API
+ -  Portability: can be used on multiple CPUs or GPUs as well as on
+    mobile devices
+ -  Flexibility: can run on different devices e.g. Raspberry Pi, Android,
+    iOS, Windows, Linux
+ -  Visualization: visualize the training process via TensorBoard
+ -  Checkpoints: manage trained models
+ -  Auto-differentiation
+ -  Large community
 
-* Graphs and Sessions[[Graphs-and-Sessions][¶]]
+** Graphs and Sessions
 
-In TensorFlow, *the definition of computations is separated from their
-execution*. First, we specify the operations by building a data flow graph in
-Python. Next, TensorFlow runs the graph with a =Session= using optimized C++
-code. Let's import tensorflow first and create a session.
+ In TensorFlow, *the definition of computations is separated from their
+ execution*. First, we specify the operations by building a data flow graph in
+ Python. Next, TensorFlow runs the graph with a =Session= using optimized C++
+ code. Let's import tensorflow first and create a session.
 
+ 当启动session之后, Tensor(也就是node) 可以用 <Tensor>.eval() 来代替
+ sess.run(<Tensor>) 来运行session 并获得 <Tensor>的结果.
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :results raw drawer
+     import tensorflow as tf
+     sess = tf.InteractiveSession()
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    import tensorflow as tf
-    sess = tf.InteractiveSession()
-#+END_SRC
+ #+RESULTS:
+ :RESULTS:
+ # Out[1]:
+ :END:
 
-*** Tensors[[Tensors][¶]]
+*** Tensors
 
-A *Tensor* is an array of any dimension. The *rank* of a tensor refers to the
-number of dimensions it has.
+ A *Tensor* is an array of any dimension. The *rank* of a tensor refers to the
+ number of dimensions it has.
 
-注意: Tensor 的维度是从一对中括号 "[]" 内部开始算的, 如果没有中括号是常数.
+ 注意: Tensor 的维度是从一对中括号 "[]" 内部开始算的, 如果没有中括号是常数.
 
-A rank 0 tensor with shape [ ]:
+ A rank 0 tensor with shape [ ]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > 3
-#+END_SRC
+ #+BEGIN_EXAMPLE
+     > 3
+ #+END_EXAMPLE
 
-A vector - a rank 1 tensor with shape [3]:
+ A vector - a rank 1 tensor with shape [3]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [1.0, 2.0, 3.0]
-#+END_SRC
+ #+BEGIN_EXAMPLE
+     [1.0, 2.0, 3.0]
+ #+END_EXAMPLE
 
-A matrix - a rank 2 tensor with shape [1, 3]
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [[1.0, 2.0, 3.0]]
-#+END_SRC
-
-A matrix - a rank 2 tensor with shape [2, 3]
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [[1.0, 2.0, 3.0], 
-     [4.0, 5.0, 6.0]]
-#+END_SRC
-
-A rank 3 tensor with shape [2,1,3]
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [[[1.0, 2.0, 3.0]], 
-     [[7.0, 8.0, 9.0]]]
-#+END_SRC
-
-*** Constants[[Constants][¶]]
-
-We can create constants by passing lists or constants into the =tf.constant=
-function.
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    tf.constant(value, dtype=None, shape=None, name='Const', verify_shape=False)
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # constant of 1d tensor (vector)
-    a = tf.constant([2, 2], dtype=tf.int32, name="vector")
-    a.eval()
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([2, 2], dtype=int32)
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # constant of 2x2 tensor (matrix)
-    b = tf.constant([[0, 1], [2, 3]], name="b")
-    b.eval()
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([[0, 1],
-           [2, 3]], dtype=int32)
-#+END_SRC
-
-We can also create tensors of a specific value.
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    c = tf.zeros([2, 3], tf.int32) # [[0, 0, 0], [0, 0, 0]]
-    c.eval()
-#+END_SRC
-
-Out[4]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([[0, 0, 0],
-           [0, 0, 0]], dtype=int32)
-#+END_SRC
-
-In [5]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    d = tf.ones([2, 3], tf.int32) #  [[1, 1, 1], [1, 1, 1]]
-    d.eval()
-#+END_SRC
-
-Out[5]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([[1, 1, 1],
-           [1, 1, 1]], dtype=int32)
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # create a tensor containing zeros, with shape and type as input_tensor
-    input_tensor = tf.constant([[1,1], [2,2], [3,3]], dtype=tf.float32)
-    e = tf.zeros_like(input_tensor)  #  [[0, 0], [0, 0], [0, 0]]
-    e.eval()
-#+END_SRC
-
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([[ 0.,  0.],
-           [ 0.,  0.],
-           [ 0.,  0.]], dtype=float32)
-#+END_SRC
-
-In [7]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    f = tf.ones_like(input_tensor) # [[1, 1], [1, 1], [1, 1]]
-    f.eval()
-#+END_SRC
-
-Out[7]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    array([[ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.]], dtype=float32)
-#+END_SRC
-
-*** Variables[[Variables][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Variables
-    :END:
-
-Unlike a constant, a variable can be assigned to, so its value can be changed.
-Also, a constant's value is stored on the graph, whereas a variable's value is
-stored seperately. To declare a variable, we create a instance of =tf.Variable=.
-
-In [8]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-     #create variable a with scalar value
-    a = tf.Variable(2, name="scalar")
-    #create variable b as a vector
-    b = tf.Variable([2, 3], name="vector")
-    #create variable c as a 2x2 matrix
-    c = tf.Variable([[0, 1], [2, 3]], name="matrix")
-    # create variable W as 784 x 10 tensor, filled with zeros
-    W = tf.Variable(tf.zeros([784,10]))
-#+END_SRC
-
-To assign value to variables, we can use =tf.Variable.assign()=. It creates a
-operation that assigns the variable with the specified value. Also, it is
-important to remember that a variable needs to be *initialized* before used. To
-initialize variables, run =tf.global_variables_initializer()=.
-
-In [9]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # assign a * 2 to a and call that op a_times_two
-    a = tf.Variable(2, name="scalar")
-    a_times_two = a.assign(a*2) # an operation that assigns value a*2 to a
-
-    init = tf.global_variables_initializer() # an operation that initializes all variables
-    sess.run(init) # run the init operation with session
-    sess.run(a_times_two)
-#+END_SRC
-
-Out[9]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    4
-#+END_SRC
-
-In [10]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # If a variable is used before initialized, an error will occur
-    a = tf.Variable(2, name="scalar")
-    a.eval() # a is NOT initialized
-#+END_SRC
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    ---------------------------------------------------------------------------
-    FailedPreconditionError                   Traceback (most recent call last)
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_call(self, fn, *args)
-       1326     try:
-    -> 1327       return fn(*args)
-       1328     except errors.OpError as e:
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _run_fn(session, feed_dict, fetch_list, target_list, options, run_metadata)
-       1305                                    feed_dict, fetch_list, target_list,
-    -> 1306                                    status, run_metadata)
-       1307 
-
-    ~/anaconda3/lib/python3.5/contextlib.py in __exit__(self, type, value, traceback)
-         65             try:
-    ---> 66                 next(self.gen)
-         67             except StopIteration:
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/errors_impl.py in raise_exception_on_not_ok_status()
-        465           compat.as_text(pywrap_tensorflow.TF_Message(status)),
-    --> 466           pywrap_tensorflow.TF_GetCode(status))
-        467   finally:
-
-    FailedPreconditionError: Attempting to use uninitialized value scalar_2
-         [[Node: _retval_scalar_2_0_0 = _Retval[T=DT_INT32, index=0, _device="/job:localhost/replica:0/task:0/cpu:0"](scalar_2)]]
-
-    During handling of the above exception, another exception occurred:
-
-    FailedPreconditionError                   Traceback (most recent call last)
-    <ipython-input-10-b658d49edc57> in <module>()
-          1 # If a variable is used before initialized, an error will occur
-          2 a = tf.Variable(2, name="scalar")
-    ----> 3 a.eval() # a is NOT initialized
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/ops/variables.py in eval(self, session)
-        472       A numpy `ndarray` with a copy of the value of this variable.
-        473     """
-    --> 474     return self._variable.eval(session=session)
-        475 
-        476   def initialized_value(self):
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/ops.py in eval(self, feed_dict, session)
-        539 
-        540     """
-    --> 541     return _eval_using_default_session(self, feed_dict, self.graph, session)
-        542 
-        543 
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/ops.py in _eval_using_default_session(tensors, feed_dict, graph, session)
-       4083                        "the tensor's graph is different from the session's "
-       4084                        "graph.")
-    -> 4085   return session.run(tensors, feed_dict)
-       4086 
-       4087 
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in run(self, fetches, feed_dict, options, run_metadata)
-        893     try:
-        894       result = self._run(None, fetches, feed_dict, options_ptr,
-    --> 895                          run_metadata_ptr)
-        896       if run_metadata:
-        897         proto_data = tf_session.TF_GetBuffer(run_metadata_ptr)
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _run(self, handle, fetches, feed_dict, options, run_metadata)
-       1122     if final_fetches or final_targets or (handle and feed_dict_tensor):
-       1123       results = self._do_run(handle, final_targets, final_fetches,
-    -> 1124                              feed_dict_tensor, options, run_metadata)
-       1125     else:
-       1126       results = []
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_run(self, handle, target_list, fetch_list, feed_dict, options, run_metadata)
-       1319     if handle is None:
-       1320       return self._do_call(_run_fn, self._session, feeds, fetches, targets,
-    -> 1321                            options, run_metadata)
-       1322     else:
-       1323       return self._do_call(_prun_fn, self._session, handle, feeds, fetches)
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_call(self, fn, *args)
-       1338         except KeyError:
-       1339           pass
-    -> 1340       raise type(e)(node_def, op, message)
-       1341 
-       1342   def _extend_graph(self):
-
-    FailedPreconditionError: Attempting to use uninitialized value scalar_2
-         [[Node: _retval_scalar_2_0_0 = _Retval[T=DT_INT32, index=0, _device="/job:localhost/replica:0/task:0/cpu:0"](scalar_2)]]
-#+END_SRC
-
-*** Building a data flow graph[[Building-a-data-flow-graph][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Building-a-data-flow-graph
-    :END:
-
-A data flow graph consists of nodes, each representing an operation. Each node
-takes zero or more tensors as inputs and produces a tensor as an output. A
-TensorFlow constant is a type of node which takes no inputs and outputs the
-value it stores. We create two floating point tensors and add them with an =add=
-operation (which is also a node).
-
-In [11]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    node1 = tf.constant(3.0, dtype=tf.float32)
-    node2 = tf.constant(4.0) # also tf.float32 implicitly
-    node3 = tf.add(node1, node2) 
-
-    print(node1) 
-    print(node2)
-    print(node3)
-#+END_SRC
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    Tensor("Const_1:0", shape=(), dtype=float32)
-    Tensor("Const_2:0", shape=(), dtype=float32)
-    Tensor("Add:0", shape=(), dtype=float32)
-#+END_SRC
-
-Note that printing the node would not output the values =3.0= and =4.0=.
-Instead, =node1= and =node2= output =3.0= and =4.0= when they are
-evaluated.
+ A matrix - a rank 2 tensor with shape [1, 3]
+
+ #+BEGIN_EXAMPLE
+     [[1.0, 2.0, 3.0]]
+ #+END_EXAMPLE
+
+ A matrix - a rank 2 tensor with shape [2, 3]
+
+ #+BEGIN_EXAMPLE
+     [[1.0, 2.0, 3.0],
+      [4.0, 5.0, 6.0]]
+ #+END_EXAMPLE
+
+ A rank 3 tensor with shape [2,1,3]
+
+ #+BEGIN_EXAMPLE
+     [[[1.0, 2.0, 3.0]],
+      [[7.0, 8.0, 9.0]]]
+ #+END_EXAMPLE
+
+*** Constant Tensors
+
+ We can create constants by passing lists or constants into the =tf.constant=
+ function.
+
+ #+BEGIN_EXAMPLE
+     tf.constant(value, dtype=None, shape=None, name='Const', verify_shape=False)
+ #+END_EXAMPLE
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     # constant of 1d tensor (vector)
+     a = tf.constant([2, 2], dtype=tf.int32, name="vector")
+     a.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[5]:
+ : array([2, 2], dtype=int32)
+ :END:
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     # constant of 2x2 tensor (matrix)
+     b = tf.constant([[0, 1], [2, 3]], name="b")
+     b.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[6]:
+ |    |   0 |   1 |
+ |----+-----+-----|
+ |  0 |   0 |   1 |
+ |  1 |   2 |   3 |
+ :END:
+
+
+ We can also create tensors of a specific value.
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     c = tf.zeros([2, 3], tf.int32) # [[0, 0, 0], [0, 0, 0]]
+     c.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[7]:
+ |    |   0 |   1 |   2 |
+ |----+-----+-----+-----|
+ |  0 |   0 |   0 |   0 |
+ |  1 |   0 |   0 |   0 |
+ :END:
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     d = tf.ones([2, 3], tf.int32) #  [[1, 1, 1], [1, 1, 1]]
+     d.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[8]:
+ |    |   0 |   1 |   2 |
+ |----+-----+-----+-----|
+ |  0 |   1 |   1 |   1 |
+ |  1 |   1 |   1 |   1 |
+ :END:
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     # create a tensor containing zeros, with shape and type as input_tensor
+     input_tensor = tf.constant([[1,1], [2,2], [3,3]], dtype=tf.float32)
+     e = tf.zeros_like(input_tensor)  #  [[0, 0], [0, 0], [0, 0]]
+     e.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[9]:
+ |    |   0 |   1 |
+ |----+-----+-----|
+ |  0 |   0 |   0 |
+ |  1 |   0 |   0 |
+ |  2 |   0 |   0 |
+ :END:
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     f = tf.ones_like(input_tensor) # [[1, 1], [1, 1], [1, 1]]
+     f.eval()
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[10]:
+ |    |   0 |   1 |
+ |----+-----+-----|
+ |  0 |   1 |   1 |
+ |  1 |   1 |   1 |
+ |  2 |   1 |   1 |
+ :END:
+
+*** Variables
+
+ Unlike a constant, a variable can be assigned to, so its value can be changed.
+ Also, a constant's value is stored on the graph, whereas a variable's value is
+ stored seperately. To declare a variable, we create a instance of =tf.Variable=.
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+      #create variable a with scalar value
+     a = tf.Variable(2, name="scalar")
+     #create variable b as a vector
+     b = tf.Variable([2, 3], name="vector")
+     #create variable c as a 2x2 matrix
+     c = tf.Variable([[0, 1], [2, 3]], name="matrix")
+     # create variable W as 784 x 10 tensor, filled with zeros
+     W = tf.Variable(tf.zeros([784,10]))
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[11]:
+ :END:
+
+ To assign value to variables, we can use =tf.Variable.assign()=. It creates a
+ operation that assigns the variable with the specified value. Also, it is
+ important to remember that a variable needs to be *initialized* before used. To
+ initialize variables, run =tf.global_variables_initializer()=.
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     # assign a * 2 to a and call that op a_times_two
+     a = tf.Variable(2, name="scalar")
+     a_times_two = a.assign(a*2) # an operation that assigns value a*2 to a
+
+     init = tf.global_variables_initializer() # an operation that initializes all variables
+     sess.run(init) # run the init operation with session
+     sess.run(a_times_two)
+     sess.run(b)
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[14]:
+ : array([2, 3], dtype=int32)
+ :END:
+
+
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :async t :results raw drawer
+     # If a variable is used before initialized, an error will occur
+     a = tf.Variable(2, name="scalar")
+     a.eval() # a is NOT initialized
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ :END:
+
+*** Building a data flow graph
+
+ A data flow graph consists of nodes, each representing an operation. Each node
+ takes zero or more tensors as inputs and produces a tensor as an output. A
+ TensorFlow constant is a type of node which takes no inputs and outputs the
+ value it stores. We create two floating point tensors and add them with an =add=
+ operation (which is also a node).
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results output drawer
+     node1 = tf.constant(3.0, dtype=tf.float32)
+     node2 = tf.constant(4.0) # also tf.float32 implicitly
+     node3 = tf.add(node1, node2)
+
+     print(node1)
+     print(node2)
+     print(node3)
+     print(sess.run(node1))
+     print(sess.run(node2))
+     print(sess.run(node3))
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ Tensor("Const:0", shape=(), dtype=float32)
+ Tensor("Const_1:0", shape=(), dtype=float32)
+ Tensor("Add:0", shape=(), dtype=float32)
+ 3.0
+ 4.0
+ 7.0
+ :END:
+
+ Note that printing the node would not output the values =3.0= and =4.0=.
+ Instead, =node1= and =node2= output =3.0= and =4.0= when they are evaluated.
 
 *** Visualizing and running a graph
-    :PROPERTIES:
-    :CUSTOM_ID: Visualizing-and-running-a-graph
-    :END:
 
-After building a graph, we can visualize our graph using TensorBoard. To
-do this, we create a directory =graph= to store the event data.
+ After building a graph, we can visualize our graph using TensorBoard. To do
+ this, we create a directory =graph= to store the event data.
 
-In [12]:
+ #+BEGIN_SRC emacs-lisp :tangle yes
+ (require 'ob-async)
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # create a directory to store our graph
-    import os
+ #+RESULTS:
+ : ob-async
 
-    logs_dir = './graph'
-    if not os.path.exists(logs_dir):
-        os.makedirs(logs_dir)
-#+END_SRC
+ #+BEGIN_SRC shell :async
+ ls ./
+ #+END_SRC
 
-#+RESULTS:
-:RESULTS:
-# Out[19]:
-:END:
+ #+RESULTS:
+ | 10_TensorFlow101_Word2Vec.jpnb |      |
+ | 10_TensorFlow101_Word2Vec.org  |      |
+ | 10_TensorFlow101_Word2Vec.py   |      |
+ | cbow_graph.png                 |      |
+ | Cbow.png                       |      |
+ | graph                          |      |
+ | graph.jpeg                     |      |
+ | linear-relationships.png       |      |
+ | nce-nplm.png                   |      |
+ | process_data.py                |      |
+ | Skip-gram.png                  |      |
+ | Tensorflow                     | 介绍 |
+ | train.py                       |      |
 
-To evaluate a graph, a =Session= is used. A TensorFlow session places
-operations onto devices such as CPUs and GPUs and runs them, and
-computes variable values.
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code :results output drawer
+     # create a directory to store our graph
+     import os
 
-In [13]:
+     logs_dir = './graph'
+     if not os.path.exists(logs_dir):
+         os.makedirs(logs_dir)
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    sess = tf.Session()
-    print(sess.run([node1, node2]))
-    print(sess.run(node3))
-    sess.close() # close the session
-#+END_SRC
+ #+RESULTS:
+ :RESULTS:
+ :END:
 
-#+RESULTS:
-:RESULTS:
-0 - 25612674-0ab0-43b0-bdf3-799714a52a3f
-:END:
+ To evaluate a graph, a =Session= is used. A TensorFlow session places operations
+ onto devices such as CPUs and GPUs and runs them, and computes variable values.
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [3.0, 4.0]
-    7.0
-#+END_SRC
 
-Alternatively, we can create and run a session with the following code:
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results output drawer
+     sess = tf.Session()
+     print(sess.run([node1, node2]))
+     print(sess.run(node3))
+     sess.close() # close the session
+ #+END_SRC
 
-In [14]:
+ #+RESULTS:
+ :RESULTS:
+ [3.0, 4.0]
+ 7.0
+ :END:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    with tf.Session() as sess:
-      # write operations to the event file
-      writer = tf.summary.FileWriter(logs_dir, sess.graph) 
-      print(sess.run([node1, node2]))
-      print(sess.run(node3))
-      # no need to write sess.close()
+
+ Alternatively, we can create and run a session with the following code:
+
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+     with tf.Session() as sess:
+       # write operations to the event file
+       writer = tf.summary.FileWriter(logs_dir, sess.graph)
+       print(sess.run([node1, node2]))
+       print(sess.run(node3))
+       # no need to write sess.close()
       
-    writer.close() 
-#+END_SRC
+     writer.close()
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [3.0, 4.0]
-    7.0
-#+END_SRC
+ #+RESULTS:
+ :RESULTS:
+ # Out[5]:
+ :END:
 
-To visualize the graph, go to the directory where we ran our jupyter
-notebook and start tensorboard.
+ To visualize the graph, go to the directory where we ran our jupyter
+ notebook and start tensorboard.
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    > cd path/to/your/notebook
-    > tensorboard --logdir="graphs/"
-#+END_SRC
+ #+BEGIN_SRC emacs-lisp :tangle yes
+ (require 'ob-async)
+ #+END_SRC
 
-Open your browser and go to [[http://localhost:6006/]], in the tab graph and you
-will see something like this:
+ #+RESULTS:
+ : ob-async
 
-[[file:graph.jpeg]]
+
+ #+NAME: process-to-avoid-reload-graph
+ #+BEGIN_EXAMPLE
+    <<get-pid>>
+    <<kill-pid>>
+    <<del-graph-summary>>
+    <<tensorboard-run>>
+    <<run-tensorboard>>
+
+
+   ps -aux | grep "python" | grep -E "(default|lec10|tensorboard)" | grep -v "grep" | awk '{print $2}'
+
+   ;; 取元素
+   (defun r1l(tbl)
+     (mapcar (lambda (x) (number-to-string (car x))) tbl)
+     )
+   ;; (print pid)
+   ;; (print (reduce-one-layer pid))
+   (mapcar #'shell-command-to-string
+           (mapcar (lambda (x) (concat "kill " x)) (r1l pid))))
+
+   rm -rf ~/git_repos/on_ml_wushanghong/ml/labs/10_TensorFlow101_Word2Vec/graph.jpeg
+   ls ~/git_repos/on_ml_wushanghong/ml/labs/10_TensorFlow101_Word2Vec
+
+
+   cd ~/git_repos/on_ml_wushanghong/ml/labs/10_TensorFlow101_Word2Vec
+   tensorboard --logdir="graphs/"
+
+ #+END_EXAMPLE
+
+
+ Open your browser and go to [[http://localhost:6006/]], in the tab graph and you
+ will see something like this:
+
+ [[file:graph.jpeg]]
 
 *** Placeholders and feed_dict
-    :PROPERTIES:
-    :CUSTOM_ID: Placeholders-and-feed_dict
-    :END:
 
-Creating a graph of constants as the above is not particularly useful. A graph
-can be defined to accept external inputs without knowing the actual values
-needed for computation. A =placeholder= is used as a promise to provide a value
-later. Then, values are fed into the placeholder by providing a dictionary
-containing concrete values as argument for =feed_dict=.
+ Creating a graph of constants as the above is not particularly useful. A graph
+ can be defined to accept external inputs without knowing the actual values
+ needed for computation. A =placeholder= is used as a promise to provide a value
+ later. Then, values are fed into the placeholder by providing a dictionary
+ containing concrete values as argument for =feed_dict=.
 
-In [15]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # create a placeholder of type float 32-bit, shape is a vector of 3 elements
-    a = tf.placeholder(tf.float32, shape=[3])
-    # create a constant of type float 32-bit, shape is a vector of 3 elements
-    b = tf.constant([5, 5, 5], tf.float32)
-    # use the placeholder as you would a constant or a variable
-    c = a + b # Short for tf.add(a, b)
-    with tf.Session() as sess:
-    # feed [1, 2, 3] to placeholder a via the dict {a: [1, 2, 3]}
-    # fetch value of c
-        print(sess.run(c, feed_dict={a: [1, 2, 3]}))
-#+END_SRC
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+     # create a placeholder of type float 32-bit, shape is a vector of 3 elements
+     a = tf.placeholder(tf.float32, shape=[3])
+     # create a constant of type float 32-bit, shape is a vector of 3 elements
+     b = tf.constant([5, 5, 5], tf.float32)
+     # use the placeholder as you would a constant or a variable
+     c = a + b # Short for tf.add(a, b)
+     with tf.Session() as sess:
+     # feed [1, 2, 3] to placeholder a via the dict {a: [1, 2, 3]}
+     # fetch value of c
+         print(sess.run(c, feed_dict={a: [1, 2, 3]}))
+ #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    [ 6.  7.  8.]
-#+END_SRC
 
-If we did not feed values into the placeholder, an error will occur.
+ If we did not feed values into the placeholder, an error will occur.
 
-In [16]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # create a placeholder of type float 32-bit, shape is a vector of 3 elements
-    a = tf.placeholder(tf.float32, shape=[3])
-    # create a constant of type float 32-bit, shape is a vector of 3 elements
-    b = tf.constant([5, 5, 5], tf.float32)
-    # use the placeholder as you would a constant or a variable
-    c = a + b # Short for tf.add(a, b)
-    #If we try to fetch c, we will run into error.
-    with tf.Session() as sess:
-        print(sess.run(c))
-#+END_SRC
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    ---------------------------------------------------------------------------
-    InvalidArgumentError                      Traceback (most recent call last)
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_call(self, fn, *args)
-       1326     try:
-    -> 1327       return fn(*args)
-       1328     except errors.OpError as e:
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _run_fn(session, feed_dict, fetch_list, target_list, options, run_metadata)
-       1305                                    feed_dict, fetch_list, target_list,
-    -> 1306                                    status, run_metadata)
-       1307 
-
-    ~/anaconda3/lib/python3.5/contextlib.py in __exit__(self, type, value, traceback)
-         65             try:
-    ---> 66                 next(self.gen)
-         67             except StopIteration:
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/errors_impl.py in raise_exception_on_not_ok_status()
-        465           compat.as_text(pywrap_tensorflow.TF_Message(status)),
-    --> 466           pywrap_tensorflow.TF_GetCode(status))
-        467   finally:
-
-    InvalidArgumentError: You must feed a value for placeholder tensor 'Placeholder_1' with dtype float and shape [3]
-         [[Node: Placeholder_1 = Placeholder[dtype=DT_FLOAT, shape=[3], _device="/job:localhost/replica:0/task:0/gpu:0"]()]]
-         [[Node: add_1/_1 = _Recv[client_terminated=false, recv_device="/job:localhost/replica:0/task:0/cpu:0", send_device="/job:localhost/replica:0/task:0/gpu:0", send_device_incarnation=1, tensor_name="edge_8_add_1", tensor_type=DT_FLOAT, _device="/job:localhost/replica:0/task:0/cpu:0"]()]]
-
-    During handling of the above exception, another exception occurred:
-
-    InvalidArgumentError                      Traceback (most recent call last)
-    <ipython-input-16-4b14b26bf447> in <module>()
-          7 #If we try to fetch c, we will run into error.
-          8 with tf.Session() as sess:
-    ----> 9     print(sess.run(c))
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in run(self, fetches, feed_dict, options, run_metadata)
-        893     try:
-        894       result = self._run(None, fetches, feed_dict, options_ptr,
-    --> 895                          run_metadata_ptr)
-        896       if run_metadata:
-        897         proto_data = tf_session.TF_GetBuffer(run_metadata_ptr)
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _run(self, handle, fetches, feed_dict, options, run_metadata)
-       1122     if final_fetches or final_targets or (handle and feed_dict_tensor):
-       1123       results = self._do_run(handle, final_targets, final_fetches,
-    -> 1124                              feed_dict_tensor, options, run_metadata)
-       1125     else:
-       1126       results = []
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_run(self, handle, target_list, fetch_list, feed_dict, options, run_metadata)
-       1319     if handle is None:
-       1320       return self._do_call(_run_fn, self._session, feeds, fetches, targets,
-    -> 1321                            options, run_metadata)
-       1322     else:
-       1323       return self._do_call(_prun_fn, self._session, handle, feeds, fetches)
-
-    ~/anaconda3/lib/python3.5/site-packages/tensorflow/python/client/session.py in _do_call(self, fn, *args)
-       1338         except KeyError:
-       1339           pass
-    -> 1340       raise type(e)(node_def, op, message)
-       1341 
-       1342   def _extend_graph(self):
-
-    InvalidArgumentError: You must feed a value for placeholder tensor 'Placeholder_1' with dtype float and shape [3]
-         [[Node: Placeholder_1 = Placeholder[dtype=DT_FLOAT, shape=[3], _device="/job:localhost/replica:0/task:0/gpu:0"]()]]
-         [[Node: add_1/_1 = _Recv[client_terminated=false, recv_device="/job:localhost/replica:0/task:0/cpu:0", send_device="/job:localhost/replica:0/task:0/gpu:0", send_device_incarnation=1, tensor_name="edge_8_add_1", tensor_type=DT_FLOAT, _device="/job:localhost/replica:0/task:0/cpu:0"]()]]
-
-    Caused by op 'Placeholder_1', defined at:
-      File "/home/mrplayer/anaconda3/lib/python3.5/runpy.py", line 184, in _run_module_as_main
-        "__main__", mod_spec)
-      File "/home/mrplayer/anaconda3/lib/python3.5/runpy.py", line 85, in _run_code
-        exec(code, run_globals)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/__main__.py", line 3, in <module>
-        app.launch_new_instance()
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/traitlets/config/application.py", line 658, in launch_instance
-        app.start()
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/kernelapp.py", line 474, in start
-        ioloop.IOLoop.instance().start()
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/zmq/eventloop/ioloop.py", line 162, in start
-        super(ZMQIOLoop, self).start()
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tornado/ioloop.py", line 887, in start
-        handler_func(fd_obj, events)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tornado/stack_context.py", line 275, in null_wrapper
-        return fn(*args, **kwargs)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/zmq/eventloop/zmqstream.py", line 440, in _handle_events
-        self._handle_recv()
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/zmq/eventloop/zmqstream.py", line 472, in _handle_recv
-        self._run_callback(callback, msg)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/zmq/eventloop/zmqstream.py", line 414, in _run_callback
-        callback(*args, **kwargs)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tornado/stack_context.py", line 275, in null_wrapper
-        return fn(*args, **kwargs)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/kernelbase.py", line 276, in dispatcher
-        return self.dispatch_shell(stream, msg)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/kernelbase.py", line 228, in dispatch_shell
-        handler(stream, idents, msg)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/kernelbase.py", line 390, in execute_request
-        user_expressions, allow_stdin)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/ipkernel.py", line 196, in do_execute
-        res = shell.run_cell(code, store_history=store_history, silent=silent)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/ipykernel/zmqshell.py", line 501, in run_cell
-        return super(ZMQInteractiveShell, self).run_cell(*args, **kwargs)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/IPython/core/interactiveshell.py", line 2728, in run_cell
-        interactivity=interactivity, compiler=compiler, result=result)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/IPython/core/interactiveshell.py", line 2850, in run_ast_nodes
-        if self.run_code(code, result):
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/IPython/core/interactiveshell.py", line 2910, in run_code
-        exec(code_obj, self.user_global_ns, self.user_ns)
-      File "<ipython-input-16-4b14b26bf447>", line 2, in <module>
-        a = tf.placeholder(tf.float32, shape=[3])
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tensorflow/python/ops/array_ops.py", line 1548, in placeholder
-        return gen_array_ops._placeholder(dtype=dtype, shape=shape, name=name)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tensorflow/python/ops/gen_array_ops.py", line 2094, in _placeholder
-        name=name)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/op_def_library.py", line 767, in apply_op
-        op_def=op_def)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/ops.py", line 2630, in create_op
-        original_op=self._default_original_op, op_def=op_def)
-      File "/home/mrplayer/anaconda3/lib/python3.5/site-packages/tensorflow/python/framework/ops.py", line 1204, in __init__
-        self._traceback = self._graph._extract_stack()  # pylint: disable=protected-access
-
-    InvalidArgumentError (see above for traceback): You must feed a value for placeholder tensor 'Placeholder_1' with dtype float and shape [3]
-         [[Node: Placeholder_1 = Placeholder[dtype=DT_FLOAT, shape=[3], _device="/job:localhost/replica:0/task:0/gpu:0"]()]]
-         [[Node: add_1/_1 = _Recv[client_terminated=false, recv_device="/job:localhost/replica:0/task:0/cpu:0", send_device="/job:localhost/replica:0/task:0/gpu:0", send_device_incarnation=1, tensor_name="edge_8_add_1", tensor_type=DT_FLOAT, _device="/job:localhost/replica:0/task:0/cpu:0"]()]]
-#+END_SRC
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+     # create a placeholder of type float 32-bit, shape is a vector of 3 elements
+     a = tf.placeholder(tf.float32, shape=[3])
+     # create a constant of type float 32-bit, shape is a vector of 3 elements
+     b = tf.constant([5, 5, 5], tf.float32)
+     # use the placeholder as you would a constant or a variable
+     c = a + b # Short for tf.add(a, b)
+     #If we try to fetch c, we will run into error.
+     with tf.Session() as sess:
+         print(sess.run(c))
+ #+END_SRC
 
 *** Sharing Variables
-    :PROPERTIES:
-    :CUSTOM_ID: Sharing-Variables
-    :END:
 
-To share variables, we can explicitly pass =tf.Variable= objects or implicitly
-wrapping =tf.Variable= objects with =tf.variable_scope= objects. Variable scopes
-not only allow us to share variables, they also make naming variables easier.
-Suppose we have multi-layered model, instead of coming up with different names
-for variables in different layers. We can use different scopes to distinguish
-them. We can use =tf.get_variable= to get an existing variable, if the variable
-does not exist, a new one is created and returned.
+ To share variables, we can explicitly pass =tf.Variable= objects or implicitly
+ wrapping =tf.Variable= objects with =tf.variable_scope= objects. Variable
+ scopes not only allow us to share variables, they also make naming variables
+ easier. Suppose we have multi-layered model, instead of coming up with
+ different names for variables in different layers. We can use different scopes
+ to distinguish them. We can use =tf.get_variable= to get an existing variable,
+ if the variable does not exist, a new one is created and returned.
 
-In [17]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    with tf.variable_scope("foo"):
-        v = tf.get_variable("v", [1])  # v.name == "foo/v:0"
-        w = tf.get_variable("w", [1])  # w.name == "foo/w:0"
-    with tf.variable_scope("foo", reuse=True):
-        v1 = tf.get_variable("v")  # The same as v above.
-#+END_SRC
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+     with tf.variable_scope("foo"):
+         v = tf.get_variable("v", [1])  # v.name == "foo/v:0"
+         w = tf.get_variable("w", [1])  # w.name == "foo/w:0"
+     with tf.variable_scope("foo", reuse=True):
+         v1 = tf.get_variable("v")  # The same as v above.
+ #+END_SRC
 
-In [18]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # clear used variables in jupyter notebook
-    %reset -fs 
-#+END_SRC
+ #+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+     # clear used variables in jupyter notebook
+     %reset -fs
+ #+END_SRC
+
+ #+RESULTS:
+ :RESULTS:
+ # Out[2]:
+ :END:
+
 
 * Word2Vec
-  :PROPERTIES:
-  :CUSTOM_ID: Word2Vec
-  :END:
 
-Word2Vec is a computationally-efficient model that learns to embed words into
-vectors. The goal is to map words that have similar meanings close to each
+~Word2Vec~ is a computationally-efficient model that learns to *embed words into
+vectors*. The goal is to map words that have similar meanings close to each
 other.
 
 ** Why represent words as vectors?
 
 When dealing with words, a straightforward way would be treating each word as
 discrete symbols. For instance, =cat= as =2= and =dog= as =1=. However, these
-symbols carry no information about the original word, making it impossible for
-us to infer the relationship between cats and dogs (both are four-legged animals
-and both are pets) based on the symbols alone. Hence, to successfully learn the
-relationship between them, we might need a large amount of training data.
+symbols *carry no information about the original word*, making it impossible for
+us to *infer the relationship between cats and dogs* (both are four-legged
+animals and both are pets) based on the symbols alone. Hence, to successfully
+learn the relationship between them, we might need a large amount of training
+data.
 
 On the other hand, *Vector space models (VSMs)* which represent words as vectors
 can help overcome these obstacles. This is based on a key observation that
 *semantically similar words are often used interchangeably in different
 contexts*. For example, the words =cat= and =dog= may both appear in a context
 "\_\_\_ is my favorate pet." When feeding =cat= and =dog= into the NN to predict
-their nearby words, these two words will be likely to share the same/similar
-hidden representation in order to predict the same/similar nearby words.
+their nearby words, these two words will be likely to *share the same/similar
+hidden representation* in order to predict the same/similar nearby words.
 
 ** Skip-Gram and CBOW
-   :PROPERTIES:
-   :CUSTOM_ID: Skip-Gram-and-CBOW
-   :END:
 
 Word2Vec comes in two variants *Skip-Gram* and *CBOW (Continuous Bag-Of-Words)*.
-Algorithmically, these models are similar. CBOW predicts the target words using
-its neighborhood(context) whereas Skip-Gram does the inverse, which is to
-predict context words from the target words. For example, given the sentence
-=the quick brown fox jumped over the lazy dog=. Defining the context words as
-the word to the left and right of the target word, CBOW will be trained on the
-dataset:
+Algorithmically, these models are similar.
+
+- CBOW predicts the target words using its neighborhood(context)
+- Skip-Gram does the inverse, which is to predict context words from the target
+  words.
+
+For example, given the sentence =the quick brown fox jumped over the lazy dog=.
+Defining the context words as the word to the left and right of the target word,
+CBOW will be trained on the dataset:
 
 =([the, brown], quick), ([quick, fox], brown), ([brown, jumped], fox)...=
 
@@ -755,196 +604,221 @@ the weights of the hidden layer, the "embedding matrix".
 
 For the rest of the tutorial, we will focus on the Skip-Gram model.
 
+* Skip-Gram Math                                                   :MATHFORM:
 ** Cost Function
-   :PROPERTIES:
-   :CUSTOM_ID: Cost-Function
-   :END:
 
-Like most neural networks, a Skip-Gram model is trained using the
-maximum likelihood(ML) principle:\\
+Like most neural networks, a Skip-Gram model is trained using the maximum
+likelihood(ML) principle:
+
 $$
-\arg\min\_{\Theta}\sum\_{i=1}\^{N}{-\log\mathrm{P}(\boldsymbol{y}\^{(i)}\,|\,\boldsymbol{x}\^{(i)},\Theta)}
-$$ In a multiclass task where $y=1,\cdots,V$($V$ being the vocabulary
-size) we usually assume
+argmin_{\Theta}\sum_{i=1}^{N}{-\log\mathrm{P}(\boldsymbol{y}^{(i)}|\boldsymbol{x}^{(i)},\Theta)}
+$$
 
-$$\Pr(y\,|\,\boldsymbol{x})\sim\mathrm{Categorical}(y\,|\,\boldsymbol{x};\boldsymbol{\rho})=\prod\_{i=1}\^{V}\rho\_{i}\^{1(y;\,y=i)}.$$
-It is natural to use $V$ *Softmax units* in the output layer. That is,
-the activation $a\_i\^{(L)}$ of each unit at the last layer(layer $L$)
-$z\_i\^{(L)}$ outputs one dimension of the softmax function, a
-generalization of the logistic sigmoid:
+In a multiclass task where $y=1,\cdots,V$($V$ being the vocabulary size) we
+usually assume
 
-$$a\_i\^{(L)}=\rho\_i=\mathrm{softmax}(\boldsymbol{z}\^{(L)})\_{i}=\frac{\exp(z\_{i}\^{(L)})}{\sum\_{j=1}\^{{\color{red}V}}\exp(z\_{j}\^{(L)})}.$$
+$$\Pr(y|\boldsymbol{x})\sim\mathrm{Categorical}(y|\boldsymbol{x};\boldsymbol{\rho})=\prod_{i=1}^{V}\rho_{i}^{1(y;y=i)}.$$
+
+It is natural to use $V$ *Softmax units* in the output layer. That is, the
+activation $a_i^{(L)}$ of each unit at the last layer(layer $L$) $z_i^{(L)}$
+outputs one dimension of the softmax function, a generalization of the logistic
+sigmoid:
+
+$$
+a_i^{(L)}=\rho_i=\mathrm{softmax}(\boldsymbol{z}^{(L)})_{i}=\frac{\exp(z_{i}^{(L)})}{\sum_{j=1}^{{\color{red}V}}\exp(z_{j}^{(L)})}.
+$$
+
 The cost function then becomes:
 
-$$\arg\min\_{\Theta}\sum\_{i}-\log\prod\_{j}\left(\frac{\exp(z\_{j}\^{(L)})}{\sum\_{k=1}\^{{\color{red}V}}\exp(z\_{k}\^{(L)})}\right)\^{1(y\^{(i)};y\^{(i)}=j)}=\arg\min\_{\Theta}\sum\_{i}\left[-z\_{y\^{(i)}}\^{(L)}+\log\sum\_{k=1}\^{{\color{red}V}}\exp(z\_{k}\^{(L)})\right]$$
-Basically, we want to maximize $\rho\_j$ when seeing an example of class
-$j$. However, this objective introduces high training cost when $V$ is
-large. Recall from the lecture that, at every training step in SGD, we
-need to compute the gradient of the cost function with respect to
-$\boldsymbol{z}\^{(L)}$. This gradient involves the $z\_{i}\^{(L)}$ of
-*every unit* at the output layer, which in turn leads to a lot of weight
-updates in $\boldsymbol{W}\^{(1)}$ and $\boldsymbol{W}\^{(2)}$ at every
-training step. The training will be very slow. Next, we will introduce
-two ways to speed up the training process.
+$$\arg\min_{\Theta}\sum_{i}-\log\prod_{j}\left(\frac{\exp(z_{j}^{(L)})}{\sum_{k=1}^{{\color{red}V}}\exp(z_{k}^{(L)})}\right)^{1(y^{(i)};y^{(i)}=j)}=\arg\min_{\Theta}\sum_{i}\left[-z_{y^{(i)}}^{(L)}+\log\sum_{k=1}^{{\color{red}V}}\exp(z_{k}^{(L)})\right]$$
+
+Basically, we want to maximize $\rho_j$ when seeing an example of class $j$.
+However, this objective introduces high training cost when $V$ is large. Recall
+from the lecture that, at every training step in SGD, we need to compute the
+gradient of the cost function with respect to $\boldsymbol{z}^{(L)}$. This
+gradient involves the $z_{i}^{(L)}$ of *every unit* at the output layer, which
+in turn leads to a lot of weight updates in $\boldsymbol{W}^{(1)}$ and
+$\boldsymbol{W}^{(2)}$ at every training step. The training will be very slow.
+Next, we will introduce two ways to speed up the training process.
 
 *** Sampled Softmax
-    :PROPERTIES:
-    :CUSTOM_ID: Sampled-Softmax
-    :END:
 
 Suppose that we have a training sequence of $T$ training words
-$w\_1,w\_2,w\_3,⋯,w\_T$ that belong to a vocabulary $V$ whose size is
-$|V|$ and that our model uses context $c$ of size $n$. Assuming that
-each word input embedding $v\_w$ (the "id"s each word is mapped to) of
-dimension $d$ and output embedding $v\_{w}\^{'}$ (the embedding
-generated by softmax output)
+$w_1,w_2,w_3,⋯,w_T$ that belong to a vocabulary $V$ whose size is $|V|$ and that
+our model uses context $c$ of size $n$. Assuming that each word input embedding
+$v_w$ (the "id"s each word is mapped to) of dimension $d$ and output embedding
+$v_{w}^{'}$ (the embedding generated by softmax output)
 
-Recall that the loss function is as follows:\\
-$$C(\theta) = -z\_{y\^{(i)}}\^{(L)} + log \sum\_{k=1}\^{V}
-exp(z\_{k}\^{(L)})$$
+Recall that the loss function is as follows:
+$$C(\theta) = -z_{y^{(i)}}^{(L)} + log \sum_{k=1}^{V}
+exp(z_{k}^{(L)})$$
 
 Computing the gradient $\nabla$ of $C(\theta)$ with respect to the
 model's parameters $\theta$,
 
-$$ \nabla\_{\theta}C(\theta) = \nabla\_{\theta}
-(\,-z\_{y\^{(i)}}\^{(L)}\,) + \nabla\_{\theta} log \sum\_{k=1}\^{V}
-exp(z\_k\^{(L)}) $$
+$$ \nabla_{\theta}C(\theta) = \nabla_{\theta}
+(\,-z_{y^{(i)}}^{(L)}\,) + \nabla_{\theta} log \sum_{k=1}^{V}
+exp(z_k^{(L)}) $$
 
 Since the gradient of $logx$ is $\frac{1}{x}$, the previous equation can
 be written as
 
-$$ \nabla\_{\theta}C(\theta) = \nabla\_{\theta}
-(\,-z\_{y\^{(i)}}\^{(L)}\,) + \frac{1}{\sum\_{k=1}\^{V}
-exp(z\_k\^{(L)})} \nabla\_{\theta} \sum\_{j=1}\^{V} exp(z\_j\^{(L)}) $$
+$$ \nabla_{\theta}C(\theta) = \nabla_{\theta}
+(\,-z_{y^{(i)}}^{(L)}\,) + \frac{1}{\sum_{k=1}^{V}
+exp(z_k^{(L)})} \nabla_{\theta} \sum_{j=1}^{V} exp(z_j^{(L)}) $$
 
 Next, move the gradient into the sum
 
-$$ \nabla\_{\theta}C(\theta) = \nabla\_{\theta}
-(\,-z\_{y\^{(i)}}\^{(L)}\,) + \frac{1}{\sum\_{k=1}\^{V}
-exp(z\_k\^{(L)})} \sum\_{j=1}\^{V} \nabla\_{\theta} exp(z\_j\^{(L)}) $$
+$$ \nabla_{\theta}C(\theta) = \nabla_{\theta}
+(\,-z_{y^{(i)}}^{(L)}\,) + \frac{1}{\sum_{k=1}^{V}
+exp(z_k^{(L)})} \sum_{j=1}^{V} \nabla_{\theta} exp(z_j^{(L)}) $$
 
 Since the gradient of the exponential function exp(x) is exp(x) itself
 and applying chain rule once more, the formula becomes
 
-$$ \nabla\_{\theta}C(\theta) = \nabla\_{\theta}
-(\,-z\_{y\^{(i)}}\^{(L)}\,) + \frac{1}{\sum\_{k=1}\^{V}
-exp(z\_k\^{(L)})} \sum\_{j=1}\^{V} exp(z\_j\^{(L)})
-\nabla\_{\theta}(z\_{j}\^{(L)}) $$
+$$ \nabla_{\theta}C(\theta) = \nabla_{\theta}
+(\,-z_{y^{(i)}}^{(L)}\,) + \frac{1}{\sum_{k=1}^{V}
+exp(z_k^{(L)})} \sum_{j=1}^{V} exp(z_j^{(L)})
+\nabla_{\theta}(z_{j}^{(L)}) $$
 
 Moving the $\sum$ to the front, we have
 
-$$ \nabla\_{\theta}C(\theta) = - \left[ \nabla\_{\theta}
-(\,z\_{y\^{(i)}}\^{(L)}\,) + \sum\_{j=1}\^{V} \frac{exp(z\_j\^{(L)})}
-{\sum\_{k=1}\^{V} exp(z\_k\^{(L)})}
-\nabla\_{\theta}(-z\_{j}\^{(L)})\right]$$ Note that
-$\frac{exp(\,z\_j\^{(L)}\,)} {\sum\_{k=1}\^{V} \, exp(\,z\_k\^{(L)}\,)}$
-is the softmax probability $ P(z\_{j}\^{(L)}) $ of $z\_{j}\^{(L)}$.
+$$ \nabla_{\theta}C(\theta) = - \left[ \nabla_{\theta}
+(\,z_{y^{(i)}}^{(L)}\,) + \sum_{j=1}^{V} \frac{exp(z_j^{(L)})}
+{\sum_{k=1}^{V} exp(z_k^{(L)})}
+\nabla_{\theta}(-z_{j}^{(L)})\right]$$
+
+Note that
+
+$$\frac{exp(\,z_j^{(L)}\,)} {\sum_{k=1}^{V} \, exp(\,z_k^{(L)}\,)}$$
+
+is the softmax probability $P(z_{j}^{(L)})$ of $z_{j}^{(L)}$.
 
 Replacing it and moving the negative sign to the front, we get
 
-$$ \nabla\_{\theta}C(\theta) = - \left[ \nabla\_{\theta}
-(\,z\_{y\^{(i)}}\^{(L)}\,) + \sum\_{j=1}\^{V} P(z\_j\^{(L)})
-\nabla\_{\theta} (-z\_j\^{(L)}) \right] $$ where the first term is
-related to the target word, and the second term is related to all the
-other words in the vocabulary. Moreover, the second term is an
-expectation of $\nabla\_{\theta} (-z\_j\^{(L)}))$ for all words in $V$.
+$$ \nabla_{\theta}C(\theta) = - \left[ \nabla_{\theta}
+(\,z_{y^{(i)}}^{(L)}\,) + \sum_{j=1}^{V} P(z_j^{(L)})
+\nabla_{\theta} (-z_j^{(L)}) \right] $$
+
+where the first term is related to the target word, and the second term is
+related to all the other words in the vocabulary. Moreover, the second term is
+an expectation of $\nabla_{\theta} (-z_j^{(L)}))$ for all words in $V$.
 Rewritting the formula, we get
 
-$$ \sum\_{j=1}\^{V} P(z\_j\^{(L)}) \nabla\_{\theta} (-z\_j\^{(L)}) =
-\mathop{\mathbb{E}}\_{z\_j \sim P} [ \nabla\_{\theta}(-z\_{j}\^{(L)}) ]
+$$ \sum_{j=1}^{V} P(z_j^{(L)}) \nabla_{\theta} (-z_j^{(L)}) =
+\mathop{\mathbb{E}}_{z_j \sim P} [ \nabla_{\theta}(-z_{j}^{(L)}) ]
 $$
 
 and
 
-$$ \nabla\_{\theta}C(\theta) = - \left[ \nabla(\,z\_{y\^{(i)}}\^{(L)}\,)
-+ \mathop{\mathbb{E}}\_{z\_j \sim P} [ \nabla\_{\theta}(-z\_{j}\^{(L)})
-] \right]$$
+$$
+\nabla_{\theta}C(\theta) = - \left[\nabla(\,z_{y^{(i)}}^{(L)}\,)
++\mathop{\mathbb{E}}_{z_j\sim P} [\nabla_{\theta}(-z_{j}^{(L)})
+]\right]
+$$
 
-Since we don't want to look at the whole vocabulary each time we compute
-the second term, we sample a small subset $V'$ from the whole vocabulary
-$V$ according to a predifined noise distribution $Q$, then the second
-term can be approximated as
+Since we don't want to look at the whole vocabulary each time we compute the
+second term, we sample a small subset $V'$ from the whole vocabulary $V$
+according to a predifined noise distribution $Q$, then the second term can be
+approximated as
 
-$$ \mathop{\mathbb{E}}\_{z\_j \sim P} [ \nabla\_{\theta}(-z\_{j}\^{(L)})
-] \approx \sum\_{\boldsymbol {x}\_i \in {\color{red}V\^{\color{red}'}}}
-\frac{exp(z\_{j}\^{(L)})-log(Q(\boldsymbol {x}\_i))}{ \sum\_{\boldsymbol
-{x}\_k \in {\color{red}V\^{\color{red}'}}}
-exp(z\_{j}\^{(L)})-log(Q(\boldsymbol {x}\_k))}$$
+$$ \mathop{\mathbb{E}}_{z_j \sim P} [ \nabla_{\theta}(-z_{j}^{(L)})
+] \approx \sum_{\boldsymbol {x}_i \in {\color{red}V^{\color{red}'}}}
+\frac{exp(z_{j}^{(L)})-log(Q(\boldsymbol {x}_i))}{ \sum_{\boldsymbol
+{x}_k \in {\color{red}V^{\color{red}'}}}
+exp(z_{j}^{(L)})-log(Q(\boldsymbol {x}_k))}$$
 
 where $Q$ is taken as
 
-$$ Q(\mathbf {x}\_i) = \begin{equation} \left\{ \begin{array}{rl}
-\frac{1}{|V\_{i}\^{'}|} \; if \; \boldsymbol {x}\_i \in V\_{i}\^{'}\\ 0,
-otherwise \end{array} \right. \end{equation} $$ ### Noise Contrastive
-Estimation (NCE)[[Noise-Contrastive-Estimation-(NCE)][¶]]
-{#Noise-Contrastive-Estimation-(NCE)}
+$$ Q(\mathbf {x}_i) = \begin{equation} \left\{ \begin{array}{rl}
+\frac{1}{|V_{i}^{'}|} \; if \; \boldsymbol {x}_i \in V_{i}^{'}\\ 0,
+otherwise \end{array} \right. \end{equation} $$
 
-Instead of estimating the probability of word
-$\Pr(y\,|\,\boldsymbol{x})$, we reduce the problem into a *binary
-classification* task, where the model tries to distinguish the target
-word $w\_t$ from $k$ noise words $\tilde{w\_{ik}}$. An illustration for
-CBOW is shown below. For skip-gram the direction is simply inverted.
+*** Noise Contrastive Estimation (NCE)
+
+[[file:more_about_NCE_and_softmax.org][a good interpretation of NCE in stackoverflow]]
+
+Instead of estimating the probability of word $\Pr(y\,|\,\boldsymbol{x})$, we
+reduce the problem into a *binary classification* task, where the model tries to
+distinguish the target word $w_t$ from $k$ noise words $\tilde{w_{ik}}$. An
+illustration for CBOW is shown below. For skip-gram the direction is simply
+inverted.
+
+
 [[file:nce-nplm.png]]
 
-Using $\boldsymbol{x}\_j$ to denote the correct word given context
-$c\_j$, and $\tilde{\boldsymbol{x}\_{ij}}$ to denote the noise words.
+Using $\boldsymbol{x}_j$ to denote the correct word given context
+$c_j$, and $\tilde{\boldsymbol{x}_{ij}}$ to denote the noise words.
 Our cost function using maximum likelihood principle look like:
 
-$$ C(\theta) = - \sum\_{i=1}\^{V} \left[ logP(y=1\; |
-\;\boldsymbol{x}\_i,c\_i) +
-k\mathop{\mathbb{E}}\_{\tilde{\boldsymbol{x}\_{ik}} \sim Q} [ logP(y=0\;
-| \;\tilde{\boldsymbol{x}\_{ik},c\_i}) ] \right]$$ Since calculating the
-expectation of the noise words still require summing over the whole
-vocabulary, we estimate $
-\mathop{\mathbb{E}}\_{\tilde{\boldsymbol{x}\_{jk}} \sim Q} [
-logP(y\^{(i)}=0\; | \;\tilde{\boldsymbol{x}\_{jk},c\_j}) ] $ by taking
-the mean over $k$
+$$C(\theta) = -\sum_{i=1}^{V}\left[logP(y=1\;|\;\boldsymbol{x}_i,c_i) +
+k\mathop{\mathbb{E}}_{\tilde{\boldsymbol{x}_{ik}}\sim Q}[logP(y=0\;|\;\tilde{\boldsymbol{x}_{ik},c_i})]\right]$$
 
-$$ C(\theta) = - \sum\_{i=1}\^{V} \left[ logP(y=1\; |
-\;\boldsymbol{x}\_i,c\_i) + k \sum\_{j=1}\^{k} \frac{1}{k} logP(y=0\; |
-\;\tilde{\boldsymbol{x}\_{jk},c\_j}) \right]$$ Eliminating $k$ and
-$\frac{1}{k}$
+Since calculating the expectation of the noise words still require summing over
+the whole vocabulary, we estimate $\mathop{\mathbb{E}}_{\tilde{\boldsymbol{x}_{jk}} \sim Q} [ logP(y^{(i)}=0\; |
+\;\tilde{\boldsymbol{x}_{jk},c_j})]$ by taking the mean over $k$
 
-$$ C(\theta) = - \sum\_{i=1}\^{V} \left[ logP(y=1\; |
-\;\boldsymbol{x}\_i,c\_i) + \sum\_{j=1}\^{k} logP(y=0\; |
-\;\tilde{\boldsymbol{x}\_{jk},c\_j}) \right]$$ Since we are sampling
-from two distributions, the correct word is sampled from the true
-distribution $P$ according to the context $c$ and noise words are
-sampled from $Q$, the probability of sampling either a positive sample
-or a negative sample can be written as
+$$C(\theta)=-\sum_{i=1}^{V}\left[logP(y=1\;|
+\;\boldsymbol{x}_i,c_i)+k\sum_{j=1}^{k}\frac{1}{k}logP(y=0\;|
+\;\tilde{\boldsymbol{x}_{jk},c_j})\right]$$
 
-$$ P(y \; | \; \boldsymbol{x}\_i, c\_i) =
-\frac{1}{k+1}P(\boldsymbol{x}\;|\;c) + \frac{k}{k+1} Q(\boldsymbol{x})
-$$ Hence
+Eliminating $k$ and $\frac{1}{k}$
 
-$$ P(y=1\;|\; \boldsymbol{x}\_i, c\_i) =
+$$C(\theta)=-\sum_{i=1}^{V}\left[logP(y=1\;|
+\;\boldsymbol{x}_i,c_i)+\sum_{j=1}^{k}logP(y=0\;|
+\;\tilde{\boldsymbol{x}_{jk},c_j})\right]$$
+
+Since we are sampling from two distributions:
+- the correct word is sampled from the true distribution $P$ according to the
+  context $c$ and
+- noise words are sampled from $Q$,
+
+
+the probability of sampling either a positive sample or a negative sample can be
+written as
+
+$$P(y\;|\;\boldsymbol{x}_i,c_i)=
+\frac{1}{k+1}P(\boldsymbol{x}\;|\;c)+\frac{k}{k+1}Q(\boldsymbol{x})
+$$
+
+Hence
+
+$$P(y=1\;|\;\boldsymbol{x}_i,c_i)=
 \frac{\frac{1}{k+1}P(\boldsymbol{x}\;|\;c)}{\frac{1}{k+1}P(\boldsymbol{x}\;|\;c)
-+ \frac{k}{k+1} Q(\boldsymbol{x})} =
-\frac{P(\boldsymbol{x}\;|\;c)}{P(\boldsymbol{x}\;|\;c) +
-kQ(\boldsymbol{x})}$$ and
++\frac{k}{k+1}Q(\boldsymbol{x})}=
+\frac{P(\boldsymbol{x}\;|\;c)}{P(\boldsymbol{x}\;|\;c)+
+kQ(\boldsymbol{x})}$$
 
-$$ P(y=0\;|\; \boldsymbol{x}\_i, c\_i) = 1 - P(y=1\;|\;
-\boldsymbol{x}\_i, c\_i)$$ Note that calculating
-$P(\boldsymbol{x}\;|\;c)$ requires summing over the whole vocabulary
-since
+and
 
-$$P(\boldsymbol{x}\;|\;c) = \frac{exp(z\_{i}\^{(L)})}{\sum\_{k=1}\^{V}
-exp(z\_{k}\^{(L)})}$$ If we represent $\sum\_{k=1}\^{V}
-exp(z\_{k}\^{(L)})$ as $Z(c)$, we have
+$$P(y=0\;|\;\boldsymbol{x}_i,c_i)=1-P(y=1\;|\;
+\boldsymbol{x}_i,c_i)$$
 
-$$P(\boldsymbol{x}\;|\;c) = \frac{z\_{i}\^{(L)}}{Z(c)}$$ The interesting
-thing is that in NCE, $Z(c)$ is treated as a hyperparameter, which can
-be set at 1 without affecting the model's performance. Letting $Z(c) =
+Note that calculating $P(\boldsymbol{x}\;|\;c)$ requires summing over the whole
+vocabulary since
+
+$$P(\boldsymbol{x}\;|\;c)=\frac{exp(z_{i}^{(L)})}{\sum_{k=1}^{V}
+exp(z_{k}^{(L)})}$$
+
+If we represent $\sum_{k=1}^{V}exp(z_{k}^{(L)})$ as $Z(c)$, we have
+
+$$P(\boldsymbol{x}\;|\;c)=\frac{z_{i}^{(L)}}{Z(c)}$$
+
+
+The interesting thing is that in NCE, $Z(c)$ is treated as a hyperparameter,
+which can be set at 1 without affecting the model's performance. Letting $Z(c) =
 1$, we have
 
-$$P(\boldsymbol{x}\;|\;c) = exp(z\_{i}\^{(L)})$$$$ P(y=1\;|\;
-\boldsymbol{x}\_i, c\_i) = \frac{ exp(\,z\_{i}\^{(L)}\,) }{
-exp(\,z\_{i}\^{(L)}\,) + kQ(\boldsymbol{x}) }$$ and the loss function is
-obtained
+$$P(\boldsymbol{x}\;|\;c)=exp(z_{i}^{(L)})$$
 
-$$ C(\theta) = - \sum\_{i=1}\^{V} [log\frac{ exp(\,z\_{i}\^{(L)}\,) }{
-exp(\,z\_{i}\^{(L)}\,) + kQ(\boldsymbol{x})} + logP(1 - \frac{
-exp(\,z\_{i}\^{(L)}\,) }{ exp(\,z\_{i}\^{(L)}\,) + kQ(\boldsymbol{x})} ]
+$$P(y=1\;|\;\boldsymbol{x}_i,c_i)=\frac{exp(\,z_{i}^{(L)}\,)}{
+exp(\,z_{i}^{(L)}\,)+kQ(\boldsymbol{x})}$$
+
+and the loss function is obtained
+
+$$C(\theta)=-\sum_{i=1}^{V}[log\frac{exp(\,z_{i}^{(L)}\,)}{
+exp(\,z_{i}^{(L)}\,)+kQ(\boldsymbol{x})}+logP(1-\frac{
+exp(\,z_{i}^{(L)}\,)}{exp(\,z_{i}^{(L)}\,)+kQ(\boldsymbol{x})}]
 $$
 
 It can be shown that as we increase the number of noise samples $k$, the NCE
@@ -956,10 +830,8 @@ distribution in order to approximate the true softmax. On the other hand, noise
 contrastive estimation is more about selecting noise samples to mimic the true
 softmax. It only takes 1 true class and $k$ noise classes.
 
-** The Dataset
-   :PROPERTIES:
-   :CUSTOM_ID: The-Dataset
-   :END:
+* Skip-Gram Code
+** The Dataset                                                     :DATAPREP:
 
 The dataset we use is text8, which is the first 100 MB of cleaned text of the
 English Wikipedia dump on Mar. 3, 2006. While 100MB is not enough to train
@@ -967,21 +839,20 @@ really good embeddings, we can still see some interesting relations. Splitting
 the text by blank space, we can find that there are 17,005,207 tokens in total.
 
 *** Preparing training data
-    :PROPERTIES:
-    :CUSTOM_ID: Preparing-training-data
-    :END:
 
 To generate batches for training, several functions defined below are used.
+
 First, we read the data into the memory and build the vocabulary using a number
-of most commonly seen words. Meanwhile, we build keep two dictionaries, a
-dictionary that translates words to indices and another which does the reverse.
+of most commonly seen words.
+
+Meanwhile, we build keep two dictionaries, a dictionary that translates words to
+indices and another which does the reverse.
+
 Then, for every word in the text selected as the center word, pair them with one
 of the context words. Finally, a python generator which generates a batch of
 pairs of center-target pairs.
 
-In [19]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     """The content of process_data.py"""
 
     from collections import Counter
@@ -1090,9 +961,7 @@ In [19]:
 
 Let's check if the batch generated is correct in shape.
 
-In [20]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     vocab_size = 10000
     window_sz = 5
     batch_sz = 64
@@ -1104,24 +973,21 @@ In [20]:
     print(y.shape)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_EXAMPLE
     Dataset ready
     (64,)
     (64, 1)
-#+END_SRC
+#+END_EXAMPLE
 
 We can print out the first 10 pairs of =X= and =y=.
 
-In [21]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    for i in range(10): # print out the pairs
-      data = index_dictionary[X[i]]
-      label = index_dictionary[y[i,0]]
-      print('(', data, label,')')
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
+  for i in range(10): # print out the pairs
+    data = index_dictionary[X[i]]
+    label = index_dictionary[y[i,0]]
+    print('(', data, label,')')
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     ( anarchism originated )
     ( originated anarchism )
     ( originated as )
@@ -1132,33 +998,23 @@ In [21]:
     ( a term )
     ( term originated )
     ( term as )
-#+END_SRC
 
-In [22]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     for i in range(10): # print out the first 10 words in the text
       print(index_dictionary[index_words[i]], end=' ')
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    anarchism originated as a term of abuse first used against 
-#+END_SRC
+anarchism originated as a term of abuse first used against
 
 We can check that =(center, target)= pairs are indeed correct.
 
 *** Using the *Dataset* API
-    :PROPERTIES:
-    :CUSTOM_ID: Using-the-Dataset-API
-    :END:
 
 The relatively new Dataset API in TensorFlow allows one to build complex input
 pipelines without handling queues and faster than =feed_dict=. We can construct,
 apply transformations and extract elements from the dataset.
 
-In [23]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     BATCH_SIZE = 128
     dataset = tf.contrib.data.Dataset.from_tensor_slices((X, y))
     dataset = dataset.repeat()  # Repeat the input indefinitely.
@@ -1167,24 +1023,19 @@ In [23]:
     next_batch = iterator.get_next() # an operation that gives the next batch
 #+END_SRC
 
-In [24]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     with tf.Session() as sess:
       data, label = sess.run(next_batch)
       print(data.shape)
       print(label.shape)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_EXAMPLE
     (128,)
     (128, 1)
-#+END_SRC
+#+END_EXAMPLE
 
-** Building the model
-   :PROPERTIES:
-   :CUSTOM_ID: Building-the-model
-   :END:
+** Building the model                                                :MLALGO:
 
 We will now focus on building the model. Let's briefly go through what we will
 do next.
@@ -1195,9 +1046,7 @@ do next.
 4. Define the optimizer
 5. Evaluate our model
 
-In [ ]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     from __future__ import absolute_import # use absolute import instead of relative import
 
     # '/' for floating point division, '//' for integer division
@@ -1234,7 +1083,6 @@ In [ ]:
           dataset = dataset.repeat() # # Repeat the input indefinitely
           dataset = dataset.batch(self.hps.batch_size)
           
-            
           self.iterator = dataset.make_initializable_iterator()  # create iterator
           self.center_words, self.target_words = self.iterator.get_next()
 
@@ -1438,18 +1286,14 @@ In [ ]:
       main()
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+
     Dataset ready
     INFO:tensorflow:Restoring parameters from checkpoints/skip-gram-149999
     feeding in new dataset
     Average loss at step 151999:   6.5
     Average loss at step 153999:   6.6
-#+END_SRC
 
 ** Evaluation
-   :PROPERTIES:
-   :CUSTOM_ID: Evaluation
-   :END:
 
 A simple way to evaluate our embedding is to directly use them to predict
 relationships like =king is to queen as father is to ?=. The model will be given
@@ -1457,19 +1301,21 @@ the first three words and try to come up with the fourth. Suppose we have a line
 =Italy, Rome, France, Paris=, we try to use =Italy, Rome, France= to predict
 =Paris=. We would expect
 
-$ \vec{Paris} - \vec{France} \approx \vec{Rome} - \vec{Italy} $
+$\vec{Paris}-\vec{France}\approx\vec{Rome}-\vec{Italy}$
 
 Therefore, the embedding vector of Paris can be calculated as
 
-$ \vec{Paris} \approx \vec{France} + \vec{Rome} - \vec{Italy} $
+$\vec{Paris}\approx\vec{France}+\vec{Rome}-\vec{Italy}$
 
-We calculate the vector $\vec{France} + \vec{Rome} - \vec{Italy}$ as previously
-described, and find the top-K words with the highest cosine similarity, we
-expect =Paris= would be one of them.
+We calculate the vector
 
-In [1]:
+$\vec{France}+\vec{Rome}-\vec{Italy}$
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+as previously described, and find the top-K words with the highest cosine
+similarity, we expect =Paris= would be one of them.
+
+
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     import os
     import tensorflow as tf
     from process_data import process_data
@@ -1493,17 +1339,14 @@ In [1]:
     saver.restore(sess, ckpt.model_checkpoint_path)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    Dataset ready
-    INFO:tensorflow:Restoring parameters from checkpoints/skip-gram-2941999
-#+END_SRC
+#+BEGIN_EXAMPLE
+Dataset ready
+INFO:tensorflow:Restoring parameters from checkpoints/skip-gram-2941999
+#+END_EXAMPLE
 
-To see the results, we can define a function that finds the nearest
-words.
+To see the results, we can define a function that finds the nearest words.
 
-In [2]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     import numpy as np
 
     def nearby(words, model, sess, dictionary, index_dictionary, num=20):
@@ -1525,14 +1368,10 @@ In [2]:
         print(index_dictionary[i])
 #+END_SRC
 
-In [4]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     words = ['machine', 'learning']
     nearby(words, model, sess, dictionary, index_dictionary)
-#+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     machine
     =====================================
     machine              1.0000
@@ -1578,15 +1417,12 @@ In [4]:
     analysis             0.3386
     management           0.3374
     describing           0.3368
-#+END_SRC
 
-In [5]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     analogy(['london', 'england', 'berlin'], model, sess, dictionary, index_dictionary)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     ['london', 'england', 'berlin']
     berlin
     england
@@ -1608,20 +1444,15 @@ In [5]:
     turing
     scotland
     companion
-#+END_SRC
 
-** Visualizing with t-SNE
-   :PROPERTIES:
-   :CUSTOM_ID: Visualizing-with-t-SNE
-   :END:
+** Visualizing with t-SNE                                          :DATAVIEW:
 
 *t-distributed stochastic neighbor embedding (t-SNE)* is a dimension reduction
 technique, which we will not go through today. For more details, please visit
 the [[https://en.wikipedia.org/wiki/T-distributed_stochastic_neighbor_embedding][Wikipedia page]].
 
-In [7]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session wu-lec10 :exports code  :results raw drawer
     from sklearn.manifold import TSNE
     import matplotlib.pyplot as plt
 
@@ -1639,12 +1470,10 @@ In [7]:
                X_embedded[i][1]+0.2,
                index_dictionary.get(i, 0), fontsize=18)
       
-
     plt.show()
 #+END_SRC
 
-
-** Assignment
+* Assignment
 
 Since we have already implemented Skip-Gram, the assignment for this week is to
 implement CBOW. Recall that CBOW actually does the reverse compared with
@@ -1662,7 +1491,7 @@ The basic requirements of this assignment:
 
 1. Implement CBOW.
 2. You are encouraged to try out any combinations of the
-   hyperparameters, but window\_size is always equal to 1.
+   hyperparameters, but window_size is always equal to 1.
 3. Plot the the embeddings of the first 200 words in your dictionary
    using t-SNE in the notebook.
 4. When you hand in the assignment, please include:
@@ -1676,6 +1505,4 @@ The basic requirements of this assignment:
    -  The python file for your model and any other files needed to run
       your code.
 
-*Please name the notebook as Lab10-學號.ipynb and hand in the assignments before
-11/12 23:59*
 

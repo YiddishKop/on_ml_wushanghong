@@ -1,0 +1,27 @@
+constant 声明三要素
+-----------------------------------
+1. [ ] 运行tensor的简便方式
+   [[file:10_TensorFlow101_Word2Vec/10_TensorFlow101_Word2Vec.org::*constant%20of%20Tensors][constant of Tensors]]
+2. [ ] 运行tensor.eval 如果设置为 :results raw draw 可以返回一个 org 表格
+3. [ ] 说明tf.zeros/zeros_like/ones/ones_like
+   任何一个 Tensor 都包含: value; shape; type 三要素.
+
+
+
+variable 声明三要素
+----------------------------------
+1. [ ] 初值, 初始化, 赋值
+2. [ ] 赋值
+3. [ ] 声明变量 a 使其扩大两倍输出
+4. [ ] sharing variables
+
+
+
+file
+----------------------------------
+5. [ ] file 如果不存在就创建
+
+
+jupyter note
+----------------------------------
+1. [ ] # clear used variables in jupyter notebook

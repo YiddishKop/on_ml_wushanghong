@@ -1,4 +1,14 @@
-
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: SVM Pipeline
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
 
 * KNN, SVM, Data Preprocessing, and Scikit-learn Pipeline
 
@@ -20,22 +30,17 @@
     from lib import *
 #+END_SRC
 
-In this lab, we will classify nonlinearly separable data using the KNN
-and SVM classifiers. Then, we discuss how to handle data with missing
-values and categorical data. Finally, we will show how to pack multiple
-data preprocessing steps into into a single =Pipeline= in Scikit-learn
-to simplify the training workflow.
+In this lab, we will classify nonlinearly separable data using the KNN and SVM
+classifiers. Then, we discuss how to handle data with missing values and
+categorical data. Finally, we will show how to pack multiple data preprocessing
+steps into into a single =Pipeline= in Scikit-learn to simplify the training
+workflow.
 
-* Nonlinearly Separable Classes[[Nonlinearly-Separable-Classes][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Nonlinearly-Separable-Classes
-  :END:
+* Nonlinearly Separable Classes
 
-Sometimes, the classes in a dataset may be nonlinearly separable. A
-famous synthetic dataset in this category, called the *two-moon*
-dataset, can be illustrated in 2-D:
-
-In [2]:
+Sometimes, the classes in a dataset may be nonlinearly separable. A famous
+synthetic dataset in this category, called the *two-moon* dataset, can be
+illustrated in 2-D:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.datasets import make_moons
@@ -58,11 +63,8 @@ In [2]:
 #+END_SRC
 
 
-If we apply linear classifiers such as Perceptron or Logistic Regression
-to this dataset, it is not possible to get a reasonable decision
-boundary:
-
-In [3]:
+If we apply linear classifiers such as Perceptron or Logistic Regression to this
+dataset, it is not possible to get a reasonable decision boundary:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import train_test_split
@@ -136,32 +138,28 @@ In [3]:
 #+END_SRC
 
 
-As we can see, neither of the classifiers can separate the two classes
-well due to underfitting. In other words, the models are too simple to
-capture the shape of true boundary, introducing a large bias. It is
-better to use nonlinear classifiers for this dataset.
+As we can see, neither of the classifiers can separate the two classes well due
+to underfitting. In other words, the models are too simple to capture the shape
+of true boundary, introducing a large bias. It is better to use nonlinear
+classifiers for this dataset.
 
-* K-Nearest Neighbors Classifier[[K-Nearest-Neighbors-Classifier][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: K-Nearest-Neighbors-Classifier
-  :END:
+* K-Nearest Neighbors Classifier
 
-The KNN algorithm itself is fairly straightforward and can be summarized
-by the following steps:
+The KNN algorithm itself is fairly straightforward and can be summarized by the
+following steps:
 
+#+BEGIN_QUOTE
 1. Choose $K$ (the number of neighbors), and a distance metric;
-2. Find the $K$ nearest neighbors of the data point that we want to
-   classify;
+2. Find the $K$ nearest neighbors of the data point that we want to classify;
 3. Assign the class label by majority vote.
+#+END_QUOTE
 
-KNN is a typical example of a *lazy learner*. It is called lazy because
-it simply memorizes the training dataset in the training phase and
-learns a discriminative function $f$ only before making a prediction.
+KNN is a typical example of a *lazy learner*. It is called lazy because it
+simply memorizes the training dataset in the training phase and learns a
+discriminative function $f$ only before making a prediction.
 
 By executing the following code, we will now implement a KNN model in
 scikit-learn using a Euclidean distance metric:
-
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.neighbors import KNeighborsClassifier
@@ -195,36 +193,31 @@ In [4]:
 #+END_SRC
 
 
-The KNN classifier achieves 95% accuracy. That's pretty good! Another
-advantage of such a memory-based approach is that the classifier
-immediately adapts as we collect new training data.
+The KNN classifier achieves 95% accuracy. That's pretty good! Another advantage
+of such a memory-based approach is that the classifier immediately adapts as we
+collect new training data.
 
-However, the downside is that the computational complexity for
-classifying new points grows linearly with the number of samples in the
-training dataset in the worst-case scenario, unless the dataset has very
-few dimensions (features) and the algorithm has been implemented using
-efficient data structures such as KD-trees, an algorithm for finding
-best matches in logarithmic expected time. Furthermore, we can't discard
-training samples since no training step is involved. Thus, storage space
-can become a challenge if we are working with large datasets.
+However, the downside is that the computational complexity for classifying new
+points grows linearly with the number of samples in the training dataset in the
+worst-case scenario, unless the dataset has very few dimensions (features) and
+the algorithm has been implemented using efficient data structures such as
+~KD-trees~, an algorithm for finding best matches in logarithmic expected time.
+Furthermore, we can't discard training samples since no training step is
+involved. Thus, storage space can become a challenge if we are working with
+large datasets.
 
-* Support Vector Classifier[[Support-Vector-Classifier][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Support-Vector-Classifier
-  :END:
+* Support Vector Classifier
 
-Another powerful and widely used memory-based classifier is the
-nonlinear support vector classifier (SVC). Like KNN, nonlinear SVC makes
-predictions by the weighted average of the labels of similar examples
-(measured by a kernel function). However, only the *support vectors*,
-i.e., examples falling onto or inside the margin, can have positive
-weights and need to be remembered. In practice, SVC usually remembers
-much fewer examples than KNN does. Another difference is that SVC is not
-an lazy learner---the weights are trained eagerly in the training phase.
+Another powerful and widely used memory-based classifier is the nonlinear
+support vector classifier (SVC). Like KNN, nonlinear SVC makes predictions by
+the weighted average of the labels of similar examples (measured by a kernel
+function). However, only the *support vectors*, i.e., examples falling onto or
+inside the margin, can have positive weights and need to be remembered. In
+practice, SVC usually remembers much fewer examples than KNN does. Another
+difference is that SVC is not an lazy learner---the weights are trained eagerly
+in the training phase.
 
 Let's make predictions using SVCs:
-
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.svm import SVC
@@ -288,11 +281,9 @@ In [5]:
 #+END_SRC
 
 
-As we can see, non-linear SVC achieves 95% accuracy as KNN does.
-However, we haven't tuned its hyperparameters to get the best
-performance yet. Let's try other values:
-
-In [6]:
+As we can see, non-linear SVC achieves 95% accuracy as KNN does. However, we
+haven't tuned its hyperparameters to get the best performance yet. Let's try
+other values:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print('[Nonlinear SVC: C=1000, gamma=0.01]')
@@ -320,25 +311,20 @@ In [6]:
     Accuracy: 0.45
 #+END_SRC
 
-From the above example, we can see that tuning the hyperparameters is
-very important to nonlinear SVM. Different parameter setting will make
-huge performance difference.
+From the above example, we can see that tuning the hyperparameters is very
+important to nonlinear SVM. Different parameter setting will make huge
+performance difference.
 
-*** Tuning Hyperparameters via Grid
-Search[[Tuning-Hyperparameters-via-Grid-Search][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Tuning-Hyperparameters-via-Grid-Search
-    :END:
+*** Tuning Hyperparameters via Grid Search
 
 Tuning the hyperparameters of SVC is not as straightforward as we see in
-Polynomial Regression, where we can simply increase the polynomial
-degree from 1 and stop if the validation performance does not improve
-anymore. In SVC, there is no simple way to relate a particular
-hyperparameter combination $(C,\gamma)$ to the model complexity. So, we
-have to try out all possible (or specified) combinations exhaustively in
-order to pick the best one. This procedure is called *grid search*:
+Polynomial Regression, where we can simply increase the polynomial degree from 1
+and stop if the validation performance does not improve anymore. In SVC, there
+is no simple way to relate a particular hyperparameter combination $(C,\gamma)$
+to the model complexity. So, we have to try out all possible (or specified)
+combinations exhaustively in order to pick the best one. This procedure is
+called *grid search*:
 
-In [7]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import GridSearchCV
@@ -369,7 +355,6 @@ In [7]:
 After finding the best parameter, we can then use it to evaluate on test
 data:
 
-In [8]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     clf = gs.best_estimator_
@@ -399,14 +384,11 @@ In [8]:
 We have perfect test accuracy. That's great!
 
 NOTE: grid search may consume a lot of time when the dataset is large. A
-practical way is to use coarse grids initially, narrow down into some
-grids that gives relatively good performance, and then perform more
-fine-grained grid searches within those grids recursively.
+practical way is to use coarse grids initially, narrow down into some grids that
+gives relatively good performance, and then perform more fine-grained grid
+searches within those grids recursively.
 
-* Data Preprocessing[[Data-Preprocessing][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Data-Preprocessing
-  :END:
+* Data Preprocessing
 
 Now we have hands-on experience of many machine learning models. It's time to
 apply them to a more realistic dataset that have quality issues. The quality of
@@ -416,10 +398,7 @@ critical that we make sure to examine and *preprocess* a dataset before we feed
 it to a learning algorithm. The dataset we use on next section is the [[https://archive.ics.uci.edu/ml/datasets/adult][Adult]]
 dataset.
 
-*** The Adult dataset[[The-Adult-dataset][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: The-Adult-dataset
-    :END:
+*** The Adult dataset
 
 The [[https://archive.ics.uci.edu/ml/datasets/adult][Adult]] dataset from UCI repository collects information about people
 (attributes) for determining whether a person makes over 50K a year (label).
@@ -493,18 +472,16 @@ You can see more details about the dataset [[https://archive.ics.uci.edu/ml/mach
 
 We can observe two things in this dataset:
 
+#+BEGIN_QUOTE
 1. Many attributes are not numeric but *categorical*;
-2. There are *missing values*. For example, data point No.14 has a
-   missing value on native-country.
+2. There are *missing values*. For example, data point No.14 has a missing value
+   on native-country.
+#+END_QUOTE
 
-Since most machine learning algorithms can only take datasets with
-numeric features and without missing values. We have to preprocess this
-dataset.
+Since most machine learning algorithms can only take datasets with numeric
+features and without missing values. We have to preprocess this dataset.
 
-* Handling Categorical Data[[Handling-Categorical-Data][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Handling-Categorical-Data
-  :END:
+* Handling Categorical Data
 
 Real-world datasets usually contain one or more categorical features. When we
 are talking about categorical data, we have to further distinguish between
@@ -574,10 +551,7 @@ scikit-learn to help us encode categorical values into numerical values.
 After executing the code, we successfully replaced the categorical
 values into numerical values.
 
-* Dealing with Missing Data[[Dealing-with-Missing-Data][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Dealing-with-Missing-Data
-  :END:
+* Dealing with Missing Data
 
 It is common in real-world applications that our samples have missing values for
 various reasons in one or more attributes for various reasons. For example,
@@ -594,7 +568,6 @@ further analyses.
 First, we can use =isnull()= method in Panda's =Dataframe= to see how many
 missing values we have in Adult dataset:
 
-In [11]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # count the number of missing values per column
@@ -628,17 +601,12 @@ missing values per column.
 
 Next, we discuss some different strategies to handle missing data.
 
-*** Eliminating Samples or Features with Missing
-Values[[Eliminating-Samples-or-Features-with-Missing-Values][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Eliminating-Samples-or-Features-with-Missing-Values
-    :END:
+*** Eliminating Samples or Features with Missing Values
 
 One of the easiest ways to deal with missing data is to simply remove the
 corresponding features (columns) or samples (rows) from the dataset entirely. We
 can call the =dropna()= method of =Dataframe= to eliminate rows or columns:
 
-In [12]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print(df.shape)
@@ -656,7 +624,6 @@ In [12]:
 The =dropna= method supports several additional parameters that can come in
 handy:
 
-In [13]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     print('Original: {}'.format(df.shape))
@@ -692,10 +659,7 @@ and have a small dataset, resulting in overfitting. Or, if we remove too many
 feature columns, we will run the risk of losing valuable relationship between
 features that our classifier needs to discriminate between classes.
 
-*** Imputing Missing Values[[Imputing-Missing-Values][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Imputing-Missing-Values
-    :END:
+*** Imputing Missing Values
 
 If we do not have a large dataset, the removal of samples or dropping of entire
 feature columns may not be feasible, because we could lose too much valuable
@@ -708,7 +672,6 @@ The =Imputer= class from scikit-learn provides a convenient way for imputation.
 Next, we use it to perform the most frequent imputation since the missing values
 in the Adult dataset are all categorical features:
 
-In [14]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import Imputer
@@ -782,13 +745,10 @@ In [14]:
     dtype: int64
 #+END_SRC
 
-After executing the code, we successfully replace the missing values
-into most frequent values.
+After executing the code, we successfully replace the missing values into most
+frequent values.
 
-* One-Hot Encoding[[One-Hot-Encoding][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: One-Hot-Encoding
-  :END:
+* One-Hot Encoding
 
 If we stop at this point and feed the array to our classifier, we will make one
 of the most common mistakes in dealing with categorical data. Take the
@@ -802,8 +762,6 @@ A common workaround for this problem is to use a technique called one-hot
 encoding. The idea behind this approach is to create a new dummy feature column
 for each unique value in the nominal feature. To perform this transformation, we
 can use the =OneHotEncoder= from Scikit-learn:
-
-In [15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import OneHotEncoder
@@ -855,8 +813,6 @@ all other columns unchanged. If you want to use this method, you have to ensure
 that the categorical data are all string. Otherwise it will not perform
 encoding.
 
-In [16]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     df_dummy = pd.read_csv('https://archive.ics.uci.edu/ml/machine-learning-databases/'
                      'adult/adult.data',
@@ -892,10 +848,7 @@ In [16]:
 
 5 rows × 105 columns
 
-* Scikit-learn Pipeline[[Scikit-learn-Pipeline][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Scikit-learn-Pipeline
-  :END:
+* Scikit-learn Pipeline
 
 When we applied different preprocessing techniques in the previous labs, such as
 standardization, data preprocessing, or PCA, you learned that we have to reuse
@@ -909,8 +862,6 @@ The following summarizes how a =Pipeline= works:
 
 Here, we give an example on how to combine =Imputer= and =OneHotEncoder= with
 KNN or SVM:
-
-In [17]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.pipeline import Pipeline
@@ -962,8 +913,6 @@ In [17]:
 
 We can check whether one-hot encoding is useful or not:
 
-In [18]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     pipe_knn = Pipeline([('imr', Imputer(missing_values='NaN', strategy='most_frequent', axis=0)),
                          ('scl', StandardScaler()),
@@ -1002,8 +951,6 @@ SVC dropped because it has a weight decay term in the cost function that can be
 misled when the categorical features are not encoded as one-hot vectors.
 
 We can also compare the performance between imputation and dropping rows:
-
-In [19]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # keep only data points without NaN features
@@ -1053,7 +1000,6 @@ large enough dataset.
 
 Finally, let's combine SVC pipeline with grid search:
 
-In [20]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     pipe_svm = Pipeline([('ohe', OneHotEncoder(categorical_features = catego_features_idx, 
@@ -1095,27 +1041,18 @@ In [20]:
 #+END_SRC
 
 * Assignment
-  :PROPERTIES:
-  :CUSTOM_ID: Assignment
-  :END:
 
 In this assignment, a dataset called Mushroom dataset will be used. This data
 includes descriptions of hypothetical samples corresponding to 22 features of
 gilled mushrooms. Please refer to [[https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.names][the website]] for more information about this
 dataset.
 
-** Goal[[Goal][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Goal
-   :END:
+** Goal
 
 Given the dataset, predict whether a mushroom is poisonous or edible. The
 dataset can be downloaded [[https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data][here]].
 
-** Requirements[[Requirements][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Requirements
-   :END:
+** Requirements
 
 1. Use Mushroom dataset and sample 2000 rows from it.
 2. Do some data preprocessing.

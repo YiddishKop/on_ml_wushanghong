@@ -16,8 +16,6 @@ efficient than other data dimension reduction methods.
 
 [[file:Autoencoder/imgs/autoencoder.png]]
 
-In [1]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Import libraries
     import sys
@@ -46,8 +44,6 @@ results.
 #+END_QUOTE
 
 Some setting is referenced from [[https://blog.keras.io/building-autoencoders-in-keras.html][The Keras Blog: Autoencoder]]
-
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class AutoEncoder(object):
@@ -281,8 +277,6 @@ In [3]:
 
 Plot the learning curve to check if the training is converged.
 
-In [4]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     train_loss = autoencoder.log['train_loss']
     valid_loss = autoencoder.log['valid_loss']
@@ -299,8 +293,6 @@ In the figure, the top row are testing images from MNIST, and the bottom
 row are the reconstruction results. We can see that the performance is
 generally good except the reconstruction of digit 4 may seems like digit
 9 (No.7 example).
-
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     n = 10
@@ -328,8 +320,6 @@ Extract tangent vectors:
 In the following demo, we use the first sample in testing data, which is
 a digit 7 image.
 
-In [6]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     img = autoencoder.teX[:1]
     jaco_matrix = autoencoder.get_jaco_matrix(img)
@@ -350,8 +340,6 @@ In [6]:
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     (16, 784)
 #+END_SRC
-
-
 
 
 * Denoising Autoencoder and Manifold Learning
@@ -534,8 +522,6 @@ In the following code, we
 In our setting and environment each epoch cost almost 6 seconds. The result is
 good enough after 100 epochs. And we save the snapshots of the model every 10
 epochs.
-
-In [11]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import sys
@@ -804,8 +790,6 @@ In [12]:
           print(" [*] Failed to find a checkpoint")
           return False, 0
 #+END_SRC
-
-In [14]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Specifiy model checkpoint directory & samples directory
@@ -1526,7 +1510,6 @@ Out[26]:
 [[file:GAN/iwgan.gif]]
 
 * Assignment
-
 There are two exercises in this lab.
 
 ** Exercise 1

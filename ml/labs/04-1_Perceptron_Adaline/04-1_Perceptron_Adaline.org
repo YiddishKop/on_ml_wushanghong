@@ -1,7 +1,16 @@
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: 04-1_Perceptron_Adaline
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
 * Perceptron, Adaline, and Optimization
-
-Fall 2017
-
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from IPython.display import Image
@@ -19,21 +28,16 @@ Fall 2017
 
 In this lab, we will guide you through the implementation of Perceptron and
 Adaline, two of the first algorithmically described machine learning algorithms
-for the classification problem. We will also discuss how to train these models
-using the optimization techniques, including the gradient descent (GD) and
-stochastic gradient descent (SGD), and compare their convergence speed.
+for the *classification* problem. We will also discuss how to train these models
+using the optimization techniques, including the gradient descent *(GD)* and
+stochastic gradient descent *(SGD)*, and compare their convergence speed.
 
 * Data Preparation
-  :PROPERTIES:
-  :CUSTOM_ID: Data-Preparation
-  :END:
 
 We use the [[https://archive.ics.uci.edu/ml/datasets/iris][Iris]] dataset from the UCI machine learning repository, which one of
 the best known datasets in classification. It consists of 150 iris plants as
 examples, each with the sepal and petal sizes as attributes and the type as
 class label. Let's download the Iris dataset using [[http://pandas.pydata.org/][Pandas]] first:
-
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import numpy as np
@@ -70,23 +74,17 @@ In [2]:
     Class labels: [0 1 2] (mapped from ['Iris-setosa' 'Iris-versicolor' 'Iris-virginica']
 #+END_SRC
 
-** Standardization for Gradient
-Descent[[Standardization-for-Gradient-Descent][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Standardization-for-Gradient-Descent
-   :END:
+** Standardization for Gradient Descent
 
-Recall from the lecture that the gradient descent may perform poorly if
-the Hessian of the function $f$ to be minimized has a large condition
-number. In this case, the surface of $f$ can be curvy in some directions
-but flat in the others. Therefore, the gradient descent, which ignores
-the curvatures, may overshoot the optimal point along curvy directions
-but take too small step along flat ones.
+Recall from the lecture that the gradient descent may perform poorly if the
+Hessian of the function $f$ to be minimized has a large condition number. In
+this case, the surface of $f$ can be curvy in some directions but flat in the
+others. Therefore, the gradient descent, which ignores the curvatures, may
+overshoot the optimal point along curvy directions but take too small step along
+flat ones.
 
 One common way to improve the conditioning of $f$ is to standardize its
 parameter $X$ , as follows:
-
-In [3]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import StandardScaler
@@ -97,19 +95,13 @@ In [3]:
     X_test_std = sc.transform(X_test)
 #+END_SRC
 
-Note that the standardization should calculate the mean $\mu$ and
-variance $\sigma\^2$ using only the training set, as the testing set
-must be remain unknown during the entire training process.
+Note that the standardization should calculate the mean $\mu$ and variance
+$\sigma\^2$ using only the training set, as the testing set must be remain
+unknown during the entire training process.
 
 * Training Perceptron via Scikit-learn
-  :PROPERTIES:
-  :CUSTOM_ID: Training-Perceptron-via-Scikit-learn
-  :END:
 
-Having standardized the training data, we can now train a Perceptron
-model:
-
-In [4]:
+Having standardized the training data, we can now train a Perceptron model:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import Perceptron
@@ -117,7 +109,6 @@ In [4]:
     ppn.fit(X_train_std, y_train)
 #+END_SRC
 
-Out[4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     Perceptron(alpha=0.0001, class_weight=None, eta0=0.1, fit_intercept=True,
@@ -129,7 +120,6 @@ Having trained a model in Scikit-learn, we can make predictions over the
 testing set and report the accuracy. Note that the testing set should be
 standardized in the exact same way as the training set.
 
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.metrics import accuracy_score
@@ -147,7 +137,6 @@ In [5]:
 We get 90% accuracy. Now let's plot the decision boundaries to see how
 the model works:
 
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_combined_std = np.vstack((X_train_std, X_test_std))
@@ -166,35 +155,23 @@ In [6]:
 #+END_SRC
 
 
-** Multiclass Classification[[Multiclass-Classification][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Multiclass-Classification
-   :END:
+** Multiclass Classification
 
-The Perceptron model is originally designed for the binary
-classification problems. However, we can see from the above that the
-model implemented in the Scikit-learn is able to predict the labels of
-multiple classes (3 in this case). This is achieved by wrapping the
-binary model with an
-*[[http://scikit-learn.org/stable/modules/multiclass.html#one-vs-the-rest][One-vs-All]]*
-(or *One-vs-Rest*) procedure. If there are $K$ classes, then this
-procedure trains $K$ binary classifiers for each class, where each
-classifier treats only one class as positive and the rests as negative.
-To predict the label of a testing data point, each classifier generates
-the soft output $f(\boldsymbol{x}) =
-\boldsymbol{w}\^{\top}\boldsymbol{x}-b\in{\mathbb{R}}$ for every class,
-and then the class who gets the highest output value becomes the
-predicted label.
+The Perceptron model is originally designed for the binary classification
+problems. However, we can see from the above that the model implemented in the
+Scikit-learn is able to predict the labels of multiple classes (3 in this case).
+This is achieved by wrapping the binary model with an *[[http://scikit-learn.org/stable/modules/multiclass.html#one-vs-the-rest][One-vs-All]]* (or
+*One-vs-Rest*) procedure. If there are $K$ classes, then this procedure trains
+$K$ binary classifiers for each class, where each classifier treats only one
+class as positive and the rests as negative. To predict the label of a testing
+data point, each classifier generates the soft output $f(\boldsymbol{x}) =
+\boldsymbol{w}\^{\top}\boldsymbol{x}-b\in{\mathbb{R}}$ for every class, and then
+the class who gets the highest output value becomes the predicted label.
 
 * Implementing Perceptron
-  :PROPERTIES:
-  :CUSTOM_ID: Implementing-Perceptron
-  :END:
 
 Now it's time to implement a classifier by our own. For simplicity, we only
 implement the binary Perceptron model. This can be easily done as follows:
-
-In [7]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import numpy as np
@@ -269,7 +246,6 @@ each epoch. We omit this step for simplicity.
 To train our binary Perceptron model using the Iris dataset, we recreate
 our training and testing sets so that they contain only binary labels:
 
-In [8]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import train_test_split
@@ -299,8 +275,6 @@ In [8]:
 #+END_SRC
 
 Let's train our model:
-
-In [9]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # training
@@ -342,8 +316,6 @@ is mainly because the training algorithm does not converge when the data
 points are *not* linearly separable (by a hyperplane). We can track
 convergence using the =errors_= attributes:
 
-In [10]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import matplotlib.pyplot as plt
 
@@ -361,17 +333,12 @@ As we can see, the weights never stop updating. To terminate the
 training process, we have to set a maximum number of epochs.
 
 * Implementing Adaline with GD
-  :PROPERTIES:
-  :CUSTOM_ID: Implementing-Adaline-with-GD
-  :END:
 
 The ADAptive LInear NEuron (Adaline) is similar to the Perceptron, except that
 it defines a cost function based on the soft output and an optimization problem.
 We can therefore leverage various optimization techniques to train Adaline in a
 more theoretic grounded manner. Let's implement the Adaline using the batch
 gradient descent (GD) algorithm:
-
-In [11]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class AdalineGD(object):
@@ -441,18 +408,15 @@ In [11]:
             return np.where(self.activation(X) >= 0.0, 1, -1)
 #+END_SRC
 
-NOTE: we could have implemented the shorthand version of $X$ and $w$ to
-include the bias term. However, we single out the addition of the bias
-term (=self.w_[0]=) for performance reason, as adding a vector of 1's to
-the training array each time we want to make a prediction would be
-inefficient.
+NOTE: we could have implemented the shorthand version of $X$ and $w$ to include
+the bias term. However, we single out the addition of the bias term
+(=self.w_[0]=) for performance reason, as adding a vector of 1's to the training
+array each time we want to make a prediction would be inefficient.
 
-As discussed in the lecture, a good learning rate $\eta$ is a key to the
-optimal convergence. In practice, it often requires some experimentation
-to find a good learning rate. Let's plot the cost against the number of
-epochs for the two different learning rates:
-
-In [12]:
+As discussed in the lecture, a good learning rate $\eta$ is a key to the optimal
+convergence. In practice, it often requires some experimentation to find a good
+learning rate. Let's plot the cost against the number of epochs for the two
+different learning rates:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(8, 4))
@@ -475,13 +439,12 @@ In [12]:
 #+END_SRC
 
 
-The left figure shows what could happen if we choose a too small
-learning rate: although the cost decreases, the descent is too small
-that the algorithm would require a *large number of epochs* to converge.
-On the other hand, the right figure shows what could happen if we choose
-a learning rate that is too large: instead of minimizing the cost
-function, the error becomes larger in every epoch because we *overshoot*
-the optimal point every time. This is illustrated below:
+The left figure shows what could happen if we choose a too small learning rate:
+although the cost decreases, the descent is too small that the algorithm would
+require a *large number of epochs* to converge. On the other hand, the right
+figure shows what could happen if we choose a learning rate that is too large:
+instead of minimizing the cost function, the error becomes larger in every epoch
+because we *overshoot* the optimal point every time. This is illustrated below:
 
 #+CAPTION: alt text
 [[./fig-overshoot.png]]
@@ -490,40 +453,38 @@ With a properly chosen learning rate $\eta$ , the AdalineGD converges
 and gives a better prediction accuracy (80%) as compared with the
 Perceptron (70%):
 
-In [13]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    ada = AdalineGD(n_iter=20, eta=0.01)
-    ada.fit(X_train_std, y_train)
+  ada = AdalineGD(n_iter=20, eta=0.01)
+  ada.fit(X_train_std, y_train)
 
-    # cost values
+  # cost values
 
-    plt.plot(range(1, len(ada.cost_) + 1), ada.cost_, marker='o')
-    plt.xlabel('Epochs')
-    plt.ylabel('Sum-squared-error')
+  plt.plot(range(1, len(ada.cost_) + 1), ada.cost_, marker='o')
+  plt.xlabel('Epochs')
+  plt.ylabel('Sum-squared-error')
 
-    plt.tight_layout()
-    plt.savefig('./output/fig-adalin-gd-cost.png', dpi=300)
-    plt.show()
+  plt.tight_layout()
+  plt.savefig('./output/fig-adalin-gd-cost.png', dpi=300)
+  plt.show()
 
-    # testing accuracy
+  # testing accuracy
 
-    y_pred = ada.predict(X_test_std)
-    print('Misclassified samples: %d' % (y_test != y_pred).sum())
-    print('Accuracy: %.2f' % accuracy_score(y_test, y_pred))
+  y_pred = ada.predict(X_test_std)
+  print('Misclassified samples: %d' % (y_test != y_pred).sum())
+  print('Accuracy: %.2f' % accuracy_score(y_test, y_pred))
 
-    # plot decision boundary 
+  # plot decision boundary
 
-    plot_decision_regions(X_combined_std, y_combined, 
-                          classifier=ada, test_idx=range(len(y_train),
-                                                        len(y_train) + len(y_test)))
-    plt.title('Adaline - Gradient Descent')
-    plt.xlabel('Petal length [Standardized]')
-    plt.ylabel('Petal width [Standardized]')
-    plt.legend(loc='upper left')
-    plt.tight_layout()
-    plt.savefig('./output/fig-adaline-gd-boundary.png', dpi=300)
-    plt.show()
+  plot_decision_regions(X_combined_std, y_combined,
+                        classifier=ada, test_idx=range(len(y_train),
+                                                      len(y_train) + len(y_test)))
+  plt.title('Adaline - Gradient Descent')
+  plt.xlabel('Petal length [Standardized]')
+  plt.ylabel('Petal width [Standardized]')
+  plt.legend(loc='upper left')
+  plt.tight_layout()
+  plt.savefig('./output/fig-adaline-gd-boundary.png', dpi=300)
+  plt.show()
 #+END_SRC
 
 
@@ -532,11 +493,7 @@ In [13]:
     Accuracy: 0.80
 #+END_SRC
 
-
 * Implementing Adaline with SGD
-  :PROPERTIES:
-  :CUSTOM_ID: Implementing-Adaline-with-SGD
-  :END:
 
 Running the (batch) gradient descent can be computationally costly when the
 number of examples $N$ in a training dataset is large since we need to scan the
@@ -556,10 +513,9 @@ generation distribution when we regard the cost function as an expectation, it
 is important to feed SGD with data in a random order, which is why we shuffle
 the training set for every epoch.
 
-Let's implement the Adaline with SGD. For simplicity, we use a constant
-learning rate and set $M = 1$:
+Let's implement the Adaline with SGD. For simplicity, we use a constant learning
+rate and set $M = 1$:
 
-In [14]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from numpy.random import seed
@@ -665,30 +621,27 @@ In [14]:
             return self
 #+END_SRC
 
-We pass =random_state= to =np.random.seed= so it will be used for
-shuffling and initializing the weights. If we modify the =activation()=
-method so that it is identical to the =predict()= method, then this
-class degenerates into the Perceptron with shuffling.
+We pass =random_state= to =np.random.seed= so it will be used for shuffling and
+initializing the weights. If we modify the =activation()= method so that it is
+identical to the =predict()= method, then this class degenerates into the
+Perceptron with shuffling.
 
 *NOTE*:
 
-Although not shown in our implementation, setting a larger minibatch
-size $M > 1$ is advantages on modern CPU architecture as we can replace
-the for-loop over the training samples by *vectorized* operations, which
-is usually improve the computational efficiency. Vectorization means
-that an elemental arithmetic operation is automatically applied to all
-elements in an array. By formulating our arithmetic operations as a
-sequence of instructions on an array rather than performing a set of
-operations for each element one at a time, we can make better use of our
-modern CPU architectures with Single Instruction, Multiple Data (SIMD)
-support. Furthermore, many scientific libraries like NumPy use highly
-optimized linear algebra libraries, such as Basic Linear Algebra
-Subprograms (BLAS) and Linear Algebra Package (LAPACK) that implement
-vectorized operations in C or Fortran.
+Although not shown in our implementation, setting a larger minibatch size $M >
+1$ is advantages on modern CPU architecture as we can replace the for-loop over
+the training samples by *vectorized* operations, which is usually improve the
+computational efficiency. Vectorization means that an elemental arithmetic
+operation is automatically applied to all elements in an array. By formulating
+our arithmetic operations as a sequence of instructions on an array rather than
+performing a set of operations for each element one at a time, we can make
+better use of our modern CPU architectures with Single Instruction, Multiple
+Data (SIMD) support. Furthermore, many scientific libraries like NumPy use
+highly optimized linear algebra libraries, such as Basic Linear Algebra
+Subprograms (BLAS) and Linear Algebra Package (LAPACK) that implement vectorized
+operations in C or Fortran.
 
 Let's see how Adaline performs with SGD:
-
-In [15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     adas = AdalineSGD(n_iter=20, eta=0.01, random_state=1)
@@ -735,30 +688,26 @@ In [15]:
 #+END_SRC
 
 
-As we can see, the cost value goes down pretty quickly, and is only
-sightly worse than the (normalized) cost value of the batch gradient
-descent after 7 epochs.
+As we can see, the cost value goes down pretty quickly, and is only sightly
+worse than the (normalized) cost value of the batch gradient descent after 7
+epochs.
 
-Another advantage of stochastic gradient descent is that we can use it
-for *online learning*. In online learning, a model is trained on-the-fly
-as new training data arrives. This is especially useful if we are
-accumulating large amounts of data over time. For example, customer data
-in typical web applications. Using online learning, the system can
-immediately adapt to changes without training from the scratch.
-Furthermore, if storage space is an issue, we can discard the training
-data after updating the model. In our implementation, we provide the
-=partial_fit()= method for online learning.
+Another advantage of stochastic gradient descent is that we can use it for
+*online learning*. In online learning, a model is trained on-the-fly as new
+training data arrives. This is especially useful if we are accumulating large
+amounts of data over time. For example, customer data in typical web
+applications. Using online learning, the system can immediately adapt to changes
+without training from the scratch. Furthermore, if storage space is an issue, we
+can discard the training data after updating the model. In our implementation,
+we provide the =partial_fit()= method for online learning.
 
 * Assignment
-  :PROPERTIES:
-  :CUSTOM_ID: Assignment
-  :END:
 
-Use PCA (Pricipal Components Analysis) to reduce the dimension of data
-points in *breast\_cancer* dataset to 2-dimension (we used in the Lab02
-and Lab03). Then tune learning rate $\eta$ in Adaline classifier to
-achieve the baseline performance and plot the costs against the number
-of epochs using this learning rate.
+Use PCA (Pricipal Components Analysis) to reduce the dimension of data points in
+*breast_cancer* dataset to 2-dimension (we used in the Lab02 and Lab03). Then
+tune learning rate $\eta$ in Adaline classifier to achieve the baseline
+performance and plot the costs against the number of epochs using this learning
+rate.
 
 *Note*:
 
@@ -767,9 +716,8 @@ image file =(Lab04-1_學號.png)=
 
 Your code file should contain:
 
-1. Load breast\_cancer dataset.
-2. Split training and testing data (test\_size = 30% of the whole
-   dataset)
+1. Load breast_cancer dataset.
+2. Split training and testing data (test_size = 30% of the whole dataset)
 3. Extract 2 features using PCA.
 4. Handcrafted Adaline classifier.
 5. Tune learning rate $\eta$ to achieve the baseline performance.
@@ -780,8 +728,6 @@ Your image file should contain:
 
 1. Figure of the costs against the number of epochs using this learning
    rate.
-
-In [16]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import pandas as pd

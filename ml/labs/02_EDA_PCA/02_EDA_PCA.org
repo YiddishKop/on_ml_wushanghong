@@ -1,5 +1,20 @@
-* Exploring and Visualizing Data
-** Exploratory Data Analysis
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: Exploring and Visualizing Data
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
+
+
+
+
+* (EDA)Exploratory Data Analysis
 
 Exploratory Data Analysis (EDA) is an important and recommended first step of
 Machine Learning (prior to the training of a machine learning model that are
@@ -13,7 +28,7 @@ visualization plays an important role in EDA. Next, we use the Wine dataset from
 the UCI machine learning repository as an example dataset and show some common
 and useful plots.
 
-*** Visualizing the Important Characteristics of a Dataset
+** Visualizing the Important Characteristics of a Dataset          :DATAVIEW:
 
 Let's download the Wine dataset using Pandas first:
 
@@ -48,7 +63,7 @@ Dataframe is an useful "two-dimensional size-mutable, potentially heterogeneous
 tabular data structure with labeled axes".
 #+END_QUOTE
 
-*** Pairwise Join Distributions
+** Pairwise Join Distributions                                     :DATAVIEW:
 
 We can instead see the join distribution of any pair of
 
@@ -89,9 +104,11 @@ NOTE: importing the Seaborn library modifies the default aesthetics of
 Matplotlib for the current Python session. If you do not want to use Seaborn's
 style settings, you can reset the Matplotlib settings by calling:
 
+#+BEGIN_EXAMPLE
 >>> sns.reset_orig()
+#+END_EXAMPLE
 
-*** Correlation Matrix
+** Correlation Matrix                                              :DATAVIEW:
 
 Showing the pairwise join distributions may still be overwhelming when we have a
 lot of variables in the dataset. Sometimes, we can just plot the correlation
@@ -154,12 +171,15 @@ we may pick the "Malic acid" and "Flavanoids" as the explanatory variables.
 
 NOTE: we could have simply used the NumPy function
 
+#+BEGIN_EXAMPLE
   >>>R = np.corrcoef(df.values.T)
+#+END_EXAMPLE
 
-  to get the estimate R^ of the correlation matrix. We calculate R^ by ourselves
-  using the normalized design matrix Z because we will reuse Z later.
+to get the estimate R^ of the correlation matrix. We calculate R^ by ourselves
+using the normalized design matrix Z because we will reuse Z later.
 
-*** PCA for Visualization
+* Visualizing Data
+** PCA for Visualization                                           :MATHFORM:
 
 PCA reduces the dimension of data points, and has been widely used across
 different machine learning tasks. One application of PCA is to help the
@@ -176,7 +196,7 @@ argmaxwi∈RDw(i)TZTZw(i),fori∈[1,K]
 by Rayleigh's Quotient, the optimal w(i) is given by the eigenvector of ZTZ (or
 R^) corresponding to the ith largest eigenvalue.
 
-*** Summarize PCA in a few simple steps
+** Summarize PCA in a few simple steps                               :MLALGO:
 
 #+BEGIN_QUOTE
 1. Standardize the D -dimensional dataset X , e.g., via the z -normalization, and get Z ;
@@ -192,7 +212,7 @@ R^) corresponding to the ith largest eigenvalue.
 6. Transform the D-dimensional input dataset Z using the projection matrix W.
 #+END_QUOTE
 
-*** Eigendecomposition
+** Eigendecomposition                                              :LINAGAPI:
 
 Since we already have Z and R^ from the above. We can begin from the step 3:
 
@@ -214,7 +234,7 @@ stable ~np.linalg.eig()~ can decompose *non-symmetric square matrices* and
 returns *complex* eigenvalues.
 #+END_QUOTE
 
-*** Eigenvector Selection
+** Eigenvector Selection                                           :DATAVIEW:
 
 In step 4, we need to decide the value of K. We can plot the variance explained
 ratio of each eigenvalue:
@@ -240,7 +260,6 @@ plt.legend(loc='best')
 plt.tight_layout()
 plt.savefig('./output/fig-pca-var-exp.png', dpi=300)
 plt.show()
-
 #+END_SRC
 
 The resulting plot indicates that the first principal component alone accounts
@@ -253,23 +272,26 @@ plot the data via a two-dimensional scatter plot later in this subsection. In
 practice, the number of principal components can be determined by other reasons,
 such as the trade-off between computational efficiency and performance.
 
-*** Feature Transformation
+** Feature Transformation
 
 Let's now proceed with the last three steps to project the standardized Wine
 dataset onto the new principal component axes. We start by sorting the
 eigenpairs by decreasing order of the eigenvalues:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-# Make a list of (eigenvalue, eigenvector) tuples
-eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[:,i]) for i in range(len(eigen_vals))]
+  # Make a list of (eigenvalue, eigenvector) tuples
+  eigen_pairs = [(np.abs(eigen_vals[i]), eigen_vecs[:,i]) for i in range(len(eigen_vals))]
 
-# Sort the (eigenvalue, eigenvector) tuples from high to low
-eigen_pairs.sort(reverse=True)
-Next, we pick the first two eigenvectors and form the project matrix W:
+  # Sort the (eigenvalue, eigenvector) tuples from high to low
+  eigen_pairs.sort(reverse=True)
+#+END_SRC
 
-W = np.hstack((eigen_pairs[0][1][:, np.newaxis],
-               eigen_pairs[1][1][:, np.newaxis]))
-print('Projection matrix W:\n', W)
+  Next, we pick the first two eigenvectors and form the project matrix W:
+
+#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+  W = np.hstack((eigen_pairs[0][1][:, np.newaxis],
+                 eigen_pairs[1][1][:, np.newaxis]))
+  print('Projection matrix W:\n', W)
 #+END_SRC
 Projection matrix W:
  [[-0.1443294   0.48365155]
@@ -332,6 +354,7 @@ Here's a generated dataset, with 3 classes and 15 attributes. Your goal is to
 reduce data dimension to 2 and 3, and then plot 2-D and 3-D visualization on the
 compressed data, respectively.
 
+** Data import                                                     :DATAPREP:
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
 #import libs, load data
 
@@ -347,12 +370,13 @@ Y_load = df_load['Class label']
 
 df_load.head()
 #+END_SRC
-Class label	a1	a2	a3	a4	a5	a6	a7	a8	a9	a10	a11	a12	a13	a14	a15
-0	2.0	-0.016488	-1.310538	-1.552489	-0.785475	1.548429	0.476687	1.090010	-0.351870	-0.000855	-1.932941	0.499177	0.149137	-0.640413	-0.782951	-0.903561
-1	0.0	-0.844201	-1.235142	-0.624408	1.502470	-0.079536	1.482053	1.178544	-1.150090	-1.040124	-1.041435	0.281037	-0.283710	-1.176802	0.718408	-0.392095
-2	0.0	-0.181053	0.039422	-0.307827	0.162256	-1.283705	0.541288	0.019113	-0.470718	-1.045754	0.983150	-0.121205	-0.189225	-0.539178	0.825261	0.612889
-3	2.0	-0.423555	-1.598754	1.597206	-0.239330	1.443564	2.657538	1.824393	-1.809287	1.058634	-4.058539	0.255908	-0.952422	-0.315551	1.854246	-2.369018
-4	2.0	-0.499408	-0.814229	-0.178777	-1.757823	0.678134	3.552825	1.483069	-2.341943	2.155062	-4.380612	-0.239352	-1.730919	0.586125	3.902178	-2.891653
+
+| Class label |  a1 |        a2 |        a3 |        a4 |        a5 |        a6 |       a7 |       a8 |        a9 |       a10 |       a11 |       a12 |       a13 |       a14 |       a15 |           |
+|           0 | 2.0 | -0.016488 | -1.310538 | -1.552489 | -0.785475 |  1.548429 | 0.476687 | 1.090010 | -0.351870 | -0.000855 | -1.932941 |  0.499177 |  0.149137 | -0.640413 | -0.782951 | -0.903561 |
+|           1 | 0.0 | -0.844201 | -1.235142 | -0.624408 |  1.502470 | -0.079536 | 1.482053 | 1.178544 | -1.150090 | -1.040124 | -1.041435 |  0.281037 | -0.283710 | -1.176802 |  0.718408 | -0.392095 |
+|           2 | 0.0 | -0.181053 |  0.039422 | -0.307827 |  0.162256 | -1.283705 | 0.541288 | 0.019113 | -0.470718 | -1.045754 |  0.983150 | -0.121205 | -0.189225 | -0.539178 |  0.825261 |  0.612889 |
+|           3 | 2.0 | -0.423555 | -1.598754 |  1.597206 | -0.239330 |  1.443564 | 2.657538 | 1.824393 | -1.809287 |  1.058634 | -4.058539 |  0.255908 | -0.952422 | -0.315551 |  1.854246 | -2.369018 |
+|           4 | 2.0 | -0.499408 | -0.814229 | -0.178777 | -1.757823 |  0.678134 | 3.552825 | 1.483069 | -2.341943 |  2.155062 | -4.380612 | -0.239352 | -1.730919 |  0.586125 |  3.902178 | -2.891653 |
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
 import numpy as np
@@ -382,6 +406,7 @@ W_2D = np.hstack((eigen_pairs[0][1][:, np.newaxis],
 #+END_SRC
 
 
+** plot the dataset                                                :DATAVIEW:
 You can see here for information about plotting 3D graph
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer

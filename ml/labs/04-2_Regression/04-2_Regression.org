@@ -1,3 +1,15 @@
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: Linear Polynomial Decision Tree Regression
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
 * Linear, Polynomial, and Decision Tree Regression
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -12,57 +24,53 @@ using the Housing dataset ([[https://archive.ics.uci.edu/ml/machine-learning-dat
 Tree and Random Forest classifiers that we have learned from our previous labs
 to solve the regression problem.
 
-** Linear Regression[[Linear-Regression][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Linear-Regression
-   :END:
+** Linear Regression
 
-Regression models are used to predict target variables ($y$'s) in
-continuous space, which makes them attractive for
+Regression models are used to predict target variables ($y$'s) in continuous
+space, which makes them attractive for
 
 -  Understanding relationships between variables
 -  Evaluating trends
 -  Making forecasts
 
-Consider $y$ can be explained by the 1-D points ($x\in R$), the linear
-model is defined as: $$\hat{y} = w\_{0}+w\_{1}x$$ Minimizing the sum of
-squared errors (SSE) can be understood as finding the best-fitting
-straight line through the example points. The best-fitting line is
-called the regression line (or hyperplane when $x\in \mathbb{R}\^D$,
-$D>1$ ), and the vertical offsets from the regression line to the data
-points are called the *residuals* (i.e., the errors of our prediction),
-as shown in the following: [[./fig-linear-regression.png]] Note that the
-$w\_0$ and $w\_1$ control the intercept/bias and slope of the regression
-line respectively.
+Consider $y$ can be explained by the 1-D points ($x\in R$), the linear model is
+defined as: $$\hat{y} = w\_{0}+w\_{1}x$$ Minimizing the sum of squared errors
+(SSE) can be understood as finding the best-fitting straight line through the
+example points. The best-fitting line is called the regression line (or
+hyperplane when $x\in \mathbb{R}\^D$, $D>1$ ), and the vertical offsets from the
+regression line to the data points are called the *residuals* (i.e., the errors
+of our prediction), as shown in the following:
 
-** The Housing dataset[[The-Housing-dataset][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: The-Housing-dataset
-   :END:
+
+[[./fig-linear-regression.png]]
+
+Note that the $w\_0$ and $w\_1$ control the intercept/bias and slope of the
+regression line respectively.
+
+** The Housing dataset
 
 The Housing dataset from UCI repository collects information about
 houses in the suburbs of Boston. Following are the attributes:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    1.  CRIM      Per capita crime rate by town
-    2.  ZN        Proportion of residential land zoned for lots over 25,000 sq.ft.
-    3.  INDUS     Proportion of non-retail business acres per town
-    4.  CHAS      Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)
-    5.  NOX       Nitric oxides concentration (parts per 10 million)
-    6.  RM        Average number of rooms per dwelling
-    7.  AGE       Proportion of owner-occupied units built prior to 1940
-    8.  DIS       Weighted distances to five Boston employment centres
-    9.  RAD       Index of accessibility to radial highways
+#+BEGIN_EXAMPLE
+    1. CRIM      Per capita crime rate by town
+    2. ZN        Proportion of residential land zoned for lots over 25,000 sq.ft.
+    3. INDUS     Proportion of non-retail business acres per town
+    4. CHAS      Charles River dummy variable (= 1 if tract bounds river; 0 otherwise)
+    5. NOX       Nitric oxides concentration (parts per 10 million)
+    6. RM        Average number of rooms per dwelling
+    7. AGE       Proportion of owner-occupied units built prior to 1940
+    8. DIS       Weighted distances to five Boston employment centres
+    9. RAD       Index of accessibility to radial highways
     10. TAX       Full-value property-tax rate per \$10,000
     11. PTRATIO   Pupil-teacher ratio by town
     12. B         1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
     13. LSTAT     % lower status of the population
     14. MEDV      Median value of owner-occupied homes in $1000's
-#+END_SRC
+#+END_EXAMPLE
 
 Let's load the data first, and see head 5 data in dataset.
 
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import pandas as pd
@@ -80,8 +88,6 @@ In [2]:
     df.head()
 #+END_SRC
 
-Out[2]:
-
 |     | CRIM      | ZN     | INDUS   | CHAS   | NOX     | RM      | AGE    | DIS      | RAD   | TAX     | PTRATIO   | B        | LSTAT   | MEDV   |
 |-----+-----------+--------+---------+--------+---------+---------+--------+----------+-------+---------+-----------+----------+---------+--------|
 | 0   | 0.00632   | 18.0   | 2.31    | 0      | 0.538   | 6.575   | 65.2   | 4.0900   | 1     | 296.0   | 15.3      | 396.90   | 4.98    | 24.0   |
@@ -90,13 +96,11 @@ Out[2]:
 | 3   | 0.03237   | 0.0    | 2.18    | 0      | 0.458   | 6.998   | 45.8   | 6.0622   | 3     | 222.0   | 18.7      | 394.63   | 2.94    | 33.4   |
 | 4   | 0.06905   | 0.0    | 2.18    | 0      | 0.458   | 7.147   | 54.2   | 6.0622   | 3     | 222.0   | 18.7      | 396.90   | 5.33    | 36.2   |
 
-Our goal is to predict the house prices ('MEDV'), which is in a
-continuous scale, using the values of some other variable. To select
-proper explanatory variables, we plot all the pairwise join
-distributions related to 'MEDV'.
+Our goal is to predict the house prices ('MEDV'), which is in a continuous
+scale, using the values of some other variable. To select proper explanatory
+variables, we plot all the pairwise join distributions related to 'MEDV'.
 
-In [3]:
-
+*** scatter plot to find outlier
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import matplotlib.pyplot as plt
     x_vars = [
@@ -115,26 +119,18 @@ In [3]:
 #+END_SRC
 
 
-
 Using this scatter-plot matrix, we can now quickly see how the data is
-distributed and whether it contains outliers. For example, we can see
-that there is a linear relationship between RM and the house prices
-MEDV. Furthermore, we can see in the histogram that both RM and MEDV
-variable seems to be normally distributed but MEDV contains several
-*outliers*, i.e. values that deviate from the majority values a lot.
-Let's use RM as the explanatory variable for our first linear regression
-task:
+distributed and whether it contains outliers. For example, we can see that there
+is a linear relationship between RM and the house prices MEDV. Furthermore, we
+can see in the histogram that both RM and MEDV variable seems to be normally
+distributed but MEDV contains several *outliers*, i.e. values that deviate from
+the majority values a lot. Let's use RM as the explanatory variable for our
+first linear regression task:
 
-** Fitting a Linear Regression Model via
-Scikit-learn[[Fitting-a-Linear-Regression-Model-via-Scikit-learn][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Fitting-a-Linear-Regression-Model-via-Scikit-learn
-   :END:
+** Fitting a Linear Regression Model via Scikit-learn
 
 Scikit-learn has already implemented an LinearRegression class that we
 can make use of:
-
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.linear_model import LinearRegression
@@ -162,10 +158,9 @@ We may interpret the slope 9.10 as the average increase in 'MEDV' due to
 'RM'. And the intercept sometimes also has physical meaning, but not in
 this case. Since that there is no negative value of a house.
 
+*** visualize the fitness of linear regression
 Next, let's visualize how well the linear regression line fits the
 training data:
-
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # To simplify our codes, predefine a function to visualize to regression line and data scatter plot.
@@ -183,26 +178,18 @@ In [5]:
 
 
 
-As we can see, the linear regression line reflects the general trend
-that house prices tend to increase with the number of rooms.
-Interestingly, we also observe a curious line at $y=50$ , which suggests
-that the prices may have been clipped.
+As we can see, the linear regression line reflects the general trend that house
+prices tend to increase with the number of rooms. Interestingly, we also observe
+a curious line at $y=50$ , which suggests that the prices may have been clipped.
 
-** Multivariate Cases & Performance
-Evaluation[[Multivariate-Cases-&-Performance-Evaluation][¶]]
-{#Multivariate-Cases-&-Performance-Evaluation}
-   :PROPERTIES:
-   :CUSTOM_ID: multivariate-cases-performance-evaluation-multivariate-cases--performance-evaluation
-   :END:
+** Multivariate Cases & Performance Evaluation
 
 If we have multiple explanatory variables, we can't visualize the linear
-regression hyperplane in a two-dimensional plot. In this case, we need
-some other ways to evaluate the trained model. Let's proceed with the
-multivariate linear regression and evaluate the results using the mean
-squared error (MSE) and coefficient of determination\\
-($R\^2$).
+regression hyperplane in a two-dimensional plot. In this case, we need some
+other ways to evaluate the trained model. Let's proceed with the multivariate
+linear regression and evaluate the results using the mean squared error (MSE)
+and coefficient of determination ($R^2$).
 
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import train_test_split
@@ -249,33 +236,28 @@ In [6]:
     R^2 train: 0.76, test: 0.67
 #+END_SRC
 
-A normal $R\^2$ value should fall between between 0 and 1, and the
-higher $R\^2$ the better.In practice, we often consider $R\^2>0.8$ as
-good. if $R\^2$ is negative, it means that your model doesn't fit your
-data.\\
-NOTE: it is important to standardize the explanatory variables in
-multivariate regression in order to improve the conditioning of the cost
-function and to prevent attributes with large values from dominating.
+A normal $R^2$ value should fall between between 0 and 1, and the higher $R^2$
+the better.In practice, we often consider $R^2>0.8$ as good. if $R^2$ is
+negative, it means that your model doesn't fit your data.
 
-** Residual Plot[[Residual-Plot][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Residual-Plot
-   :END:
 
-In addition, the *residual plot* is a commonly used graphical analysis
-for a regression model to detect nonlinearity and outliers. In the case
-of a perfect prediction, the residuals would be exactly zero, which we
-will probably never encounter in realistic and practical applications.
-However, for a good regression model, we would expect that the errors
-are randomly distributed and the residuals should be *randomly scattered
-around the centerline*. If we see patterns in a residual plot, it means
-that our model is unable to capture some explanatory information, which
-is leaked into the residuals (as we can slightly see in the below).
-Furthermore, we can also use residual plots to detect outliers, which
-are represented by the points with a large deviation from the
+NOTE: it is important to standardize the explanatory variables in multivariate
+regression in order to improve the conditioning of the cost function and to
+prevent attributes with large values from dominating.
+
+** Residual Plot
+
+In addition, the *residual plot* is a commonly used graphical analysis for a
+regression model to detect nonlinearity and outliers. In the case of a perfect
+prediction, the residuals would be exactly zero, which we will probably never
+encounter in realistic and practical applications. However, for a good
+regression model, we would expect that the errors are randomly distributed and
+the residuals should be *randomly scattered around the centerline*. If we see
+patterns in a residual plot, it means that our model is unable to capture some
+explanatory information, which is leaked into the residuals (as we can slightly
+see in the below). Furthermore, we can also use residual plots to detect
+outliers, which are represented by the points with a large deviation from the
 centerline.
-
-In [7]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     plt.scatter(
@@ -299,18 +281,10 @@ In [7]:
     plt.show()
 #+END_SRC
 
+** Implementing the Linear Regression
 
-
-** Implementing the Linear
-Regression[[Implementing-the-Linear-Regression][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Implementing-the-Linear-Regression
-   :END:
-
-Now, let's implement our own linear regression model. It is almost the
-same as the Adaline classifier we have implemented:
-
-In [8]:
+Now, let's implement our own linear regression model. It is almost the same as
+the Adaline classifier we have implemented:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class LinearRegressionGD(object):
@@ -341,12 +315,9 @@ In [8]:
         return self.net_input(X)
 #+END_SRC
 
-It is always a good practice to plot the cost as a function of the
-number of epochs (passes over the training dataset) when we are using
-optimization algorithms, such as gradient descent, to check for the
-convergence:
-
-In [9]:
+It is always a good practice to plot the cost as a function of the number of
+epochs (passes over the training dataset) when we are using optimization
+algorithms, such as gradient descent, to check for the convergence:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import StandardScaler
@@ -367,11 +338,8 @@ In [9]:
 #+END_SRC
 
 
-
-Next, let's visualize how well the linear regression line fits the
-training data:
-
-In [10]:
+Next, let's visualize how well the linear regression line fits the training
+data:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     lin_regplot(X_rm_std, y_std, lr)
@@ -381,29 +349,20 @@ In [10]:
     plt.show()
 #+END_SRC
 
+We can see that the overall result looks almost identical to the Scikit-learn
+implementation.
 
+Note, however, that the implementation in Scikit-learn makes use of the
+[[http://www.csie.ntu.edu.tw/~cjlin/liblinear/][LIBLINEAR]] library and advanced optimization algorithms that work better with
+unstandardized variables.
 
-We can see that the overall result looks almost identical to the
-Scikit-learn implementation. Note, however, that the implementation in
-Scikit-learn makes use of the
-[[http://www.csie.ntu.edu.tw/~cjlin/liblinear/][LIBLINEAR]] library and
-advanced optimization algorithms that work better with unstandardized
-variables.
-
-** Polynomial Regression[[Polynomial-Regression][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Polynomial-Regression
-   :END:
-
-Linear regression assumes a linear relationship between explanatory and
-response variables, which may *not* hold in the real world. For example,
-by seeing the pairwise distribution plot again, we find that the LSTAT
-(% lower status of the population) attribute is clearly not linearly
-correlated with our target variable MEDV. Next, let's construct
-polynomial features and turn our linear regression models into the
-polynomial ones.
-
-In [11]:
+** Polynomial Regression
+Linear regression assumes a linear relationship between explanatory and response
+variables, which may *not* hold in the real world. For example, by seeing the
+pairwise distribution plot again, we find that the LSTAT (% lower status of the
+population) attribute is clearly not linearly correlated with our target
+variable MEDV. Next, let's construct polynomial features and turn our linear
+regression models into the polynomial ones.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.preprocessing import PolynomialFeatures
@@ -471,21 +430,14 @@ In [11]:
     plt.show()
 #+END_SRC
 
-
-
 In the resulting plot, we can see that the polynomial fit captures the
-relationship between the response and explanatory variable much better
-than the linear fit.
+relationship between the response and explanatory variable much better than the
+linear fit.
 
-** Multivariate Cases[[Multivariate-Cases][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Multivariate-Cases
-   :END:
+** Multivariate Cases
 
-Next, we train polynomial regressors of different degrees using all
-features in the Housing dataset and compare their performance.
-
-In [12]:
+Next, we train polynomial regressors of different degrees using all features in
+the Housing dataset and compare their performance.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     regr = LinearRegression()
@@ -545,23 +497,16 @@ In [12]:
     R^2 train: 1.00, test: -258.55
 #+END_SRC
 
-We notice a very interesting behavior here. As the degree of polynomial
-goes up, the training errors decrease, but *not* the testing errors.
-That is, *a low training error does not implies a low training error*.
-We will discuss this further in our next lecture.
+We notice a very interesting behavior here. As the degree of polynomial goes up,
+the training errors decrease, but *not* the testing errors. That is, *a low
+training error does not implies a low training error*. We will discuss this
+further in our next lecture.
 
-** Decision Tree Regression[[Decision-Tree-Regression][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Decision-Tree-Regression
-   :END:
-
-Polynomial regression is not the only way to capture the nonlinear
-relationship between the explanatory and target variables. For example,
-we can modify the Decision Tree model for non-linear regression by
-simply replacing the entropy as the impurity measure of a node by the
-MSE. Let's see how it works in our task:
-
-In [17]:
+** Decision Tree Regression
+Polynomial regression is not the only way to capture the nonlinear relationship
+between the explanatory and target variables. For example, we can modify the
+Decision Tree model for non-linear regression by simply replacing the entropy as
+the impurity measure of a node by the MSE. Let's see how it works in our task:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.tree import DecisionTreeRegressor
@@ -602,61 +547,54 @@ In [17]:
     plt.show()
 #+END_SRC
 
+As we can see from the resulting plot, the decision tree captures the general
+trend in the data. However, a limitation of this model is that it does not
+capture the continuity and differentiability of the desired prediction.
 
+** Random Forest Regression
 
-As we can see from the resulting plot, the decision tree captures the
-general trend in the data. However, a limitation of this model is that
-it does not capture the continuity and differentiability of the desired
-prediction.
+We can also modify the Random Forest model for regression to take advantages of
+an ensemble technique and get a better generalization performance. The basic
+random forests algorithm for regression is almost identical to the random forest
+algorithm for classification. The only difference is that we use the MSE
+criterion to grow individual decision trees, and the predicted target variable
+is calculated as the average prediction over all decision trees. Now, let's use
+all the features in the Housing dataset to train a random forest regression
+model:
 
-** Random Forest Regression[[Random-Forest-Regression][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Random-Forest-Regression
-   :END:
-
-We can also modify the Random Forest model for regression to take
-advantages of an ensemble technique and get a better generalization
-performance. The basic random forests algorithm for regression is almost
-identical to the random forest algorithm for classification. The only
-difference is that we use the MSE criterion to grow individual decision
-trees, and the predicted target variable is calculated as the average
-prediction over all decision trees. Now, let's use all the features in
-the Housing dataset to train a random forest regression model:
-
-In [18]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    from sklearn.ensemble import RandomForestRegressor
+  from sklearn.ensemble import RandomForestRegressor
 
-    forest = RandomForestRegressor(
-        n_estimators=1000, criterion='mse', random_state=1, n_jobs=-1)
-    forest.fit(X_train, y_train)
-    y_train_pred = forest.predict(X_train)
-    y_test_pred = forest.predict(X_test)
+  forest = RandomForestRegressor(
+      n_estimators=1000, criterion='mse', random_state=1, n_jobs=-1)
+  forest.fit(X_train, y_train)
+  y_train_pred = forest.predict(X_train)
+  y_test_pred = forest.predict(X_test)
 
-    print('MSE train: %.2f, test: %.2f' %
-          (mean_squared_error(y_train, y_train_pred),
-           mean_squared_error(y_test, y_test_pred)))
-    print('R^2 train: %.2f, test: %.2f' % (r2_score(y_train, y_train_pred),
-                                           r2_score(y_test, y_test_pred)))
+  print('MSE train: %.2f, test: %.2f' %
+        (mean_squared_error(y_train, y_train_pred),
+         mean_squared_error(y_test, y_test_pred)))
+  print('R^2 train: %.2f, test: %.2f' % (r2_score(y_train, y_train_pred),
+                                         r2_score(y_test, y_test_pred)))
 
-    # Residual plot
-    plt.scatter(
-        y_train_pred,
-        y_train_pred - y_train,
-        c='blue',
-        marker='o',
-        label='Training data')
-    plt.scatter(
-        y_test_pred, y_test_pred - y_test, c='green', marker='s', label='Test data')
+  # Residual plot
+  plt.scatter(
+      y_train_pred,
+      y_train_pred - y_train,
+      c='blue',
+      marker='o',
+      label='Training data')
+  plt.scatter(
+      y_test_pred, y_test_pred - y_test, c='green', marker='s', label='Test data')
 
-    plt.xlabel('Predicted values')
-    plt.ylabel('Residuals')
-    plt.legend(loc='upper left')
-    plt.hlines(y=0, xmin=-10, xmax=50, lw=2, color='red')
-    plt.xlim([-10, 50])
-    plt.tight_layout()
-    plt.show()
+  plt.xlabel('Predicted values')
+  plt.ylabel('Residuals')
+  plt.legend(loc='upper left')
+  plt.hlines(y=0, xmin=-10, xmax=50, lw=2, color='red')
+  plt.xlim([-10, 50])
+  plt.tight_layout()
+  plt.show()
 #+END_SRC
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -666,43 +604,32 @@ In [18]:
 
 
 
-We get better testing results ($R\^2=0.83$) than those of multivariate
-linear regression ($R\^2=0.67$) and see weaker patterns in the residual
-plot. However, we still observe that the testing performance is much
-worse than the training one. Understanding how the testing performance
-differs from the training performance is crucial and will be our next
-topic.
+We get better testing results ($R\^2=0.83$) than those of multivariate linear
+regression ($R\^2=0.67$) and see weaker patterns in the residual plot. However,
+we still observe that the testing performance is much worse than the training
+one. Understanding how the testing performance differs from the training
+performance is crucial and will be our next topic.
 
-NOTE: as in the classification, Decision Tree and Random Forest
-regression has a nice feature that they are *not* sensitive to the
-scaling of each explanatory variable. So we do not standardize features
-this time.
+NOTE: as in the classification, Decision Tree and Random Forest regression has a
+nice feature that they are *not* sensitive to the scaling of each explanatory
+variable. So we do not standardize features this time.
 
-** Remarks[[Remarks][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Remarks
-   :END:
+** Remarks
 
-1. Regression models are basically interpolation equations over the
-   range of the explanatory variables. So they may give bad predictions
-   if we extrapolate outside this range.
-2. Be careful about the outliers, which may change your regression
-   hyperplane undesirably.
+1. Regression models are basically interpolation equations over the range of the
+   explanatory variables. So they may give bad predictions if we extrapolate
+   outside this range.
+2. Be careful about the outliers, which may change your regression hyperplane
+   undesirably.
 
-** Assignmant[[Assignmant][¶]]
-   :PROPERTIES:
-   :CUSTOM_ID: Assignmant
-   :END:
+** Assignmant
 
-In this assignment, you need to train a regression model on
-[[http://archive.ics.uci.edu/ml/datasets/Beijing+PM2.5+Data][Beijing
-PM2.5 dataset]] in winter of 2014.
+In this assignment, you need to train a regression model on [[http://archive.ics.uci.edu/ml/datasets/Beijing+PM2.5+Data][Beijing PM2.5
+dataset]] in winter of 2014.
 
 1. You need to show a residual plot of your model on both training data
    and testing data.
 2. $R\^2$ score need to be larger than 0.65 on testing data.
-
-In [1]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Do not modify
@@ -720,7 +647,6 @@ In [1]:
     df.head()
 #+END_SRC
 
-Out[1]:
 
 |     | No   | year   | month   | day   | hour   | pm2.5   | DEWP   | TEMP    | PRES     | cbwd   | Iws     | Is   | Ir   |
 |-----+------+--------+---------+-------+--------+---------+--------+---------+----------+--------+---------+------+------|
@@ -730,11 +656,9 @@ Out[1]:
 | 3   | 4    | 2010   | 1       | 1     | 3      | NaN     | -21    | -14.0   | 1019.0   | NW     | 9.84    | 0    | 0    |
 | 4   | 5    | 2010   | 1       | 1     | 4      | NaN     | -20    | -12.0   | 1018.0   | NW     | 12.97   | 0    | 0    |
 
-In the latter course, we will teach how to deal with those sample whose
-has *nan* (not a number) or non-scalar features. For now, we just remove
-them.
+In the latter course, we will teach how to deal with those sample whose has
+*nan* (not a number) or non-scalar features. For now, we just remove them.
 
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Do not modify
@@ -743,7 +667,6 @@ In [2]:
     df.head()
 #+END_SRC
 
-Out[2]:
 
 |      | No   | year   | month   | day   | hour   | pm2.5   | DEWP   | TEMP   | PRES     | Iws    | Is   | Ir   |
 |------+------+--------+---------+-------+--------+---------+--------+--------+----------+--------+------+------|
@@ -753,10 +676,8 @@ Out[2]:
 | 27   | 28   | 2010   | 1       | 2     | 3      | 181.0   | -7     | -5.0   | 1022.0   | 5.36   | 1    | 0    |
 | 28   | 29   | 2010   | 1       | 2     | 4      | 138.0   | -7     | -5.0   | 1022.0   | 6.25   | 2    | 0    |
 
-In the following, we select data that are recorded in winter between
-2013 and 2014.
-
-In [3]:
+In the following, we select data that are recorded in winter between 2013
+and 2014.
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # Do not modify
@@ -768,7 +689,6 @@ In [3]:
     X.head()
 #+END_SRC
 
-Out[3]:
 
 |         | No      | year   | month   | day   | hour   | DEWP   | TEMP   | PRES     | Iws    | Is   | Ir   |
 |---------+---------+--------+---------+-------+--------+--------+--------+----------+--------+------+------|
@@ -778,7 +698,6 @@ Out[3]:
 | 34323   | 34324   | 2013   | 12      | 1     | 3      | -13    | -4.0   | 1025.0   | 0.89   | 0    | 0    |
 | 34324   | 34325   | 2013   | 12      | 1     | 4      | -13    | -3.0   | 1025.0   | 1.78   | 0    | 0    |
 
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # define a function for residual plot
@@ -808,7 +727,6 @@ In [4]:
       plt.show()
 #+END_SRC
 
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # select features and train model by yourself
@@ -856,7 +774,3 @@ In [6]:
     MSE train: 8211.82, test: 8747.70
     R^2 train: 0.48, test: 0.44
 #+END_SRC
-
-
-
-In [ ]:

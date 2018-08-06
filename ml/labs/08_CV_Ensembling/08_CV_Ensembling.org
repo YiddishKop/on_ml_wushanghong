@@ -1,3 +1,15 @@
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
+#+HTML_HEAD: <script src="path to your .js file"></script>
+#+HTML_HEAD: <script type="text/javascript">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
+#+TITLE: Ensemble Learning
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
 * Cross Validation & Ensembling
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -18,15 +30,11 @@
     from lib import *
 #+END_SRC
 
-In this lab, we will guide you through the *cross validation* technique
-for hyperparameter selection. We will also practice the *ensemble
-learning* techniques that combine multiple base-leaners for better
-performance.
+In this lab, we will guide you through the *cross validation* technique for
+hyperparameter selection. We will also practice the *ensemble learning*
+techniques that combine multiple base-leaners for better performance.
 
 * Holdout Method
-  :PROPERTIES:
-  :CUSTOM_ID: Holdout-Method
-  :END:
 
 So far, we hold out the validation and testing sets for hyperparameter tuning
 and performance reporting. Specifically, we partition a dataset into the
@@ -37,36 +45,37 @@ steps by issuing different sets of hyperparameters and pick the set that leads
 to the highest validation performance. We then use *both the training and
 validation sets* to train our final model, and apply it the testing set to
 evaluate/report the generalization performance. The following figure illustrates
-the procedure: [[./fig-holdout.png]]
+the procedure:
+
+
+[[./fig-holdout.png]]
 
 Next, we apply this technique to evaluate the =KNeighborsClassifier= on the Iris
 dataset. For simplicity, we consider the =sepal width= and =petal length=
 features only. Let's split the dataset first:
 
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    from sklearn.datasets import load_iris
-    from sklearn.model_selection import train_test_split
-    from sklearn.preprocessing import StandardScaler
-    import numpy as np
+  from sklearn.datasets import load_iris
+  from sklearn.model_selection import train_test_split
+  from sklearn.preprocessing import StandardScaler
+  import numpy as np
 
-    iris = load_iris()
-    X, y = iris.data[:, [1, 2]], iris.target
+  iris = load_iris()
+  X, y = iris.data[:, [1, 2]], iris.target
 
-    # hold out testing set
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.3, random_state=0)
-    # hold out validation set
-    X_itrain, X_val, y_itrain, y_val = train_test_split(
-        X_train, y_train, test_size=0.3, random_state=0)
+  # hold out testing set
+  X_train, X_test, y_train, y_test = train_test_split(
+      X, y, test_size=0.3, random_state=0)
+  # hold out validation set
+  X_itrain, X_val, y_itrain, y_val = train_test_split(
+      X_train, y_train, test_size=0.3, random_state=0)
 #+END_SRC
 
 Then, we iterate through each value of hyperparameter =n_neighbors= = 1, 15, 50
 to train on the training set and estimate performance on the validation set and
 record the best:
 
-In [3]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.pipeline import Pipeline
@@ -116,7 +125,6 @@ score).
 In this case, the hyperparameter =n_neighbors= = 15 actually leads to better
 test performance:
 
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     clf = clfs[15]
@@ -167,6 +175,7 @@ role="presentation" style="position: relative;"} performance estimates.
 
 
 Then we take their *average* as the final performance estimate. The
+
 [[./fig-kfold.png]]
 
 We can apply [K$K$]{#MathJax-Element-10-Frame .MathJax tabindex="0"
@@ -181,10 +190,9 @@ both training and validation/testing. Let's use [K$K$]{#MathJax-Element-11-Frame
 xmlns="http://www.w3.org/1998/Math/MathML">@@@@html:<mi>@@K@@html:</mi>@@@@html:</math>@@"
 role="presentation" style="position: relative;"}
 
--Fold CV to select the
-hyperparamter =n_neighbors= of the =KNeighborsClassifier=:
+-Fold CV to select the hyperparamter =n_neighbors= of the
+=KNeighborsClassifier=:
 
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import cross_val_score
@@ -198,8 +206,6 @@ In [5]:
 #+END_SRC
 
 The dataset is first split into training/testing sets.
-
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     best_k, best_score = -1, -1
@@ -230,8 +236,6 @@ In [6]:
 proper hyperparameter values, we retrain the model on the *complete training
 set* and obtain a final performance estimate on the test set:
 
-In [7]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     best_clf = clfs[best_k]
     best_clf.fit(X_train, y_train)
@@ -246,11 +250,7 @@ In [7]:
     Test accuracy: 0.93 (n_neighbors=15 selected by 5-fold CV)
 #+END_SRC
 
-*** Nested
-CV[[file:///C:/Users/Real%20Wei/Desktop/08_CV_Ensembling.html#Nested-CV][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Nested-CV
-    :END:
+*** Nested CV
 
 We can also apply the [K$K$]{#MathJax-Element-12-Frame .MathJax tabindex="0"
 data-mathml="@@html:<math
@@ -266,8 +266,6 @@ role="presentation" style="position: relative;"} nested CV:
 
 where we select the values of hyperparameters by 2-fold CV and estimate the
 generalized performance by 5-fold CV, respectively. Let's try this ourselves:
-
-In [8]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import KFold
@@ -337,7 +335,6 @@ outer fold. By doing nested CV, we get a more robust performance estimate.
 In fact, we can simplify the above example using the =GridSearchCV= from
 Scikit-learn:
 
-In [9]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import GridSearchCV
@@ -431,8 +428,6 @@ role="presentation"}
 
 We can visualize the bias and variance as follows:
 
-In [10]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import KFold
     from sklearn.preprocessing import PolynomialFeatures
@@ -498,7 +493,6 @@ In [10]:
       exp_mean.append(np.mean(mse_test))
 #+END_SRC
 
-In [11]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     plt.plot(n_range, cv5_mean, markersize=5, label='5-Fold CV', color='blue')
@@ -551,14 +545,13 @@ role="presentation" style="position: relative;"} for very small
 datasets. The last setting is called the *leave-one-out CV*.
 
 * Ensemble Methods
-No free lunch theorem states that no machine learning algorithm is
-universally better than the others in all domains. To goal of ensembling
-is to combine multiple learner to improve the applicability and get
-better performance.
+No free lunch theorem states that no machine learning algorithm is universally
+better than the others in all domains. To goal of ensembling is to combine
+multiple learner to improve the applicability and get better performance.
 
-NOTE: it is possible that the final model performs no better than the
-most accurate learners in the ensemble. But it at least reduces the
-probability of selecting a poor one and increases the applicability.
+NOTE: it is possible that the final model performs no better than the most
+accurate learners in the ensemble. But it at least reduces the probability of
+selecting a poor one and increases the applicability.
 
 *** Voting
 
@@ -589,12 +582,10 @@ the *plurarity vote* where each voter has the same weight:
 data-mathml="@@html:<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">@@@@html:<msub>@@@@html:<mrow class="MJX-TeXAtom-ORD">@@@@html:<mover>@@@@html:<mi>@@y@@html:</mi>@@@@html:<mo stretchy="false">@@~@@html:</mo>@@@@html:</mover>@@@@html:</mrow>@@@@html:<mi>@@k@@html:</mi>@@@@html:</msub>@@@@html:<mo>@@=@@html:</mo>@@@@html:<munder>@@@@html:<mo>@@∑@@html:</mo>@@@@html:<mi>@@j@@html:</mi>@@@@html:</munder>@@@@html:<mfrac>@@@@html:<mn>@@1@@html:</mn>@@@@html:<mi>@@L@@html:</mi>@@@@html:</mfrac>@@@@html:<msubsup>@@@@html:<mi>@@d@@html:</mi>@@@@html:<mi>@@k@@html:</mi>@@@@html:<mrow class="MJX-TeXAtom-ORD">@@@@html:<mo stretchy="false">@@(@@html:</mo>@@@@html:<mi>@@j@@html:</mi>@@@@html:<mo stretchy="false">@@)@@html:</mo>@@@@html:</mrow>@@@@html:</msubsup>@@@@html:<mo stretchy="false">@@(@@html:</mo>@@@@html:<mi mathvariant="bold-italic">@@x@@html:</mi>@@@@html:<mo stretchy="false">@@)@@html:</mo>@@@@html:<mo>@@.@@html:</mo>@@@@html:</math>@@"
 role="presentation"}
 
-Let's use the =VotingClassifier= from Scikit-learn to combine
-=KNeighborsClassifer=, =LogisticRegression=, and
-=DecisionTreeClassifier= together and train on the synthetic two-moon
-dataset:
 
-In [12]:
+Let's use the =VotingClassifier= from Scikit-learn to combine
+=KNeighborsClassifer=, =LogisticRegression=, and =DecisionTreeClassifier=
+together and train on the synthetic two-moon dataset:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     #import pandas as pd
@@ -624,8 +615,6 @@ In [12]:
 We can estimate the performance of individual classifiers via the
 10-fold CV:
 
-In [13]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import cross_val_score
 
@@ -644,10 +633,8 @@ In [13]:
     KNN: 0.948 (+/- 0.026)
 #+END_SRC
 
-Let's combined the classifiers by =VotingClassifer= from Scikit-learn
-and experiment some weight combinations:
-
-In [14]:
+Let's combined the classifiers by =VotingClassifer= from Scikit-learn and
+experiment some weight combinations:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.ensemble import VotingClassifier
@@ -683,16 +670,13 @@ In [14]:
 #+END_SRC
 
 The best ensemble combines the =DecisionTreeClassifier= and
-=KNeighborsClassifier=. This is a reasonable choice because these two
-models "complement" each other in design: =DecisionTreeClassifier= makes
-predictions based on informative *features*; while
-=KNeighborsClassifier= makes predictions based on representative
-*examples*.
+=KNeighborsClassifier=. This is a reasonable choice because these two models
+"complement" each other in design: =DecisionTreeClassifier= makes predictions
+based on informative *features*; while =KNeighborsClassifier= makes predictions
+based on representative *examples*.
 
 To compare the =VotingClassifer= with individual classifiers on the
 testing set, we can plot the ROC curves:
-
-In [15]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import matplotlib.pyplot as plt
@@ -731,11 +715,9 @@ In [15]:
     plt.show()
 #+END_SRC
 
-As we can see, the =VotingClassifer= can successfully combine the
-base-learners to give a higher true-positive rate at a low
-false-positive rate. Let's see the decision boundaries:
-
-In [16]:
+As we can see, the =VotingClassifer= can successfully combine the base-learners
+to give a higher true-positive rate at a low false-positive rate. Let's see the
+decision boundaries:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     X_combined = np.vstack((X_train, X_test))
@@ -787,8 +769,6 @@ The decision boundaries of =DecisionTreeClassifier= and =VotingClassifier= looks
 similar. But they have different *soft* decision boundaries that take into
 account the probability/confidence of predictions:
 
-In [17]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     plot_decision_regions(
         X=X_combined,
@@ -821,13 +801,10 @@ method, if existing) when fed by a parameter =soft=True=. Please refer to the
 =lib.py= for more details.
 
 *** Bagging
-    :PROPERTIES:
-    :CUSTOM_ID: Bagging
-    :END:
 
-*Bagging* (Bootstrap AGgragating) is a voting method where each
-base-learner are trained over a slightly different training set. The
-procedure of bagging is summarized below:
+*Bagging* (Bootstrap AGgragating) is a voting method where each base-learner are
+trained over a slightly different training set. The procedure of bagging is
+summarized below:
 
 1. Train [L$L$]{#MathJax-Element-28-Frame .MathJax tabindex="0"
    data-mathml="@@html:<math xmlns="http://www.w3.org/1998/Math/MathML">@@@@html:<mi>@@L@@html:</mi>@@@@html:</math>@@"
@@ -838,25 +815,22 @@ procedure of bagging is summarized below:
    data-mathml="@@html:<math xmlns="http://www.w3.org/1998/Math/MathML">@@@@html:<mi>@@L@@html:</mi>@@@@html:</math>@@"
    role="presentation" style="position: relative;"} classifiers).
 
-Bagging can reduce the *variance* since voters now only see different
-training sets and become less positively correlated with each other.
-Also, bagging is more robust to noise and outliers since we do the
-resampling on dataset. However, the model *bias* cannot be reduced, and
-this is why we usually use classifiers with low bias, for example,
-decision trees or nonlinear SVMs, as the base-learners in bagging.
+Bagging can reduce the *variance* since voters now only see different training
+sets and become less positively correlated with each other. Also, bagging is
+more robust to noise and outliers since we do the resampling on dataset.
+However, the model *bias* cannot be reduced, and this is why we usually use
+classifiers with low bias, for example, decision trees or nonlinear SVMs, as the
+base-learners in bagging.
 
-NOTE: when the amount of data is large enough, bagging doesn't help
-since each classifier will have low variance. We can introduce
-additional diversity to bagging by *randomly selecting features* of
-training examples. The random forest model is this kind of ensembling of
-decision trees.
+NOTE: when the amount of data is large enough, bagging doesn't help since each
+classifier will have low variance. We can introduce additional diversity to
+bagging by *randomly selecting features* of training examples. The random forest
+model is this kind of ensembling of decision trees.
 
-The =BaggingClassifier= is provided by Scikit-learn. Let's use the
-unpruned =DecisionTreeClassifier= as the base-learner and create an
-ensemble of 500 decision trees fitted on different bootstrap examples of
-the training set:
+The =BaggingClassifier= is provided by Scikit-learn. Let's use the unpruned
+=DecisionTreeClassifier= as the base-learner and create an ensemble of 500
+decision trees fitted on different bootstrap examples of the training set:
 
-In [18]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.ensemble import BaggingClassifier
@@ -874,15 +848,13 @@ In [18]:
         random_state=1)
 #+END_SRC
 
-The parameter =max_samples= controls the number of bootstrapped examples
-and =max_feature= controls the proportion of features from the feature
-set that will be sampled to train the base classifiers. We disable
-feature bootstrapping here.
+The parameter =max_samples= controls the number of bootstrapped examples and
+=max_feature= controls the proportion of features from the feature set that will
+be sampled to train the base classifiers. We disable feature bootstrapping here.
 
-Next, we compare the performance of the trained =BaggingClassifier= to a
-single unpruned =DecisionTreeClassifier=:
+Next, we compare the performance of the trained =BaggingClassifier= to a single
+unpruned =DecisionTreeClassifier=:
 
-In [19]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.metrics import accuracy_score
@@ -920,7 +892,6 @@ the unpruned =DecisionTreeClassifier= and gives better generalization
 performance. We can see this more clearly by comparing the decision
 boundaries of the two models:
 
-In [20]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import numpy as np
@@ -961,18 +932,15 @@ In [20]:
     plt.show()
 #+END_SRC
 
-The BaggingClassifer give a smoother decision boundary that less
-overfits the training data.
+The ~BaggingClassifer~ give a smoother decision boundary that less overfits the
+training data.
 
 *** Boosting
-    :PROPERTIES:
-    :CUSTOM_ID: Boosting
-    :END:
 
 The key idea of *boosting* is to create *complementary* base-leanrers by
-training the new learner using the examples that the previous leaners do
-not agree. A common implementation is *AdaBoost* (Adaptive Boosting),
-which can be summarized as followings:
+training the new learner using the examples that the previous leaners do not
+agree. A common implementation is *AdaBoost* (Adaptive Boosting), which can be
+summarized as followings:
 
 1. Initialize
    [Pr(i,1)=1N$\Pr\limits^{(i,1)} = \frac{1}{N}$]{#MathJax-Element-31-Frame
@@ -1032,7 +1000,6 @@ role="presentation" style="position: relative;"} . Let's train an
 =AdaBoostClassifier= from Scikit-learn with 500 decision trees of depth
 1:
 
-In [21]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.ensemble import AdaBoostClassifier
@@ -1066,16 +1033,13 @@ In [21]:
     [AdaBoost] accuracy-train = 1.000, accuracy-test = 0.870
 #+END_SRC
 
-The =AdaBoostClassifier= predicts all training examples correctly but
-not so well on testing set, which is a sign of overfitting. However,
-since =AdaBoostClassifier= increases the *margins* of training examples
-(as discussed in the lecture), the variance can be controlled. Overall,
-=AdaBoostClassifier= gives better generalization performance due to a
-smaller bias.
+The =AdaBoostClassifier= predicts all training examples correctly but not so
+well on testing set, which is a sign of overfitting. However, since
+=AdaBoostClassifier= increases the *margins* of training examples (as discussed
+in the lecture), the variance can be controlled. Overall, =AdaBoostClassifier=
+gives better generalization performance due to a smaller bias.
 
 Let's check the decision boundaries:
-
-In [22]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     plot_decision_regions(
@@ -1115,8 +1079,6 @@ more complex than the depth-1 decision tree.
 Next, let see how the performance =AdaBoostClassifier= changes as we add more
 weak learners:
 
-In [23]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     range_est = range(1, 500)
     ada_train, ada_test = [], []
@@ -1139,23 +1101,19 @@ In [23]:
     plt.show()
 #+END_SRC
 
+As we add more and more weak learners, the model complexity increases and the
+test accuracy first goes up due to the reduced bias. Then it goes down due to
+the increased variance. However, the variance does not continue to grow as we
+add more weak learners thanks to the enlarged margins of training examples.
 
-As we add more and more weak learners, the model complexity increases
-and the test accuracy first goes up due to the reduced bias. Then it
-goes down due to the increased variance. However, the variance does not
-continue to grow as we add more weak learners thanks to the enlarged
-margins of training examples.
+The above examples show that the =AdaBoostClassifier= *can overfit*. Also, if
+the dataset contains outliers or is noisy, AdaBoost will try to fit those "hard"
+but bad examples. We should be careful about overfitting when applying AdaBoost
+in practice. In this case, we can get a smoother decision boundary if we stop at
 
-The above examples show that the =AdaBoostClassifier= *can overfit*.
-Also, if the dataset contains outliers or is noisy, AdaBoost will try to
-fit those "hard" but bad examples. We should be careful about
-overfitting when applying AdaBoost in practice. In this case, we can get
-a smoother decision boundary if we stop at
 [L=16$L = 16$]{#MathJax-Element-44-Frame .MathJax tabindex="0"
 data-mathml="@@html:<math xmlns="http://www.w3.org/1998/Math/MathML">@@@@html:<mi>@@L@@html:</mi>@@@@html:<mo>@@=@@html:</mo>@@@@html:<mn>@@16@@html:</mn>@@@@html:</math>@@"
 role="presentation" style="position: relative;"} :
-
-In [24]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     ada16 = AdaBoostClassifier(base_estimator=tree, n_estimators=16)
@@ -1196,8 +1154,6 @@ In [24]:
 
 Finally, let's compare the ROC curves of different ensemble methods:
 
-In [25]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     clf_labels = ['Voting', 'Bagging', 'AdaBoost16']
     colors = ['orange', 'blue', 'green']
@@ -1237,18 +1193,14 @@ exercise in the playground. The dataset can be downloaded [[https://github.com/n
 
 ** Goal
 
-Train models using any methods you have learned so far to achieve best
-accuracy on the testing data. You can plot the train.csv and try to
-ensemble models that performs well on different competitors.
+Train models using any methods you have learned so far to achieve best accuracy
+on the testing data. You can plot the train.csv and try to ensemble models that
+performs well on different competitors.
 
 ** Requirements
-   :PROPERTIES:
-   :CUSTOM_ID: Requirements
-   :END:
 
-Please keep all the models you have tried in your ipynb.\\
-Submit your ipynb (make sure we can rerun it successfully) to iLMS. The ipynb
-file should contain:
+Please keep all the models you have tried in your ipynb. Submit your ipynb (make
+sure we can rerun it successfully) to iLMS. The ipynb file should contain:
 
 1. Your code and accuracy by all the models you have tried
 2. Anything you want to tell us.

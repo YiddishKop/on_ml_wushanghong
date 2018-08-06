@@ -761,7 +761,6 @@ In [49]:
     plt.show()
 #+END_SRC
 
-
 *** HINT
 
 **** [[https://www.cv-foundation.org/openaccess/content_iccv_2015/papers/Girshick_Fast_R-CNN_ICCV_2015_paper.pdf][Fast-RCNN]][[Fast-RCNN][¶]]

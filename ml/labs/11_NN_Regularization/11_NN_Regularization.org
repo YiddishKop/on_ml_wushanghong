@@ -1,5 +1,3 @@
-
-
 * Regularization in Neural Networks
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
@@ -22,10 +20,7 @@ parameters may suffer from the over-fitting problem. In this lab, we will apply
 some regularization techniques to neural networks over the CIFAR-10 dataset and
 see how they improve the generalizability.
 
-* The CIFAR-10 Dataset[[The-CIFAR-10-Dataset][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: The-CIFAR-10-Dataset
-  :END:
+* The CIFAR-10 Dataset
 
 [[https://www.cs.toronto.edu/~kriz/cifar.html][CIFAR-10]] consists of 60000 32x32 color images in 10 classes, with 6000 images
 per class. There are 50000 training images and 10000 test images. Here are the
@@ -39,9 +34,6 @@ where an image may contain multiple objects, you may refer to the [[http://www.i
 dataset.
 
 *** Loading Data using Keras
-    :PROPERTIES:
-    :CUSTOM_ID: Loading-Data-using-Keras
-    :END:
 
 Keras offers convenient facilities that automatically download some [[https://keras.io/datasets/][well-known
 datasets]] and store them in the =~/.keras/datasets= directory. Let's load the
@@ -218,7 +210,6 @@ In [252]:
 The data are loaded as integers, so we need to cast it to floating point values
 in order to perform the division:
 
-In [253]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # normalize inputs from 0-255 to 0.0-1.0
@@ -262,7 +253,6 @@ coding]] that is common in video systems:
 As we can see, the objects in grayscale images can still be recognizable. Let's
 split the traning data to get a validation set:
 
-In [255]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from sklearn.model_selection import train_test_split
@@ -282,7 +272,6 @@ In [255]:
 
 Let's compile an 8-layer dense NN as the baseline:
 
-In [316]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from keras.callbacks import EarlyStopping
@@ -308,7 +297,6 @@ In [316]:
         plot_validation_history(hist, plt_path)
 #+END_SRC
 
-In [319]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from keras.models import Sequential
@@ -448,7 +436,6 @@ output insignificant values without contributing much to the predictions.
 Alternatively, we can constrain the weights incident to each hidden unit to have
 a norm less than or equal to a desired value:
 
-In [180]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from keras.constraints import maxnorm
@@ -505,7 +492,6 @@ Keras offers the =BatchNormalization= layer. When using this layer, we need to
 make sure that it is added *after* the summation sublayer and *before* the
 non-linear activation sublayer:
 
-In [183]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from keras.layers import Activation
@@ -799,7 +785,6 @@ preview and get some sense about the effectiveness of domain-specific design.
 Turning our model into a CNN is quire easy. Instead of flatten the input, we can
 just feed it into a stack of convolutional and pooling layers:
 
-In [307]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from keras.layers.convolutional import Convolution2D, MaxPooling2D
@@ -988,9 +973,6 @@ fine-tune the network architecture to walk around the underfitting problem we
 have right now :)
 
 * Remarks
-  :PROPERTIES:
-  :CUSTOM_ID: Remarks
-  :END:
 
 In this lab, we only used grayscale images. Color information is vital to get
 the the state-of-the-art performance (95% and 92% with and without data

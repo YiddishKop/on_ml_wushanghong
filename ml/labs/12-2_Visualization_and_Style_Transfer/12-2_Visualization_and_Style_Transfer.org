@@ -1,5 +1,3 @@
-
-
 * Visualization & Style Transfer
 Today we are going to show how to load and use a pretrained model. We
 will also discuss some techniques that can help visualize what the
@@ -48,13 +46,8 @@ In [2]:
 
 <<deep-convolutional-networks>>
 
-* Visualize Convolutional Neural
-Networks[[Visualize-Convolutional-Neural-Networks][¶]]
-  :PROPERTIES:
-  :CUSTOM_ID: Visualize-Convolutional-Neural-Networks
-  :END:
+* Visualize Convolutional Neural Networks
 
-\\
 We are going to visualize a neural network pretrained using ImageNet, a
 large dataset used in ImageNet Large Scale Visual Recognition Challenge
 (ILSVRC). The training dataset contains around 1.2 million images
