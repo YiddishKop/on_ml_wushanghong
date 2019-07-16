@@ -78,8 +78,6 @@ test batch, each with 10000 images. The test batch contains exactly 1000
 randomly-selected images from each class. We define some constants based on the
 above:
 
-In [251]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # dataset path
     home = os.path.expanduser('~')
@@ -100,7 +98,6 @@ In [251]:
 
 We then define a function to download and extract the files from Internet:
 
-In [229]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import urllib.request

@@ -3,10 +3,10 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2018-08-06 一 07:55 -->
+<!-- 2018-08-11 六 04:56 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TensorFlow 101 &amp; Word2Vec</title>
+<title>wushanhong</title>
 <meta name="generator" content="Org mode" />
 <meta name="author" content="yiddishkop" />
 <style type="text/css">
@@ -180,9 +180,9 @@
   .org-svg { width: 90%; }
   /*]]>*/-->
 </style>
-<link rel="stylesheet" type="text/css" href="path to your .css file" >
-<script src="path to your .js file"></script>
-<script type="text/javascript">
+<link rel="stylesheet" type="text/css" href="/home/yiddi/git_repos/YIDDI_org_export_theme/theme/org-nav-theme_cache.css" >
+<script src="https://hypothes.is/embed.js" async></script>
+<script type="application/json" class="js-hypothesis-config">
 <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script type="text/javascript">
 /*
@@ -255,70 +255,72 @@ for the JavaScript code in this tag.
 </head>
 <body>
 <div id="content">
-<h1 class="title">TensorFlow 101 &amp; Word2Vec</h1>
+<h1 class="title">wushanhong</h1>
 <div id="table-of-contents">
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents">
 <ul>
-<li><a href="#org5c97f45">1. TensorFlow 101</a>
+<li><a href="#orge3c3d7a">1. TensorFlow 101</a>
 <ul>
-<li><a href="#org60010c7">1.1. Environment Setup</a>
+<li><a href="#orga474b98">1.1. Environment Setup</a>
 <ul>
-<li><a href="#org5ca3dce">1.1.1. Installing CUDA and CuDNN</a></li>
-<li><a href="#org248a3ce">1.1.2. Installing TensorFlow</a></li>
+<li><a href="#orgc35be8f">1.1.1. Installing CUDA and CuDNN</a></li>
+<li><a href="#org92b080f">1.1.2. Installing TensorFlow</a></li>
 </ul>
 </li>
-<li><a href="#org0798a14">1.2. Getting Started with TensorFlow</a></li>
-<li><a href="#org7609d22">1.3. Graphs and Sessions</a>
+<li><a href="#orgfa6b8b8">1.2. Getting Started with TensorFlow</a></li>
+<li><a href="#orgead0bd4">1.3. Graphs and Sessions</a>
 <ul>
-<li><a href="#org72a1a20">1.3.1. Tensors</a></li>
-<li><a href="#orga77f5ad">1.3.2. Constant Tensors</a></li>
-<li><a href="#org21bbe99">1.3.3. Variables</a></li>
-<li><a href="#org8aea436">1.3.4. Building a data flow graph</a></li>
-<li><a href="#org45a52f4">1.3.5. Visualizing and running a graph</a></li>
-<li><a href="#orgb923df2">1.3.6. Placeholders and feed<sub>dict</sub></a></li>
-<li><a href="#orga87d606">1.3.7. Sharing Variables</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li><a href="#org58e3e7d">2. Word2Vec</a>
-<ul>
-<li><a href="#org25c5c64">2.1. Why represent words as vectors?</a></li>
-<li><a href="#orgd885380">2.2. Skip-Gram and CBOW</a></li>
-</ul>
-</li>
-<li><a href="#org2ffb565">3. Skip-Gram Math&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MATHFORM">MATHFORM</span></span></a>
-<ul>
-<li><a href="#orgaa776ab">3.1. Cost Function</a>
-<ul>
-<li><a href="#org6028ad5">3.1.1. Sampled Softmax</a></li>
-<li><a href="#org21e3839">3.1.2. Noise Contrastive Estimation (NCE)</a></li>
+<li><a href="#org0a8e602">1.3.1. Tensors</a></li>
+<li><a href="#org325ce7c">1.3.2. Constant Tensors</a></li>
+<li><a href="#org75bda24">1.3.3. Variables</a></li>
+<li><a href="#org1b0d013">1.3.4. Building a data flow graph</a></li>
+<li><a href="#org2b9520b">1.3.5. Visualizing and running a graph</a></li>
+<li><a href="#orgf6f341f">1.3.6. Placeholders and feed_dict</a></li>
+<li><a href="#org8df925c">1.3.7. Sharing Variables</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#org6024899">4. Skip-Gram Code</a>
+<li><a href="#orge54da07">2. Word2Vec</a>
 <ul>
-<li><a href="#orgf404954">4.1. The Dataset&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAPREP">DATAPREP</span></span></a>
-<ul>
-<li><a href="#orge4b54c5">4.1.1. Preparing training data</a></li>
-<li><a href="#orgfe4c898">4.1.2. Using the <b>Dataset</b> API</a></li>
+<li><a href="#org33a0e6d">2.1. Why represent words as vectors?</a></li>
+<li><a href="#org855a51f">2.2. Skip-Gram and CBOW</a></li>
 </ul>
 </li>
-<li><a href="#org93dfc4f">4.2. Building the model&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MLALGO">MLALGO</span></span></a></li>
-<li><a href="#org9aba369">4.3. Evaluation</a></li>
-<li><a href="#org7adbc4a">4.4. Visualizing with t-SNE&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAVIEW">DATAVIEW</span></span></a></li>
+<li><a href="#org2114091">3. Skip-Gram Math</a>
+<ul>
+<li><a href="#org1c40793">3.1. Cost Function</a>
+<ul>
+<li><a href="#org986329c">3.1.1. Sampled Softmax</a></li>
+<li><a href="#org7d88a48">3.1.2. Noise Contrastive Estimation (NCE)</a></li>
 </ul>
 </li>
-<li><a href="#org92a0279">5. Assignment</a></li>
+</ul>
+</li>
+<li><a href="#org25be064">4. Skip-Gram Code</a>
+<ul>
+<li><a href="#org45120e8">4.1. The Dataset</a>
+<ul>
+<li><a href="#org3c404af">4.1.1. Preparing training data</a></li>
+<li><a href="#org44f7bbf">4.1.2. Using the <b>Dataset</b> API</a></li>
+</ul>
+</li>
+<li><a href="#orgabc470a">4.2. Building the model</a></li>
+<li><a href="#org322b1ac">4.3. Evaluation</a></li>
+<li><a href="#org75f5208">4.4. Visualizing with t-SNE</a></li>
+</ul>
+</li>
+<li><a href="#org9c10952">5. Assignment</a></li>
 </ul>
 </div>
 </div>
 
 
-<div id="org5c97f45" class="outline-2">
-<h2 id="org5c97f45"><span class="section-number-2">1</span> TensorFlow 101</h2>
+
+
+<div id="orge3c3d7a" class="outline-2">
+<h2 id="orge3c3d7a"><span class="section-number-2">1</span> TensorFlow 101</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 TensorFlow is a powerful open source libraray used for large-scale machine
@@ -327,12 +329,12 @@ TensorFlow. We will then look at the word2vec model and the <code>Dataset</code>
 </p>
 </div>
 
-<div id="org60010c7" class="outline-3">
-<h3 id="org60010c7"><span class="section-number-3">1.1</span> Environment Setup</h3>
+<div id="orga474b98" class="outline-3">
+<h3 id="orga474b98"><span class="section-number-3">1.1</span> Environment Setup</h3>
 <div class="outline-text-3" id="text-1-1">
 </div>
-<div id="org5ca3dce" class="outline-4">
-<h4 id="org5ca3dce"><span class="section-number-4">1.1.1</span> Installing CUDA and CuDNN</h4>
+<div id="orgc35be8f" class="outline-4">
+<h4 id="orgc35be8f"><span class="section-number-4">1.1.1</span> Installing CUDA and CuDNN</h4>
 <div class="outline-text-4" id="text-1-1-1">
 <p>
 In order to use NVIDIA GPUs to train your model, CUDA and CuDNN are required.
@@ -341,8 +343,8 @@ The installation guide can be found <a href="https://www.nvidia.com/en-us/data-c
 </div>
 </div>
 
-<div id="org248a3ce" class="outline-4">
-<h4 id="org248a3ce"><span class="section-number-4">1.1.2</span> Installing TensorFlow</h4>
+<div id="org92b080f" class="outline-4">
+<h4 id="org92b080f"><span class="section-number-4">1.1.2</span> Installing TensorFlow</h4>
 <div class="outline-text-4" id="text-1-1-2">
 <p>
 There are several ways to install TensorFlow which can be found <a href="https://www.tensorflow.org/install/">here</a>. One way is
@@ -400,18 +402,18 @@ Type in the following program:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> tensorflow <span style="color: #4f97d7; font-weight: bold;">as</span> tf
-<span style="color: #7590db;">hello</span> = tf.constant(<span style="color: #2d9574;">'Hello, TensorFlow!'</span>)
-<span style="color: #7590db;">sess</span> = tf.Session()
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(hello))
+<pre class="src src-ipython"><span class="org-keyword">import</span> tensorflow <span class="org-keyword">as</span> tf
+<span class="org-variable-name">hello</span> = tf.constant(<span class="org-string">'Hello, TensorFlow!'</span>)
+<span class="org-variable-name">sess</span> = tf.Session()
+<span class="org-keyword">print</span>(sess.run(hello))
 </pre>
 </div>
 </div>
 </div>
 </div>
 
-<div id="org0798a14" class="outline-3">
-<h3 id="org0798a14"><span class="section-number-3">1.2</span> Getting Started with TensorFlow</h3>
+<div id="orgfa6b8b8" class="outline-3">
+<h3 id="orgfa6b8b8"><span class="section-number-3">1.2</span> Getting Started with TensorFlow</h3>
 <div class="outline-text-3" id="text-1-2">
 <p>
 Originally developed by Google Brain, TensorFlow is an open source
@@ -437,8 +439,8 @@ iOS, Windows, Linux</li>
 </div>
 </div>
 
-<div id="org7609d22" class="outline-3">
-<h3 id="org7609d22"><span class="section-number-3">1.3</span> Graphs and Sessions</h3>
+<div id="orgead0bd4" class="outline-3">
+<h3 id="orgead0bd4"><span class="section-number-3">1.3</span> Graphs and Sessions</h3>
 <div class="outline-text-3" id="text-1-3">
 <p>
 In TensorFlow, <b>the definition of computations is separated from their
@@ -452,14 +454,14 @@ code. Let's import tensorflow first and create a session.
 sess.run(&lt;Tensor&gt;) 来运行session 并获得 &lt;Tensor&gt;的结果.
 </p>
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> tensorflow <span style="color: #4f97d7; font-weight: bold;">as</span> tf
-<span style="color: #7590db;">sess</span> = tf.InteractiveSession()
+<pre class="src src-ipython"><span class="org-keyword">import</span> tensorflow <span class="org-keyword">as</span> tf
+<span class="org-variable-name">sess</span> = tf.InteractiveSession()
 </pre>
 </div>
 </div>
 
-<div id="org72a1a20" class="outline-4">
-<h4 id="org72a1a20"><span class="section-number-4">1.3.1</span> Tensors</h4>
+<div id="org0a8e602" class="outline-4">
+<h4 id="org0a8e602"><span class="section-number-4">1.3.1</span> Tensors</h4>
 <div class="outline-text-4" id="text-1-3-1">
 <p>
 A <b>Tensor</b> is an array of any dimension. The <b>rank</b> of a tensor refers to the
@@ -514,8 +516,8 @@ A rank 3 tensor with shape [2,1,3]
 </div>
 </div>
 
-<div id="orga77f5ad" class="outline-4">
-<h4 id="orga77f5ad"><span class="section-number-4">1.3.2</span> Constant Tensors</h4>
+<div id="org325ce7c" class="outline-4">
+<h4 id="org325ce7c"><span class="section-number-4">1.3.2</span> Constant Tensors</h4>
 <div class="outline-text-4" id="text-1-3-2">
 <p>
 We can create constants by passing lists or constants into the <code>tf.constant</code>
@@ -528,9 +530,9 @@ tf.constant(value, dtype=None, shape=None, name='Const', verify_shape=False)
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">constant of 1d tensor (vector)</span>
-<span style="color: #7590db;">a</span> = tf.constant([<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">2</span>], dtype=tf.int32, name=<span style="color: #2d9574;">"vector"</span>)
-a.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">constant of 1d tensor (vector)</span>
+<span class="org-variable-name">a</span> = tf.constant([<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">2</span>], dtype=tf.int32, name=<span class="org-string">"vector"</span>)
+a.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -540,9 +542,9 @@ array([2, 2], dtype=int32)
 </pre>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">constant of 2x2 tensor (matrix)</span>
-<span style="color: #7590db;">b</span> = tf.constant([[<span style="color: #a45bad;">0</span>, <span style="color: #a45bad;">1</span>], [<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>]], name=<span style="color: #2d9574;">"b"</span>)
-b.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">constant of 2x2 tensor (matrix)</span>
+<span class="org-variable-name">b</span> = tf.constant([[<span class="org-highlight-numbers-number">0</span>, <span class="org-highlight-numbers-number">1</span>], [<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>]], name=<span class="org-string">"b"</span>)
+b.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -584,8 +586,8 @@ We can also create tensors of a specific value.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">c</span> = tf.zeros([<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>], tf.int32) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">[[0, 0, 0], [0, 0, 0]]</span>
-c.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-variable-name">c</span> = tf.zeros([<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>], tf.int32) <span class="org-comment-delimiter"># </span><span class="org-comment">[[0, 0, 0], [0, 0, 0]]</span>
+c.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -628,8 +630,8 @@ c.<span style="color: #4f97d7;">eval</span>()
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">d</span> = tf.ones([<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>], tf.int32) <span style="color: #2aa1ae; background-color: #292e34;">#  </span><span style="color: #2aa1ae; background-color: #292e34;">[[1, 1, 1], [1, 1, 1]]</span>
-d.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-variable-name">d</span> = tf.ones([<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>], tf.int32) <span class="org-comment-delimiter">#  </span><span class="org-comment">[[1, 1, 1], [1, 1, 1]]</span>
+d.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -672,10 +674,10 @@ d.<span style="color: #4f97d7;">eval</span>()
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a tensor containing zeros, with shape and type as input_tensor</span>
-<span style="color: #7590db;">input_tensor</span> = tf.constant([[<span style="color: #a45bad;">1</span>,<span style="color: #a45bad;">1</span>], [<span style="color: #a45bad;">2</span>,<span style="color: #a45bad;">2</span>], [<span style="color: #a45bad;">3</span>,<span style="color: #a45bad;">3</span>]], dtype=tf.float32)
-<span style="color: #7590db;">e</span> = tf.zeros_like(input_tensor)  <span style="color: #2aa1ae; background-color: #292e34;">#  </span><span style="color: #2aa1ae; background-color: #292e34;">[[0, 0], [0, 0], [0, 0]]</span>
-e.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">create a tensor containing zeros, with shape and type as input_tensor</span>
+<span class="org-variable-name">input_tensor</span> = tf.constant([[<span class="org-highlight-numbers-number">1</span>,<span class="org-highlight-numbers-number">1</span>], [<span class="org-highlight-numbers-number">2</span>,<span class="org-highlight-numbers-number">2</span>], [<span class="org-highlight-numbers-number">3</span>,<span class="org-highlight-numbers-number">3</span>]], dtype=tf.float32)
+<span class="org-variable-name">e</span> = tf.zeros_like(input_tensor)  <span class="org-comment-delimiter">#  </span><span class="org-comment">[[0, 0], [0, 0], [0, 0]]</span>
+e.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -719,8 +721,8 @@ e.<span style="color: #4f97d7;">eval</span>()
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">f</span> = tf.ones_like(input_tensor) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">[[1, 1], [1, 1], [1, 1]]</span>
-f.<span style="color: #4f97d7;">eval</span>()
+<pre class="src src-ipython"><span class="org-variable-name">f</span> = tf.ones_like(input_tensor) <span class="org-comment-delimiter"># </span><span class="org-comment">[[1, 1], [1, 1], [1, 1]]</span>
+f.<span class="org-builtin">eval</span>()
 </pre>
 </div>
 
@@ -764,8 +766,8 @@ f.<span style="color: #4f97d7;">eval</span>()
 </div>
 </div>
 
-<div id="org21bbe99" class="outline-4">
-<h4 id="org21bbe99"><span class="section-number-4">1.3.3</span> Variables</h4>
+<div id="org75bda24" class="outline-4">
+<h4 id="org75bda24"><span class="section-number-4">1.3.3</span> Variables</h4>
 <div class="outline-text-4" id="text-1-3-3">
 <p>
 Unlike a constant, a variable can be assigned to, so its value can be changed.
@@ -775,14 +777,14 @@ stored seperately. To declare a variable, we create a instance of <code>tf.Varia
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"> <span style="color: #2aa1ae; background-color: #292e34;">#</span><span style="color: #2aa1ae; background-color: #292e34;">create variable a with scalar value</span>
-<span style="color: #7590db;">a</span> = tf.Variable(<span style="color: #a45bad;">2</span>, name=<span style="color: #2d9574;">"scalar"</span>)
-<span style="color: #2aa1ae; background-color: #292e34;">#</span><span style="color: #2aa1ae; background-color: #292e34;">create variable b as a vector</span>
-<span style="color: #7590db;">b</span> = tf.Variable([<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>], name=<span style="color: #2d9574;">"vector"</span>)
-<span style="color: #2aa1ae; background-color: #292e34;">#</span><span style="color: #2aa1ae; background-color: #292e34;">create variable c as a 2x2 matrix</span>
-<span style="color: #7590db;">c</span> = tf.Variable([[<span style="color: #a45bad;">0</span>, <span style="color: #a45bad;">1</span>], [<span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>]], name=<span style="color: #2d9574;">"matrix"</span>)
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create variable W as 784 x 10 tensor, filled with zeros</span>
-<span style="color: #7590db;">W</span> = tf.Variable(tf.zeros([<span style="color: #a45bad;">784</span>,<span style="color: #a45bad;">10</span>]))
+<pre class="src src-ipython"> <span class="org-comment-delimiter">#</span><span class="org-comment">create variable a with scalar value</span>
+<span class="org-variable-name">a</span> = tf.Variable(<span class="org-highlight-numbers-number">2</span>, name=<span class="org-string">"scalar"</span>)
+<span class="org-comment-delimiter">#</span><span class="org-comment">create variable b as a vector</span>
+<span class="org-variable-name">b</span> = tf.Variable([<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>], name=<span class="org-string">"vector"</span>)
+<span class="org-comment-delimiter">#</span><span class="org-comment">create variable c as a 2x2 matrix</span>
+<span class="org-variable-name">c</span> = tf.Variable([[<span class="org-highlight-numbers-number">0</span>, <span class="org-highlight-numbers-number">1</span>], [<span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>]], name=<span class="org-string">"matrix"</span>)
+<span class="org-comment-delimiter"># </span><span class="org-comment">create variable W as 784 x 10 tensor, filled with zeros</span>
+<span class="org-variable-name">W</span> = tf.Variable(tf.zeros([<span class="org-highlight-numbers-number">784</span>,<span class="org-highlight-numbers-number">10</span>]))
 </pre>
 </div>
 
@@ -795,12 +797,12 @@ initialize variables, run <code>tf.global_variables_initializer()</code>.
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">assign a * 2 to a and call that op a_times_two</span>
-<span style="color: #7590db;">a</span> = tf.Variable(<span style="color: #a45bad;">2</span>, name=<span style="color: #2d9574;">"scalar"</span>)
-<span style="color: #7590db;">a_times_two</span> = a.assign(a*<span style="color: #a45bad;">2</span>) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">an operation that assigns value a*2 to a</span>
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">assign a * 2 to a and call that op a_times_two</span>
+<span class="org-variable-name">a</span> = tf.Variable(<span class="org-highlight-numbers-number">2</span>, name=<span class="org-string">"scalar"</span>)
+<span class="org-variable-name">a_times_two</span> = a.assign(a*<span class="org-highlight-numbers-number">2</span>) <span class="org-comment-delimiter"># </span><span class="org-comment">an operation that assigns value a*2 to a</span>
 
-<span style="color: #7590db;">init</span> = tf.global_variables_initializer() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">an operation that initializes all variables</span>
-sess.run(init) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">run the init operation with session</span>
+<span class="org-variable-name">init</span> = tf.global_variables_initializer() <span class="org-comment-delimiter"># </span><span class="org-comment">an operation that initializes all variables</span>
+sess.run(init) <span class="org-comment-delimiter"># </span><span class="org-comment">run the init operation with session</span>
 sess.run(a_times_two)
 sess.run(b)
 </pre>
@@ -814,16 +816,16 @@ array([2, 3], dtype=int32)
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">If a variable is used before initialized, an error will occur</span>
-<span style="color: #7590db;">a</span> = tf.Variable(<span style="color: #a45bad;">2</span>, name=<span style="color: #2d9574;">"scalar"</span>)
-a.<span style="color: #4f97d7;">eval</span>() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">a is NOT initialized</span>
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">If a variable is used before initialized, an error will occur</span>
+<span class="org-variable-name">a</span> = tf.Variable(<span class="org-highlight-numbers-number">2</span>, name=<span class="org-string">"scalar"</span>)
+a.<span class="org-builtin">eval</span>() <span class="org-comment-delimiter"># </span><span class="org-comment">a is NOT initialized</span>
 </pre>
 </div>
 </div>
 </div>
 
-<div id="org8aea436" class="outline-4">
-<h4 id="org8aea436"><span class="section-number-4">1.3.4</span> Building a data flow graph</h4>
+<div id="org1b0d013" class="outline-4">
+<h4 id="org1b0d013"><span class="section-number-4">1.3.4</span> Building a data flow graph</h4>
 <div class="outline-text-4" id="text-1-3-4">
 <p>
 A data flow graph consists of nodes, each representing an operation. Each node
@@ -834,22 +836,22 @@ operation (which is also a node).
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">node1</span> = tf.constant(<span style="color: #a45bad;">3</span>.<span style="color: #a45bad;">0</span>, dtype=tf.float32)
-<span style="color: #7590db;">node2</span> = tf.constant(<span style="color: #a45bad;">4</span>.<span style="color: #a45bad;">0</span>) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">also tf.float32 implicitly</span>
-<span style="color: #7590db;">node3</span> = tf.add(node1, node2)
+<pre class="src src-ipython"><span class="org-variable-name">node1</span> = tf.constant(<span class="org-highlight-numbers-number">3</span>.<span class="org-highlight-numbers-number">0</span>, dtype=tf.float32)
+<span class="org-variable-name">node2</span> = tf.constant(<span class="org-highlight-numbers-number">4</span>.<span class="org-highlight-numbers-number">0</span>) <span class="org-comment-delimiter"># </span><span class="org-comment">also tf.float32 implicitly</span>
+<span class="org-variable-name">node3</span> = tf.add(node1, node2)
 
-<span style="color: #4f97d7; font-weight: bold;">print</span>(node1)
-<span style="color: #4f97d7; font-weight: bold;">print</span>(node2)
-<span style="color: #4f97d7; font-weight: bold;">print</span>(node3)
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(node1))
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(node2))
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(node3))
+<span class="org-keyword">print</span>(node1)
+<span class="org-keyword">print</span>(node2)
+<span class="org-keyword">print</span>(node3)
+<span class="org-keyword">print</span>(sess.run(node1))
+<span class="org-keyword">print</span>(sess.run(node2))
+<span class="org-keyword">print</span>(sess.run(node3))
 </pre>
 </div>
 
 <p>
 Tensor("Const:0", shape=(), dtype=float32)
-Tensor("Const<sub>1</sub>:0", shape=(), dtype=float32)
+Tensor("Const_1:0", shape=(), dtype=float32)
 Tensor("Add:0", shape=(), dtype=float32)
 3.0
 4.0
@@ -863,8 +865,8 @@ Instead, <code>node1</code> and <code>node2</code> output <code>3.0</code> and <
 </div>
 </div>
 
-<div id="org45a52f4" class="outline-4">
-<h4 id="org45a52f4"><span class="section-number-4">1.3.5</span> Visualizing and running a graph</h4>
+<div id="org2b9520b" class="outline-4">
+<h4 id="org2b9520b"><span class="section-number-4">1.3.5</span> Visualizing and running a graph</h4>
 <div class="outline-text-4" id="text-1-3-5">
 <p>
 After building a graph, we can visualize our graph using TensorBoard. To do
@@ -872,7 +874,7 @@ this, we create a directory <code>graph</code> to store the event data.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="color: #4f97d7; font-weight: bold;">require</span> '<span style="color: #a45bad;">ob-async</span>)
+<pre class="src src-emacs-lisp">(<span class="org-keyword">require</span> '<span class="org-constant">ob-async</span>)
 </pre>
 </div>
 
@@ -896,22 +898,22 @@ ob-async
 </colgroup>
 <tbody>
 <tr>
-<td class="org-left">10<sub>TensorFlow101</sub><sub>Word2Vec.jpnb</sub></td>
+<td class="org-left">10_TensorFlow101_Word2Vec.jpnb</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">10<sub>TensorFlow101</sub><sub>Word2Vec.org</sub></td>
+<td class="org-left">10_TensorFlow101_Word2Vec.org</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">10<sub>TensorFlow101</sub><sub>Word2Vec.py</sub></td>
+<td class="org-left">10_TensorFlow101_Word2Vec.py</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
 <tr>
-<td class="org-left">cbow<sub>graph.png</sub></td>
+<td class="org-left">cbow_graph.png</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
@@ -941,7 +943,7 @@ ob-async
 </tr>
 
 <tr>
-<td class="org-left">process<sub>data.py</sub></td>
+<td class="org-left">process_data.py</td>
 <td class="org-left">&#xa0;</td>
 </tr>
 
@@ -963,11 +965,11 @@ ob-async
 </table>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a directory to store our graph</span>
-<span style="color: #4f97d7; font-weight: bold;">import</span> os
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">create a directory to store our graph</span>
+<span class="org-keyword">import</span> os
 
-<span style="color: #7590db;">logs_dir</span> = <span style="color: #2d9574;">'./graph'</span>
-<span style="color: #4f97d7; font-weight: bold;">if</span> <span style="color: #4f97d7; font-weight: bold;">not</span> os.path.exists(logs_dir):
+<span class="org-variable-name">logs_dir</span> = <span class="org-string">'./graph'</span>
+<span class="org-keyword">if</span> <span class="org-keyword">not</span> os.path.exists(logs_dir):
     os.makedirs(logs_dir)
 </pre>
 </div>
@@ -979,10 +981,10 @@ onto devices such as CPUs and GPUs and runs them, and computes variable values.
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">sess</span> = tf.Session()
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run([node1, node2]))
-<span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(node3))
-sess.close() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">close the session</span>
+<pre class="src src-ipython"><span class="org-variable-name">sess</span> = tf.Session()
+<span class="org-keyword">print</span>(sess.run([node1, node2]))
+<span class="org-keyword">print</span>(sess.run(node3))
+sess.close() <span class="org-comment-delimiter"># </span><span class="org-comment">close the session</span>
 </pre>
 </div>
 
@@ -997,12 +999,12 @@ Alternatively, we can create and run a session with the following code:
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">with</span> tf.Session() <span style="color: #4f97d7; font-weight: bold;">as</span> sess:
-  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">write operations to the event file</span>
-  <span style="color: #7590db;">writer</span> = tf.summary.FileWriter(logs_dir, sess.graph)
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run([node1, node2]))
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(node3))
-  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">no need to write sess.close()</span>
+<pre class="src src-ipython"><span class="org-keyword">with</span> tf.Session() <span class="org-keyword">as</span> sess:
+  <span class="org-comment-delimiter"># </span><span class="org-comment">write operations to the event file</span>
+  <span class="org-variable-name">writer</span> = tf.summary.FileWriter(logs_dir, sess.graph)
+  <span class="org-keyword">print</span>(sess.run([node1, node2]))
+  <span class="org-keyword">print</span>(sess.run(node3))
+  <span class="org-comment-delimiter"># </span><span class="org-comment">no need to write sess.close()</span>
 
 writer.close()
 </pre>
@@ -1014,7 +1016,7 @@ notebook and start tensorboard.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-emacs-lisp">(<span style="color: #4f97d7; font-weight: bold;">require</span> '<span style="color: #a45bad;">ob-async</span>)
+<pre class="src src-emacs-lisp">(<span class="org-keyword">require</span> '<span class="org-constant">ob-async</span>)
 </pre>
 </div>
 
@@ -1066,8 +1068,8 @@ will see something like this:
 </div>
 </div>
 
-<div id="orgb923df2" class="outline-4">
-<h4 id="orgb923df2"><span class="section-number-4">1.3.6</span> Placeholders and feed<sub>dict</sub></h4>
+<div id="orgf6f341f" class="outline-4">
+<h4 id="orgf6f341f"><span class="section-number-4">1.3.6</span> Placeholders and feed_dict</h4>
 <div class="outline-text-4" id="text-1-3-6">
 <p>
 Creating a graph of constants as the above is not particularly useful. A graph
@@ -1079,16 +1081,16 @@ containing concrete values as argument for <code>feed_dict</code>.
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a placeholder of type float 32-bit, shape is a vector of 3 elements</span>
-<span style="color: #7590db;">a</span> = tf.placeholder(tf.float32, shape=[<span style="color: #a45bad;">3</span>])
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a constant of type float 32-bit, shape is a vector of 3 elements</span>
-<span style="color: #7590db;">b</span> = tf.constant([<span style="color: #a45bad;">5</span>, <span style="color: #a45bad;">5</span>, <span style="color: #a45bad;">5</span>], tf.float32)
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">use the placeholder as you would a constant or a variable</span>
-<span style="color: #7590db;">c</span> = a + b <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Short for tf.add(a, b)</span>
-<span style="color: #4f97d7; font-weight: bold;">with</span> tf.Session() <span style="color: #4f97d7; font-weight: bold;">as</span> sess:
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">feed [1, 2, 3] to placeholder a via the dict {a: [1, 2, 3]}</span>
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">fetch value of c</span>
-    <span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(c, feed_dict={a: [<span style="color: #a45bad;">1</span>, <span style="color: #a45bad;">2</span>, <span style="color: #a45bad;">3</span>]}))
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">create a placeholder of type float 32-bit, shape is a vector of 3 elements</span>
+<span class="org-variable-name">a</span> = tf.placeholder(tf.float32, shape=[<span class="org-highlight-numbers-number">3</span>])
+<span class="org-comment-delimiter"># </span><span class="org-comment">create a constant of type float 32-bit, shape is a vector of 3 elements</span>
+<span class="org-variable-name">b</span> = tf.constant([<span class="org-highlight-numbers-number">5</span>, <span class="org-highlight-numbers-number">5</span>, <span class="org-highlight-numbers-number">5</span>], tf.float32)
+<span class="org-comment-delimiter"># </span><span class="org-comment">use the placeholder as you would a constant or a variable</span>
+<span class="org-variable-name">c</span> = a + b <span class="org-comment-delimiter"># </span><span class="org-comment">Short for tf.add(a, b)</span>
+<span class="org-keyword">with</span> tf.Session() <span class="org-keyword">as</span> sess:
+<span class="org-comment-delimiter"># </span><span class="org-comment">feed [1, 2, 3] to placeholder a via the dict {a: [1, 2, 3]}</span>
+<span class="org-comment-delimiter"># </span><span class="org-comment">fetch value of c</span>
+    <span class="org-keyword">print</span>(sess.run(c, feed_dict={a: [<span class="org-highlight-numbers-number">1</span>, <span class="org-highlight-numbers-number">2</span>, <span class="org-highlight-numbers-number">3</span>]}))
 </pre>
 </div>
 
@@ -1098,22 +1100,22 @@ If we did not feed values into the placeholder, an error will occur.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a placeholder of type float 32-bit, shape is a vector of 3 elements</span>
-<span style="color: #7590db;">a</span> = tf.placeholder(tf.float32, shape=[<span style="color: #a45bad;">3</span>])
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create a constant of type float 32-bit, shape is a vector of 3 elements</span>
-<span style="color: #7590db;">b</span> = tf.constant([<span style="color: #a45bad;">5</span>, <span style="color: #a45bad;">5</span>, <span style="color: #a45bad;">5</span>], tf.float32)
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">use the placeholder as you would a constant or a variable</span>
-<span style="color: #7590db;">c</span> = a + b <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Short for tf.add(a, b)</span>
-<span style="color: #2aa1ae; background-color: #292e34;">#</span><span style="color: #2aa1ae; background-color: #292e34;">If we try to fetch c, we will run into error.</span>
-<span style="color: #4f97d7; font-weight: bold;">with</span> tf.Session() <span style="color: #4f97d7; font-weight: bold;">as</span> sess:
-    <span style="color: #4f97d7; font-weight: bold;">print</span>(sess.run(c))
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">create a placeholder of type float 32-bit, shape is a vector of 3 elements</span>
+<span class="org-variable-name">a</span> = tf.placeholder(tf.float32, shape=[<span class="org-highlight-numbers-number">3</span>])
+<span class="org-comment-delimiter"># </span><span class="org-comment">create a constant of type float 32-bit, shape is a vector of 3 elements</span>
+<span class="org-variable-name">b</span> = tf.constant([<span class="org-highlight-numbers-number">5</span>, <span class="org-highlight-numbers-number">5</span>, <span class="org-highlight-numbers-number">5</span>], tf.float32)
+<span class="org-comment-delimiter"># </span><span class="org-comment">use the placeholder as you would a constant or a variable</span>
+<span class="org-variable-name">c</span> = a + b <span class="org-comment-delimiter"># </span><span class="org-comment">Short for tf.add(a, b)</span>
+<span class="org-comment-delimiter">#</span><span class="org-comment">If we try to fetch c, we will run into error.</span>
+<span class="org-keyword">with</span> tf.Session() <span class="org-keyword">as</span> sess:
+    <span class="org-keyword">print</span>(sess.run(c))
 </pre>
 </div>
 </div>
 </div>
 
-<div id="orga87d606" class="outline-4">
-<h4 id="orga87d606"><span class="section-number-4">1.3.7</span> Sharing Variables</h4>
+<div id="org8df925c" class="outline-4">
+<h4 id="org8df925c"><span class="section-number-4">1.3.7</span> Sharing Variables</h4>
 <div class="outline-text-4" id="text-1-3-7">
 <p>
 To share variables, we can explicitly pass <code>tf.Variable</code> objects or implicitly
@@ -1127,17 +1129,17 @@ if the variable does not exist, a new one is created and returned.
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">with</span> tf.variable_scope(<span style="color: #2d9574;">"foo"</span>):
-    <span style="color: #7590db;">v</span> = tf.get_variable(<span style="color: #2d9574;">"v"</span>, [<span style="color: #a45bad;">1</span>])  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">v.name == "foo/v:0"</span>
-    <span style="color: #7590db;">w</span> = tf.get_variable(<span style="color: #2d9574;">"w"</span>, [<span style="color: #a45bad;">1</span>])  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">w.name == "foo/w:0"</span>
-<span style="color: #4f97d7; font-weight: bold;">with</span> tf.variable_scope(<span style="color: #2d9574;">"foo"</span>, reuse=<span style="color: #a45bad;">True</span>):
-    <span style="color: #7590db;">v1</span> = tf.get_variable(<span style="color: #2d9574;">"v"</span>)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">The same as v above.</span>
+<pre class="src src-ipython"><span class="org-keyword">with</span> tf.variable_scope(<span class="org-string">"foo"</span>):
+    <span class="org-variable-name">v</span> = tf.get_variable(<span class="org-string">"v"</span>, [<span class="org-highlight-numbers-number">1</span>])  <span class="org-comment-delimiter"># </span><span class="org-comment">v.name == "foo/v:0"</span>
+    <span class="org-variable-name">w</span> = tf.get_variable(<span class="org-string">"w"</span>, [<span class="org-highlight-numbers-number">1</span>])  <span class="org-comment-delimiter"># </span><span class="org-comment">w.name == "foo/w:0"</span>
+<span class="org-keyword">with</span> tf.variable_scope(<span class="org-string">"foo"</span>, reuse=<span class="org-constant">True</span>):
+    <span class="org-variable-name">v1</span> = tf.get_variable(<span class="org-string">"v"</span>)  <span class="org-comment-delimiter"># </span><span class="org-comment">The same as v above.</span>
 </pre>
 </div>
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">clear used variables in jupyter notebook</span>
+<pre class="src src-ipython"><span class="org-comment-delimiter"># </span><span class="org-comment">clear used variables in jupyter notebook</span>
 %reset -fs
 </pre>
 </div>
@@ -1146,9 +1148,8 @@ if the variable does not exist, a new one is created and returned.
 </div>
 </div>
 
-
-<div id="org58e3e7d" class="outline-2">
-<h2 id="org58e3e7d"><span class="section-number-2">2</span> Word2Vec</h2>
+<div id="orge54da07" class="outline-2">
+<h2 id="orge54da07"><span class="section-number-2">2</span> Word2Vec</h2>
 <div class="outline-text-2" id="text-2">
 <p>
 <code>Word2Vec</code> is a computationally-efficient model that learns to <b>embed words into
@@ -1157,8 +1158,8 @@ other.
 </p>
 </div>
 
-<div id="org25c5c64" class="outline-3">
-<h3 id="org25c5c64"><span class="section-number-3">2.1</span> Why represent words as vectors?</h3>
+<div id="org33a0e6d" class="outline-3">
+<h3 id="org33a0e6d"><span class="section-number-3">2.1</span> Why represent words as vectors?</h3>
 <div class="outline-text-3" id="text-2-1">
 <p>
 When dealing with words, a straightforward way would be treating each word as
@@ -1182,8 +1183,8 @@ hidden representation</b> in order to predict the same/similar nearby words.
 </div>
 </div>
 
-<div id="orgd885380" class="outline-3">
-<h3 id="orgd885380"><span class="section-number-3">2.2</span> Skip-Gram and CBOW</h3>
+<div id="org855a51f" class="outline-3">
+<h3 id="org855a51f"><span class="section-number-3">2.2</span> Skip-Gram and CBOW</h3>
 <div class="outline-text-3" id="text-2-2">
 <p>
 Word2Vec comes in two variants <b>Skip-Gram</b> and <b>CBOW (Continuous Bag-Of-Words)</b>.
@@ -1260,12 +1261,12 @@ For the rest of the tutorial, we will focus on the Skip-Gram model.
 </div>
 </div>
 
-<div id="org2ffb565" class="outline-2">
-<h2 id="org2ffb565"><span class="section-number-2">3</span> Skip-Gram Math&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MATHFORM">MATHFORM</span></span></h2>
+<div id="org2114091" class="outline-2">
+<h2 id="org2114091"><span class="section-number-2">3</span> Skip-Gram Math&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MATHFORM">MATHFORM</span></span></h2>
 <div class="outline-text-2" id="text-3">
 </div>
-<div id="orgaa776ab" class="outline-3">
-<h3 id="orgaa776ab"><span class="section-number-3">3.1</span> Cost Function</h3>
+<div id="org1c40793" class="outline-3">
+<h3 id="org1c40793"><span class="section-number-3">3.1</span> Cost Function</h3>
 <div class="outline-text-3" id="text-3-1">
 <p>
 Like most neural networks, a Skip-Gram model is trained using the maximum
@@ -1320,8 +1321,8 @@ Next, we will introduce two ways to speed up the training process.
 </p>
 </div>
 
-<div id="org6028ad5" class="outline-4">
-<h4 id="org6028ad5"><span class="section-number-4">3.1.1</span> Sampled Softmax</h4>
+<div id="org986329c" class="outline-4">
+<h4 id="org986329c"><span class="section-number-4">3.1.1</span> Sampled Softmax</h4>
 <div class="outline-text-4" id="text-3-1-1">
 <p>
 Suppose that we have a training sequence of \(T\) training words
@@ -1466,8 +1467,8 @@ otherwise \end{array} \right. \end{equation} \]
 </div>
 </div>
 
-<div id="org21e3839" class="outline-4">
-<h4 id="org21e3839"><span class="section-number-4">3.1.2</span> Noise Contrastive Estimation (NCE)</h4>
+<div id="org7d88a48" class="outline-4">
+<h4 id="org7d88a48"><span class="section-number-4">3.1.2</span> Noise Contrastive Estimation (NCE)</h4>
 <div class="outline-text-4" id="text-3-1-2">
 <p>
 <a href="more_about_NCE_and_softmax.html">a good interpretation of NCE in stackoverflow</a>
@@ -1625,12 +1626,12 @@ softmax. It only takes 1 true class and \(k\) noise classes.
 </div>
 </div>
 
-<div id="org6024899" class="outline-2">
-<h2 id="org6024899"><span class="section-number-2">4</span> Skip-Gram Code</h2>
+<div id="org25be064" class="outline-2">
+<h2 id="org25be064"><span class="section-number-2">4</span> Skip-Gram Code</h2>
 <div class="outline-text-2" id="text-4">
 </div>
-<div id="orgf404954" class="outline-3">
-<h3 id="orgf404954"><span class="section-number-3">4.1</span> The Dataset&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAPREP">DATAPREP</span></span></h3>
+<div id="org45120e8" class="outline-3">
+<h3 id="org45120e8"><span class="section-number-3">4.1</span> The Dataset&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAPREP">DATAPREP</span></span></h3>
 <div class="outline-text-3" id="text-4-1">
 <p>
 The dataset we use is text8, which is the first 100 MB of cleaned text of the
@@ -1640,8 +1641,8 @@ the text by blank space, we can find that there are 17,005,207 tokens in total.
 </p>
 </div>
 
-<div id="orge4b54c5" class="outline-4">
-<h4 id="orge4b54c5"><span class="section-number-4">4.1.1</span> Preparing training data</h4>
+<div id="org3c404af" class="outline-4">
+<h4 id="org3c404af"><span class="section-number-4">4.1.1</span> Preparing training data</h4>
 <div class="outline-text-4" id="text-4-1-1">
 <p>
 To generate batches for training, several functions defined below are used.
@@ -1664,110 +1665,110 @@ pairs of center-target pairs.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #9f8766;">"""The content of process_data.py"""</span>
+<pre class="src src-ipython"><span class="org-doc">"""The content of process_data.py"""</span>
 
-<span style="color: #4f97d7; font-weight: bold;">from</span> collections <span style="color: #4f97d7; font-weight: bold;">import</span> Counter
-<span style="color: #4f97d7; font-weight: bold;">import</span> random
-<span style="color: #4f97d7; font-weight: bold;">import</span> os
-<span style="color: #4f97d7; font-weight: bold;">import</span> sys
-sys.path.append(<span style="color: #2d9574;">'..'</span>)
-<span style="color: #4f97d7; font-weight: bold;">import</span> zipfile
+<span class="org-keyword">from</span> collections <span class="org-keyword">import</span> Counter
+<span class="org-keyword">import</span> random
+<span class="org-keyword">import</span> os
+<span class="org-keyword">import</span> sys
+sys.path.append(<span class="org-string">'..'</span>)
+<span class="org-keyword">import</span> zipfile
 
-<span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
-<span style="color: #4f97d7; font-weight: bold;">from</span> six.moves <span style="color: #4f97d7; font-weight: bold;">import</span> urllib
-<span style="color: #4f97d7; font-weight: bold;">import</span> tensorflow <span style="color: #4f97d7; font-weight: bold;">as</span> tf
+<span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">from</span> six.moves <span class="org-keyword">import</span> urllib
+<span class="org-keyword">import</span> tensorflow <span class="org-keyword">as</span> tf
 
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Parameters for downloading data</span>
-<span style="color: #7590db;">DOWNLOAD_URL</span> = <span style="color: #2d9574;">'http://mattmahoney.net/dc/'</span>
-<span style="color: #7590db;">EXPECTED_BYTES</span> = <span style="color: #a45bad;">31344016</span>
-<span style="color: #7590db;">DATA_FOLDER</span> = <span style="color: #2d9574;">'data/'</span>
-<span style="color: #7590db;">FILE_NAME</span> = <span style="color: #2d9574;">'text8.zip'</span>
+<span class="org-comment-delimiter"># </span><span class="org-comment">Parameters for downloading data</span>
+<span class="org-variable-name">DOWNLOAD_URL</span> = <span class="org-string">'http://mattmahoney.net/dc/'</span>
+<span class="org-variable-name">EXPECTED_BYTES</span> = <span class="org-highlight-numbers-number">31344016</span>
+<span class="org-variable-name">DATA_FOLDER</span> = <span class="org-string">'data/'</span>
+<span class="org-variable-name">FILE_NAME</span> = <span class="org-string">'text8.zip'</span>
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">make_dir</span>(path):
-    <span style="color: #9f8766;">""" Create a directory if there isn't one already. """</span>
-    <span style="color: #4f97d7; font-weight: bold;">try</span>:
+<span class="org-keyword">def</span> <span class="org-function-name">make_dir</span>(path):
+    <span class="org-doc">""" Create a directory if there isn't one already. """</span>
+    <span class="org-keyword">try</span>:
         os.mkdir(path)
-    <span style="color: #4f97d7; font-weight: bold;">except</span> <span style="color: #ce537a; font-weight: bold;">OSError</span>:
-        <span style="color: #4f97d7; font-weight: bold;">pass</span>
+    <span class="org-keyword">except</span> <span class="org-type">OSError</span>:
+        <span class="org-keyword">pass</span>
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">download</span>(file_name, expected_bytes):
-    <span style="color: #9f8766;">""" Download the dataset text8 if it's not already downloaded """</span>
-    <span style="color: #7590db;">file_path</span> = DATA_FOLDER + file_name
-    <span style="color: #4f97d7; font-weight: bold;">if</span> os.path.exists(file_path):
-        <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">"Dataset ready"</span>)
-        <span style="color: #4f97d7; font-weight: bold;">return</span> file_path
-    <span style="color: #7590db;">file_name</span>, <span style="color: #7590db;">_</span> = urllib.request.urlretrieve(DOWNLOAD_URL + file_name, file_path)
-    <span style="color: #7590db;">file_stat</span> = os.stat(file_path)
-    <span style="color: #4f97d7; font-weight: bold;">if</span> file_stat.st_size == expected_bytes:
-        <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">'Successfully downloaded the file'</span>, file_name)
-    <span style="color: #4f97d7; font-weight: bold;">else</span>:
-        <span style="color: #4f97d7; font-weight: bold;">raise</span> <span style="color: #ce537a; font-weight: bold;">Exception</span>(
-              <span style="color: #2d9574;">'File '</span> + file_name +
-              <span style="color: #2d9574;">' might be corrupted. You should try downloading it with a browser.'</span>)
-    <span style="color: #4f97d7; font-weight: bold;">return</span> file_path    
+<span class="org-keyword">def</span> <span class="org-function-name">download</span>(file_name, expected_bytes):
+    <span class="org-doc">""" Download the dataset text8 if it's not already downloaded """</span>
+    <span class="org-variable-name">file_path</span> = DATA_FOLDER + file_name
+    <span class="org-keyword">if</span> os.path.exists(file_path):
+        <span class="org-keyword">print</span>(<span class="org-string">"Dataset ready"</span>)
+        <span class="org-keyword">return</span> file_path
+    <span class="org-variable-name">file_name</span>, <span class="org-variable-name">_</span> = urllib.request.urlretrieve(DOWNLOAD_URL + file_name, file_path)
+    <span class="org-variable-name">file_stat</span> = os.stat(file_path)
+    <span class="org-keyword">if</span> file_stat.st_size == expected_bytes:
+        <span class="org-keyword">print</span>(<span class="org-string">'Successfully downloaded the file'</span>, file_name)
+    <span class="org-keyword">else</span>:
+        <span class="org-keyword">raise</span> <span class="org-type">Exception</span>(
+              <span class="org-string">'File '</span> + file_name +
+              <span class="org-string">' might be corrupted. You should try downloading it with a browser.'</span>)
+    <span class="org-keyword">return</span> file_path    
 
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">read_data</span>(file_path):
-    <span style="color: #9f8766;">""" Read data into a list of tokens"""</span>
-    <span style="color: #4f97d7; font-weight: bold;">with</span> zipfile.ZipFile(file_path) <span style="color: #4f97d7; font-weight: bold;">as</span> f:
-        <span style="color: #7590db;">words</span> = tf.compat.as_str(f.read(f.namelist()[<span style="color: #a45bad;">0</span>])).split()
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">tf.compat.as_str() converts the input into the string</span>
-    <span style="color: #4f97d7; font-weight: bold;">return</span> words
+<span class="org-keyword">def</span> <span class="org-function-name">read_data</span>(file_path):
+    <span class="org-doc">""" Read data into a list of tokens"""</span>
+    <span class="org-keyword">with</span> zipfile.ZipFile(file_path) <span class="org-keyword">as</span> f:
+        <span class="org-variable-name">words</span> = tf.compat.as_str(f.read(f.namelist()[<span class="org-highlight-numbers-number">0</span>])).split()
+        <span class="org-comment-delimiter"># </span><span class="org-comment">tf.compat.as_str() converts the input into the string</span>
+    <span class="org-keyword">return</span> words
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">build_vocab</span>(words, vocab_size):
-    <span style="color: #9f8766;">""" Build vocabulary of VOCAB_SIZE most frequent words """</span>
-    <span style="color: #7590db;">dictionary</span> = <span style="color: #4f97d7;">dict</span>()
-    <span style="color: #7590db;">count</span> = [(<span style="color: #2d9574;">'UNK'</span>, -<span style="color: #a45bad;">1</span>)]
-    count.extend(Counter(words).most_common(vocab_size - <span style="color: #a45bad;">1</span>))
-    <span style="color: #7590db;">index</span> = <span style="color: #a45bad;">0</span>
-    make_dir(<span style="color: #2d9574;">'processed'</span>)
-    <span style="color: #4f97d7; font-weight: bold;">with</span> <span style="color: #4f97d7;">open</span>(<span style="color: #2d9574;">'processed/vocab_1000.tsv'</span>, <span style="color: #2d9574;">"w"</span>) <span style="color: #4f97d7; font-weight: bold;">as</span> f:
-        <span style="color: #4f97d7; font-weight: bold;">for</span> word, _ <span style="color: #4f97d7; font-weight: bold;">in</span> count:
-            <span style="color: #7590db;">dictionary</span>[word] = index
-            <span style="color: #4f97d7; font-weight: bold;">if</span> index &lt; <span style="color: #a45bad;">1000</span>:
-                f.write(word + <span style="color: #2d9574;">"\n"</span>)
-            <span style="color: #7590db;">index</span> += <span style="color: #a45bad;">1</span>
-    <span style="color: #7590db;">index_dictionary</span> = <span style="color: #4f97d7;">dict</span>(<span style="color: #4f97d7;">zip</span>(dictionary.values(), dictionary.keys()))
-    <span style="color: #4f97d7; font-weight: bold;">return</span> dictionary, index_dictionary
+<span class="org-keyword">def</span> <span class="org-function-name">build_vocab</span>(words, vocab_size):
+    <span class="org-doc">""" Build vocabulary of VOCAB_SIZE most frequent words """</span>
+    <span class="org-variable-name">dictionary</span> = <span class="org-builtin">dict</span>()
+    <span class="org-variable-name">count</span> = [(<span class="org-string">'UNK'</span>, -<span class="org-highlight-numbers-number">1</span>)]
+    count.extend(Counter(words).most_common(vocab_size - <span class="org-highlight-numbers-number">1</span>))
+    <span class="org-variable-name">index</span> = <span class="org-highlight-numbers-number">0</span>
+    make_dir(<span class="org-string">'processed'</span>)
+    <span class="org-keyword">with</span> <span class="org-builtin">open</span>(<span class="org-string">'processed/vocab_1000.tsv'</span>, <span class="org-string">"w"</span>) <span class="org-keyword">as</span> f:
+        <span class="org-keyword">for</span> word, _ <span class="org-keyword">in</span> count:
+            <span class="org-variable-name">dictionary</span>[word] = index
+            <span class="org-keyword">if</span> index &lt; <span class="org-highlight-numbers-number">1000</span>:
+                f.write(word + <span class="org-string">"\n"</span>)
+            <span class="org-variable-name">index</span> += <span class="org-highlight-numbers-number">1</span>
+    <span class="org-variable-name">index_dictionary</span> = <span class="org-builtin">dict</span>(<span class="org-builtin">zip</span>(dictionary.values(), dictionary.keys()))
+    <span class="org-keyword">return</span> dictionary, index_dictionary
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">convert_words_to_index</span>(words, dictionary):
-    <span style="color: #9f8766;">""" Replace each word in the dataset with its index in the dictionary """</span>
-    <span style="color: #4f97d7; font-weight: bold;">return</span> [dictionary[word] <span style="color: #4f97d7; font-weight: bold;">if</span> word <span style="color: #4f97d7; font-weight: bold;">in</span> dictionary <span style="color: #4f97d7; font-weight: bold;">else</span> <span style="color: #a45bad;">0</span> <span style="color: #4f97d7; font-weight: bold;">for</span> word <span style="color: #4f97d7; font-weight: bold;">in</span> words]
+<span class="org-keyword">def</span> <span class="org-function-name">convert_words_to_index</span>(words, dictionary):
+    <span class="org-doc">""" Replace each word in the dataset with its index in the dictionary """</span>
+    <span class="org-keyword">return</span> [dictionary[word] <span class="org-keyword">if</span> word <span class="org-keyword">in</span> dictionary <span class="org-keyword">else</span> <span class="org-highlight-numbers-number">0</span> <span class="org-keyword">for</span> word <span class="org-keyword">in</span> words]
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">generate_sample</span>(index_words, context_window_size):
-    <span style="color: #9f8766;">""" Form training pairs according to the skip-gram model. """</span>
-    <span style="color: #4f97d7; font-weight: bold;">for</span> index, center <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">enumerate</span>(index_words):
-        <span style="color: #7590db;">context</span> = random.randint(<span style="color: #a45bad;">1</span>, context_window_size)
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">get a random target before the center word</span>
-        <span style="color: #4f97d7; font-weight: bold;">for</span> target <span style="color: #4f97d7; font-weight: bold;">in</span> index_words[<span style="color: #4f97d7;">max</span>(<span style="color: #a45bad;">0</span>, index - context): index]:
-            <span style="color: #4f97d7; font-weight: bold;">yield</span> center, target
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">get a random target after the center wrod</span>
-        <span style="color: #4f97d7; font-weight: bold;">for</span> target <span style="color: #4f97d7; font-weight: bold;">in</span> index_words[index + <span style="color: #a45bad;">1</span>: index + context + <span style="color: #a45bad;">1</span>]:
-            <span style="color: #4f97d7; font-weight: bold;">yield</span> center, target
+<span class="org-keyword">def</span> <span class="org-function-name">generate_sample</span>(index_words, context_window_size):
+    <span class="org-doc">""" Form training pairs according to the skip-gram model. """</span>
+    <span class="org-keyword">for</span> index, center <span class="org-keyword">in</span> <span class="org-builtin">enumerate</span>(index_words):
+        <span class="org-variable-name">context</span> = random.randint(<span class="org-highlight-numbers-number">1</span>, context_window_size)
+        <span class="org-comment-delimiter"># </span><span class="org-comment">get a random target before the center word</span>
+        <span class="org-keyword">for</span> target <span class="org-keyword">in</span> index_words[<span class="org-builtin">max</span>(<span class="org-highlight-numbers-number">0</span>, index - context): index]:
+            <span class="org-keyword">yield</span> center, target
+        <span class="org-comment-delimiter"># </span><span class="org-comment">get a random target after the center wrod</span>
+        <span class="org-keyword">for</span> target <span class="org-keyword">in</span> index_words[index + <span class="org-highlight-numbers-number">1</span>: index + context + <span class="org-highlight-numbers-number">1</span>]:
+            <span class="org-keyword">yield</span> center, target
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">get_batch</span>(iterator, batch_size):
-    <span style="color: #9f8766;">""" Group a numerical stream into batches and yield them as Numpy arrays. """</span>
-    <span style="color: #4f97d7; font-weight: bold;">while</span> <span style="color: #a45bad;">True</span>:
-        <span style="color: #7590db;">center_batch</span> = np.zeros(batch_size, dtype=np.int32)
-        <span style="color: #7590db;">target_batch</span> = np.zeros([batch_size, <span style="color: #a45bad;">1</span>])
-        <span style="color: #4f97d7; font-weight: bold;">for</span> index <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(batch_size):
-            center_batch[index], <span style="color: #7590db;">target_batch</span>[index] = <span style="color: #4f97d7;">next</span>(iterator)
-        <span style="color: #4f97d7; font-weight: bold;">yield</span> center_batch, target_batch
+<span class="org-keyword">def</span> <span class="org-function-name">get_batch</span>(iterator, batch_size):
+    <span class="org-doc">""" Group a numerical stream into batches and yield them as Numpy arrays. """</span>
+    <span class="org-keyword">while</span> <span class="org-constant">True</span>:
+        <span class="org-variable-name">center_batch</span> = np.zeros(batch_size, dtype=np.int32)
+        <span class="org-variable-name">target_batch</span> = np.zeros([batch_size, <span class="org-highlight-numbers-number">1</span>])
+        <span class="org-keyword">for</span> index <span class="org-keyword">in</span> <span class="org-builtin">range</span>(batch_size):
+            center_batch[index], <span class="org-variable-name">target_batch</span>[index] = <span class="org-builtin">next</span>(iterator)
+        <span class="org-keyword">yield</span> center_batch, target_batch
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">get_batch_gen</span>(index_words, context_window_size, batch_size):
-    <span style="color: #9f8766;">""" Return a python generator that generates batches"""</span>
-    <span style="color: #7590db;">single_gen</span> = generate_sample(index_words, context_window_size)
-    <span style="color: #7590db;">batch_gen</span> = get_batch(single_gen, batch_size)
-    <span style="color: #4f97d7; font-weight: bold;">return</span> batch_gen
+<span class="org-keyword">def</span> <span class="org-function-name">get_batch_gen</span>(index_words, context_window_size, batch_size):
+    <span class="org-doc">""" Return a python generator that generates batches"""</span>
+    <span class="org-variable-name">single_gen</span> = generate_sample(index_words, context_window_size)
+    <span class="org-variable-name">batch_gen</span> = get_batch(single_gen, batch_size)
+    <span class="org-keyword">return</span> batch_gen
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">process_data</span>(vocab_size):
-    <span style="color: #9f8766;">""" Read data, build vocabulary and dictionary"""</span>
-    <span style="color: #7590db;">file_path</span> = download(FILE_NAME, EXPECTED_BYTES)
-    <span style="color: #7590db;">words</span> = read_data(file_path)
-    <span style="color: #7590db;">dictionary</span>, <span style="color: #7590db;">index_dictionary</span> = build_vocab(words, vocab_size)
-    <span style="color: #7590db;">index_words</span> = convert_words_to_index(words, dictionary)
-    <span style="color: #4f97d7; font-weight: bold;">del</span> words <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">to save memory</span>
-    <span style="color: #4f97d7; font-weight: bold;">return</span> index_words, dictionary, index_dictionary
+<span class="org-keyword">def</span> <span class="org-function-name">process_data</span>(vocab_size):
+    <span class="org-doc">""" Read data, build vocabulary and dictionary"""</span>
+    <span class="org-variable-name">file_path</span> = download(FILE_NAME, EXPECTED_BYTES)
+    <span class="org-variable-name">words</span> = read_data(file_path)
+    <span class="org-variable-name">dictionary</span>, <span class="org-variable-name">index_dictionary</span> = build_vocab(words, vocab_size)
+    <span class="org-variable-name">index_words</span> = convert_words_to_index(words, dictionary)
+    <span class="org-keyword">del</span> words <span class="org-comment-delimiter"># </span><span class="org-comment">to save memory</span>
+    <span class="org-keyword">return</span> index_words, dictionary, index_dictionary
 </pre>
 </div>
 
@@ -1776,15 +1777,15 @@ Let's check if the batch generated is correct in shape.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">vocab_size</span> = <span style="color: #a45bad;">10000</span>
-<span style="color: #7590db;">window_sz</span> = <span style="color: #a45bad;">5</span>
-<span style="color: #7590db;">batch_sz</span> = <span style="color: #a45bad;">64</span>
-<span style="color: #7590db;">index_words</span>, <span style="color: #7590db;">dictionary</span>, <span style="color: #7590db;">index_dictionary</span> = process_data(vocab_size)
-<span style="color: #7590db;">batch_gen</span> = get_batch_gen(index_words, window_sz, batch_sz)
-<span style="color: #7590db;">X</span>, <span style="color: #7590db;">y</span> = <span style="color: #4f97d7;">next</span>(batch_gen)
+<pre class="src src-ipython"><span class="org-variable-name">vocab_size</span> = <span class="org-highlight-numbers-number">10000</span>
+<span class="org-variable-name">window_sz</span> = <span class="org-highlight-numbers-number">5</span>
+<span class="org-variable-name">batch_sz</span> = <span class="org-highlight-numbers-number">64</span>
+<span class="org-variable-name">index_words</span>, <span class="org-variable-name">dictionary</span>, <span class="org-variable-name">index_dictionary</span> = process_data(vocab_size)
+<span class="org-variable-name">batch_gen</span> = get_batch_gen(index_words, window_sz, batch_sz)
+<span class="org-variable-name">X</span>, <span class="org-variable-name">y</span> = <span class="org-builtin">next</span>(batch_gen)
 
-<span style="color: #4f97d7; font-weight: bold;">print</span>(X.shape)
-<span style="color: #4f97d7; font-weight: bold;">print</span>(y.shape)
+<span class="org-keyword">print</span>(X.shape)
+<span class="org-keyword">print</span>(y.shape)
 </pre>
 </div>
 
@@ -1799,10 +1800,10 @@ We can print out the first 10 pairs of <code>X</code> and <code>y</code>.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">for</span> i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(<span style="color: #a45bad;">10</span>): <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">print out the pairs</span>
-  <span style="color: #7590db;">data</span> = index_dictionary[X[i]]
-  <span style="color: #7590db;">label</span> = index_dictionary[y[i,<span style="color: #a45bad;">0</span>]]
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">'('</span>, data, label,<span style="color: #2d9574;">')'</span>)
+<pre class="src src-ipython"><span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(<span class="org-highlight-numbers-number">10</span>): <span class="org-comment-delimiter"># </span><span class="org-comment">print out the pairs</span>
+  <span class="org-variable-name">data</span> = index_dictionary[X[i]]
+  <span class="org-variable-name">label</span> = index_dictionary[y[i,<span class="org-highlight-numbers-number">0</span>]]
+  <span class="org-keyword">print</span>(<span class="org-string">'('</span>, data, label,<span class="org-string">')'</span>)
 </pre>
 </div>
 
@@ -1820,8 +1821,8 @@ We can print out the first 10 pairs of <code>X</code> and <code>y</code>.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">for</span> i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(<span style="color: #a45bad;">10</span>): <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">print out the first 10 words in the text</span>
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(index_dictionary[index_words[i]], end=<span style="color: #2d9574;">' '</span>)
+<pre class="src src-ipython"><span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(<span class="org-highlight-numbers-number">10</span>): <span class="org-comment-delimiter"># </span><span class="org-comment">print out the first 10 words in the text</span>
+  <span class="org-keyword">print</span>(index_dictionary[index_words[i]], end=<span class="org-string">' '</span>)
 </pre>
 </div>
 
@@ -1835,8 +1836,8 @@ We can check that <code>(center, target)</code> pairs are indeed correct.
 </div>
 </div>
 
-<div id="orgfe4c898" class="outline-4">
-<h4 id="orgfe4c898"><span class="section-number-4">4.1.2</span> Using the <b>Dataset</b> API</h4>
+<div id="org44f7bbf" class="outline-4">
+<h4 id="org44f7bbf"><span class="section-number-4">4.1.2</span> Using the <b>Dataset</b> API</h4>
 <div class="outline-text-4" id="text-4-1-2">
 <p>
 The relatively new Dataset API in TensorFlow allows one to build complex input
@@ -1845,20 +1846,20 @@ apply transformations and extract elements from the dataset.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #7590db;">BATCH_SIZE</span> = <span style="color: #a45bad;">128</span>
-<span style="color: #7590db;">dataset</span> = tf.contrib.data.Dataset.from_tensor_slices((X, y))
-<span style="color: #7590db;">dataset</span> = dataset.repeat()  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Repeat the input indefinitely.</span>
-<span style="color: #7590db;">dataset</span> = dataset.batch(BATCH_SIZE) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">stack BATCH_SIZE elements into one</span>
-<span style="color: #7590db;">iterator</span> = dataset.make_one_shot_iterator() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">iterator</span>
-<span style="color: #7590db;">next_batch</span> = iterator.get_next() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">an operation that gives the next batch</span>
+<pre class="src src-ipython"><span class="org-variable-name">BATCH_SIZE</span> = <span class="org-highlight-numbers-number">128</span>
+<span class="org-variable-name">dataset</span> = tf.contrib.data.Dataset.from_tensor_slices((X, y))
+<span class="org-variable-name">dataset</span> = dataset.repeat()  <span class="org-comment-delimiter"># </span><span class="org-comment">Repeat the input indefinitely.</span>
+<span class="org-variable-name">dataset</span> = dataset.batch(BATCH_SIZE) <span class="org-comment-delimiter"># </span><span class="org-comment">stack BATCH_SIZE elements into one</span>
+<span class="org-variable-name">iterator</span> = dataset.make_one_shot_iterator() <span class="org-comment-delimiter"># </span><span class="org-comment">iterator</span>
+<span class="org-variable-name">next_batch</span> = iterator.get_next() <span class="org-comment-delimiter"># </span><span class="org-comment">an operation that gives the next batch</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">with</span> tf.Session() <span style="color: #4f97d7; font-weight: bold;">as</span> sess:
-  <span style="color: #7590db;">data</span>, <span style="color: #7590db;">label</span> = sess.run(next_batch)
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(data.shape)
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(label.shape)
+<pre class="src src-ipython"><span class="org-keyword">with</span> tf.Session() <span class="org-keyword">as</span> sess:
+  <span class="org-variable-name">data</span>, <span class="org-variable-name">label</span> = sess.run(next_batch)
+  <span class="org-keyword">print</span>(data.shape)
+  <span class="org-keyword">print</span>(label.shape)
 </pre>
 </div>
 
@@ -1870,8 +1871,8 @@ apply transformations and extract elements from the dataset.
 </div>
 </div>
 
-<div id="org93dfc4f" class="outline-3">
-<h3 id="org93dfc4f"><span class="section-number-3">4.2</span> Building the model&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MLALGO">MLALGO</span></span></h3>
+<div id="orgabc470a" class="outline-3">
+<h3 id="orgabc470a"><span class="section-number-3">4.2</span> Building the model&#xa0;&#xa0;&#xa0;<span class="tag"><span class="MLALGO">MLALGO</span></span></h3>
 <div class="outline-text-3" id="text-4-2">
 <p>
 We will now focus on building the model. Let's briefly go through what we will
@@ -1887,242 +1888,242 @@ do next.
 </ol>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> __future__ <span style="color: #4f97d7; font-weight: bold;">import</span> absolute_import <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">use absolute import instead of relative import</span>
+<pre class="src src-ipython"><span class="org-keyword">from</span> __future__ <span class="org-keyword">import</span> absolute_import <span class="org-comment-delimiter"># </span><span class="org-comment">use absolute import instead of relative import</span>
 
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">'/' for floating point division, '//' for integer division</span>
-<span style="color: #4f97d7; font-weight: bold;">from</span> __future__ <span style="color: #4f97d7; font-weight: bold;">import</span> division  
-<span style="color: #4f97d7; font-weight: bold;">from</span> __future__ <span style="color: #4f97d7; font-weight: bold;">import</span> print_function  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">use 'print' as a function</span>
+<span class="org-comment-delimiter"># </span><span class="org-comment">'/' for floating point division, '//' for integer division</span>
+<span class="org-keyword">from</span> __future__ <span class="org-keyword">import</span> division  
+<span class="org-keyword">from</span> __future__ <span class="org-keyword">import</span> print_function  <span class="org-comment-delimiter"># </span><span class="org-comment">use 'print' as a function</span>
 
-<span style="color: #4f97d7; font-weight: bold;">import</span> os
+<span class="org-keyword">import</span> os
 
-<span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
-<span style="color: #4f97d7; font-weight: bold;">import</span> tensorflow <span style="color: #4f97d7; font-weight: bold;">as</span> tf
+<span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
+<span class="org-keyword">import</span> tensorflow <span class="org-keyword">as</span> tf
 
-<span style="color: #4f97d7; font-weight: bold;">from</span> process_data <span style="color: #4f97d7; font-weight: bold;">import</span> make_dir, get_batch_gen, process_data
+<span class="org-keyword">from</span> process_data <span class="org-keyword">import</span> make_dir, get_batch_gen, process_data
 
-<span style="color: #4f97d7; font-weight: bold;">class</span> <span style="color: #ce537a; font-weight: bold;">SkipGramModel</span>:
-  <span style="color: #9f8766;">""" Build the graph for word2vec model """</span>
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">__init__</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>, hparams=<span style="color: #a45bad;">None</span>):
+<span class="org-keyword">class</span> <span class="org-type">SkipGramModel</span>:
+  <span class="org-doc">""" Build the graph for word2vec model """</span>
+  <span class="org-keyword">def</span> <span class="org-function-name">__init__</span>(<span class="org-keyword">self</span>, hparams=<span class="org-constant">None</span>):
 
-    <span style="color: #4f97d7; font-weight: bold;">if</span> hparams <span style="color: #4f97d7; font-weight: bold;">is</span> <span style="color: #a45bad;">None</span>:
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.hps = get_default_hparams()
-    <span style="color: #4f97d7; font-weight: bold;">else</span>:
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.hps = hparams
+    <span class="org-keyword">if</span> hparams <span class="org-keyword">is</span> <span class="org-constant">None</span>:
+        <span class="org-keyword">self</span>.hps = get_default_hparams()
+    <span class="org-keyword">else</span>:
+        <span class="org-keyword">self</span>.hps = hparams
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">define a variable to record training progress</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.global_step = tf.Variable(<span style="color: #a45bad;">0</span>, dtype=tf.int32, trainable=<span style="color: #a45bad;">False</span>, name=<span style="color: #2d9574;">'global_step'</span>)
+    <span class="org-comment-delimiter"># </span><span class="org-comment">define a variable to record training progress</span>
+    <span class="org-keyword">self</span>.global_step = tf.Variable(<span class="org-highlight-numbers-number">0</span>, dtype=tf.int32, trainable=<span class="org-constant">False</span>, name=<span class="org-string">'global_step'</span>)
 
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_create_input</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">""" Step 1: define input and output """</span>
+  <span class="org-keyword">def</span> <span class="org-function-name">_create_input</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">""" Step 1: define input and output """</span>
 
-    <span style="color: #4f97d7; font-weight: bold;">with</span> tf.name_scope(<span style="color: #2d9574;">"data"</span>):
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.centers = tf.placeholder(tf.int32, [<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.num_pairs], name=<span style="color: #2d9574;">'centers'</span>)
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.targets = tf.placeholder(tf.int32, [<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.num_pairs, <span style="color: #a45bad;">1</span>], name=<span style="color: #2d9574;">'targets'</span>)
-      <span style="color: #7590db;">dataset</span> = tf.contrib.data.Dataset.from_tensor_slices((<span style="color: #4f97d7; font-weight: bold;">self</span>.centers, <span style="color: #4f97d7; font-weight: bold;">self</span>.targets))
-      <span style="color: #7590db;">dataset</span> = dataset.repeat() <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;"># Repeat the input indefinitely</span>
-      <span style="color: #7590db;">dataset</span> = dataset.batch(<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.batch_size)
+    <span class="org-keyword">with</span> tf.name_scope(<span class="org-string">"data"</span>):
+      <span class="org-keyword">self</span>.centers = tf.placeholder(tf.int32, [<span class="org-keyword">self</span>.hps.num_pairs], name=<span class="org-string">'centers'</span>)
+      <span class="org-keyword">self</span>.targets = tf.placeholder(tf.int32, [<span class="org-keyword">self</span>.hps.num_pairs, <span class="org-highlight-numbers-number">1</span>], name=<span class="org-string">'targets'</span>)
+      <span class="org-variable-name">dataset</span> = tf.contrib.data.Dataset.from_tensor_slices((<span class="org-keyword">self</span>.centers, <span class="org-keyword">self</span>.targets))
+      <span class="org-variable-name">dataset</span> = dataset.repeat() <span class="org-comment-delimiter"># </span><span class="org-comment"># Repeat the input indefinitely</span>
+      <span class="org-variable-name">dataset</span> = dataset.batch(<span class="org-keyword">self</span>.hps.batch_size)
 
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.iterator = dataset.make_initializable_iterator()  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">create iterator</span>
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.center_words, <span style="color: #4f97d7; font-weight: bold;">self</span>.target_words = <span style="color: #4f97d7; font-weight: bold;">self</span>.iterator.get_next()
+      <span class="org-keyword">self</span>.iterator = dataset.make_initializable_iterator()  <span class="org-comment-delimiter"># </span><span class="org-comment">create iterator</span>
+      <span class="org-keyword">self</span>.center_words, <span class="org-keyword">self</span>.target_words = <span class="org-keyword">self</span>.iterator.get_next()
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_create_embedding</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">""" Step 2: define weights. </span>
-<span style="color: #9f8766;">        In word2vec, it's actually the weights that we care about</span>
-<span style="color: #9f8766;">    """</span>
-    <span style="color: #4f97d7; font-weight: bold;">with</span> tf.device(<span style="color: #2d9574;">'/gpu:0'</span>):
-      <span style="color: #4f97d7; font-weight: bold;">with</span> tf.name_scope(<span style="color: #2d9574;">"embed"</span>):
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.embed_matrix = tf.Variable(
-                              tf.random_uniform([<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.vocab_size,
-                                                 <span style="color: #4f97d7; font-weight: bold;">self</span>.hps.embed_size], -<span style="color: #a45bad;">1</span>.<span style="color: #a45bad;">0</span>, <span style="color: #a45bad;">1</span>.<span style="color: #a45bad;">0</span>),
-                                                 name=<span style="color: #2d9574;">'embed_matrix'</span>)
+  <span class="org-keyword">def</span> <span class="org-function-name">_create_embedding</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">""" Step 2: define weights. </span>
+<span class="org-doc">        In word2vec, it's actually the weights that we care about</span>
+<span class="org-doc">    """</span>
+    <span class="org-keyword">with</span> tf.device(<span class="org-string">'/gpu:0'</span>):
+      <span class="org-keyword">with</span> tf.name_scope(<span class="org-string">"embed"</span>):
+        <span class="org-keyword">self</span>.embed_matrix = tf.Variable(
+                              tf.random_uniform([<span class="org-keyword">self</span>.hps.vocab_size,
+                                                 <span class="org-keyword">self</span>.hps.embed_size], -<span class="org-highlight-numbers-number">1</span>.<span class="org-highlight-numbers-number">0</span>, <span class="org-highlight-numbers-number">1</span>.<span class="org-highlight-numbers-number">0</span>),
+                                                 name=<span class="org-string">'embed_matrix'</span>)
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_create_loss</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">""" Step 3 + 4: define the model + the loss function """</span>
-    <span style="color: #4f97d7; font-weight: bold;">with</span> tf.device(<span style="color: #2d9574;">'/cpu:0'</span>):
-      <span style="color: #4f97d7; font-weight: bold;">with</span> tf.name_scope(<span style="color: #2d9574;">"loss"</span>):
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Step 3: define the inference</span>
-        <span style="color: #7590db;">embed</span> = tf.nn.embedding_lookup(<span style="color: #4f97d7; font-weight: bold;">self</span>.embed_matrix, <span style="color: #4f97d7; font-weight: bold;">self</span>.center_words, name=<span style="color: #2d9574;">'embed'</span>)
+  <span class="org-keyword">def</span> <span class="org-function-name">_create_loss</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">""" Step 3 + 4: define the model + the loss function """</span>
+    <span class="org-keyword">with</span> tf.device(<span class="org-string">'/cpu:0'</span>):
+      <span class="org-keyword">with</span> tf.name_scope(<span class="org-string">"loss"</span>):
+        <span class="org-comment-delimiter"># </span><span class="org-comment">Step 3: define the inference</span>
+        <span class="org-variable-name">embed</span> = tf.nn.embedding_lookup(<span class="org-keyword">self</span>.embed_matrix, <span class="org-keyword">self</span>.center_words, name=<span class="org-string">'embed'</span>)
 
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Step 4: define loss function</span>
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">construct variables for NCE loss</span>
-        <span style="color: #7590db;">nce_weight</span> = tf.Variable(
-                        tf.truncated_normal([<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.vocab_size, <span style="color: #4f97d7; font-weight: bold;">self</span>.hps.embed_size],
-                                            stddev=<span style="color: #a45bad;">1</span>.<span style="color: #a45bad;">0</span> / (<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.embed_size ** <span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">5</span>)),
-                                            name=<span style="color: #2d9574;">'nce_weight'</span>)
-        <span style="color: #7590db;">nce_bias</span> = tf.Variable(tf.zeros([<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.vocab_size]), name=<span style="color: #2d9574;">'nce_bias'</span>)
+        <span class="org-comment-delimiter"># </span><span class="org-comment">Step 4: define loss function</span>
+        <span class="org-comment-delimiter"># </span><span class="org-comment">construct variables for NCE loss</span>
+        <span class="org-variable-name">nce_weight</span> = tf.Variable(
+                        tf.truncated_normal([<span class="org-keyword">self</span>.hps.vocab_size, <span class="org-keyword">self</span>.hps.embed_size],
+                                            stddev=<span class="org-highlight-numbers-number">1</span>.<span class="org-highlight-numbers-number">0</span> / (<span class="org-keyword">self</span>.hps.embed_size ** <span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">5</span>)),
+                                            name=<span class="org-string">'nce_weight'</span>)
+        <span class="org-variable-name">nce_bias</span> = tf.Variable(tf.zeros([<span class="org-keyword">self</span>.hps.vocab_size]), name=<span class="org-string">'nce_bias'</span>)
 
-        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">define loss function to be NCE loss function</span>
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.loss = tf.reduce_mean(tf.nn.nce_loss(weights=nce_weight,
+        <span class="org-comment-delimiter"># </span><span class="org-comment">define loss function to be NCE loss function</span>
+        <span class="org-keyword">self</span>.loss = tf.reduce_mean(tf.nn.nce_loss(weights=nce_weight,
                                                   biases=nce_bias,
-                                                  labels=<span style="color: #4f97d7; font-weight: bold;">self</span>.target_words,
+                                                  labels=<span class="org-keyword">self</span>.target_words,
                                                   inputs=embed,
-                                                  num_sampled=<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.num_sampled,
-                                                  num_classes=<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.vocab_size), name=<span style="color: #2d9574;">'loss'</span>)
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_create_optimizer</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">""" Step 5: define optimizer """</span>
-    <span style="color: #4f97d7; font-weight: bold;">with</span> tf.device(<span style="color: #2d9574;">'/gpu:0'</span>):
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.optimizer = tf.train.AdamOptimizer(<span style="color: #4f97d7; font-weight: bold;">self</span>.hps.lr).minimize(<span style="color: #4f97d7; font-weight: bold;">self</span>.loss,
-                                                         global_step=<span style="color: #4f97d7; font-weight: bold;">self</span>.global_step)
+                                                  num_sampled=<span class="org-keyword">self</span>.hps.num_sampled,
+                                                  num_classes=<span class="org-keyword">self</span>.hps.vocab_size), name=<span class="org-string">'loss'</span>)
+  <span class="org-keyword">def</span> <span class="org-function-name">_create_optimizer</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">""" Step 5: define optimizer """</span>
+    <span class="org-keyword">with</span> tf.device(<span class="org-string">'/gpu:0'</span>):
+      <span class="org-keyword">self</span>.optimizer = tf.train.AdamOptimizer(<span class="org-keyword">self</span>.hps.lr).minimize(<span class="org-keyword">self</span>.loss,
+                                                         global_step=<span class="org-keyword">self</span>.global_step)
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_build_nearby_graph</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Nodes for computing neighbors for a given word according to</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">their cosine distance.</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.nearby_word = tf.placeholder(dtype=tf.int32)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">word id</span>
-    <span style="color: #7590db;">nemb</span> = tf.nn.l2_normalize(<span style="color: #4f97d7; font-weight: bold;">self</span>.embed_matrix, <span style="color: #a45bad;">1</span>)
-    <span style="color: #7590db;">nearby_emb</span> = tf.gather(nemb, <span style="color: #4f97d7; font-weight: bold;">self</span>.nearby_word)
-    <span style="color: #7590db;">nearby_dist</span> = tf.matmul(nearby_emb, nemb, transpose_b=<span style="color: #a45bad;">True</span>)
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.nearby_val, <span style="color: #4f97d7; font-weight: bold;">self</span>.nearby_idx = tf.nn.top_k(nearby_dist,
-                                         <span style="color: #4f97d7;">min</span>(<span style="color: #a45bad;">1000</span>, <span style="color: #4f97d7; font-weight: bold;">self</span>.hps.vocab_size))
+  <span class="org-keyword">def</span> <span class="org-function-name">_build_nearby_graph</span>(<span class="org-keyword">self</span>):
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Nodes for computing neighbors for a given word according to</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">their cosine distance.</span>
+    <span class="org-keyword">self</span>.nearby_word = tf.placeholder(dtype=tf.int32)  <span class="org-comment-delimiter"># </span><span class="org-comment">word id</span>
+    <span class="org-variable-name">nemb</span> = tf.nn.l2_normalize(<span class="org-keyword">self</span>.embed_matrix, <span class="org-highlight-numbers-number">1</span>)
+    <span class="org-variable-name">nearby_emb</span> = tf.gather(nemb, <span class="org-keyword">self</span>.nearby_word)
+    <span class="org-variable-name">nearby_dist</span> = tf.matmul(nearby_emb, nemb, transpose_b=<span class="org-constant">True</span>)
+    <span class="org-keyword">self</span>.nearby_val, <span class="org-keyword">self</span>.nearby_idx = tf.nn.top_k(nearby_dist,
+                                         <span class="org-builtin">min</span>(<span class="org-highlight-numbers-number">1000</span>, <span class="org-keyword">self</span>.hps.vocab_size))
 
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_build_eval_graph</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">"""Build the eval graph."""</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Eval graph</span>
+  <span class="org-keyword">def</span> <span class="org-function-name">_build_eval_graph</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">"""Build the eval graph."""</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Eval graph</span>
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Each analogy task is to predict the 4th word (d) given three</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">words: a, b, c.  E.g., a=italy, b=rome, c=france, we should</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">predict d=paris.</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Each analogy task is to predict the 4th word (d) given three</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">words: a, b, c.  E.g., a=italy, b=rome, c=france, we should</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">predict d=paris.</span>
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">The eval feeds three vectors of word ids for a, b, c, each of</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">which is of size N, where N is the number of analogies we want to</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">evaluate in one batch.</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_a = tf.placeholder(dtype=tf.int32)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">[N]</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_b = tf.placeholder(dtype=tf.int32)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">[N]</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_c = tf.placeholder(dtype=tf.int32)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">[N]</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">The eval feeds three vectors of word ids for a, b, c, each of</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">which is of size N, where N is the number of analogies we want to</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">evaluate in one batch.</span>
+    <span class="org-keyword">self</span>.analogy_a = tf.placeholder(dtype=tf.int32)  <span class="org-comment-delimiter"># </span><span class="org-comment">[N]</span>
+    <span class="org-keyword">self</span>.analogy_b = tf.placeholder(dtype=tf.int32)  <span class="org-comment-delimiter"># </span><span class="org-comment">[N]</span>
+    <span class="org-keyword">self</span>.analogy_c = tf.placeholder(dtype=tf.int32)  <span class="org-comment-delimiter"># </span><span class="org-comment">[N]</span>
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Normalized word embeddings of shape [vocab_size, emb_dim].</span>
-    <span style="color: #7590db;">nemb</span> = tf.nn.l2_normalize(<span style="color: #4f97d7; font-weight: bold;">self</span>.embed_matrix, <span style="color: #a45bad;">1</span>)
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Normalized word embeddings of shape [vocab_size, emb_dim].</span>
+    <span class="org-variable-name">nemb</span> = tf.nn.l2_normalize(<span class="org-keyword">self</span>.embed_matrix, <span class="org-highlight-numbers-number">1</span>)
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Each row of a_emb, b_emb, c_emb is a word's embedding vector.</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">They all have the shape [N, emb_dim]</span>
-    <span style="color: #7590db;">a_emb</span> = tf.gather(nemb, <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_a)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">a's embs</span>
-    <span style="color: #7590db;">b_emb</span> = tf.gather(nemb, <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_b)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">b's embs</span>
-    <span style="color: #7590db;">c_emb</span> = tf.gather(nemb, <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_c)  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">c's embs</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Each row of a_emb, b_emb, c_emb is a word's embedding vector.</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">They all have the shape [N, emb_dim]</span>
+    <span class="org-variable-name">a_emb</span> = tf.gather(nemb, <span class="org-keyword">self</span>.analogy_a)  <span class="org-comment-delimiter"># </span><span class="org-comment">a's embs</span>
+    <span class="org-variable-name">b_emb</span> = tf.gather(nemb, <span class="org-keyword">self</span>.analogy_b)  <span class="org-comment-delimiter"># </span><span class="org-comment">b's embs</span>
+    <span class="org-variable-name">c_emb</span> = tf.gather(nemb, <span class="org-keyword">self</span>.analogy_c)  <span class="org-comment-delimiter"># </span><span class="org-comment">c's embs</span>
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">We expect that d's embedding vectors on the unit hyper-sphere is</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">near: c_emb + (b_emb - a_emb), which has the shape [N, emb_dim].</span>
-    <span style="color: #7590db;">target</span> = c_emb + (b_emb - a_emb)
+    <span class="org-comment-delimiter"># </span><span class="org-comment">We expect that d's embedding vectors on the unit hyper-sphere is</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">near: c_emb + (b_emb - a_emb), which has the shape [N, emb_dim].</span>
+    <span class="org-variable-name">target</span> = c_emb + (b_emb - a_emb)
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">Compute cosine distance between each pair of target and vocab.</span>
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">dist has shape [N, vocab_size].</span>
-    <span style="color: #7590db;">dist</span> = tf.matmul(target, nemb, transpose_b=<span style="color: #a45bad;">True</span>)
+    <span class="org-comment-delimiter"># </span><span class="org-comment">Compute cosine distance between each pair of target and vocab.</span>
+    <span class="org-comment-delimiter"># </span><span class="org-comment">dist has shape [N, vocab_size].</span>
+    <span class="org-variable-name">dist</span> = tf.matmul(target, nemb, transpose_b=<span class="org-constant">True</span>)
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">For each question (row in dist), find the top 20 words.</span>
-    <span style="color: #7590db;">_</span>, <span style="color: #4f97d7; font-weight: bold;">self</span>.pred_idx = tf.nn.top_k(dist, <span style="color: #a45bad;">20</span>)
+    <span class="org-comment-delimiter"># </span><span class="org-comment">For each question (row in dist), find the top 20 words.</span>
+    <span class="org-variable-name">_</span>, <span class="org-keyword">self</span>.pred_idx = tf.nn.top_k(dist, <span class="org-highlight-numbers-number">20</span>)
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">predict</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>, sess, analogy):
-    <span style="color: #9f8766;">""" Predict the top 20 answers for analogy questions """</span>
-    idx, = sess.run([<span style="color: #4f97d7; font-weight: bold;">self</span>.pred_idx], {
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_a: analogy[:, <span style="color: #a45bad;">0</span>],
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_b: analogy[:, <span style="color: #a45bad;">1</span>],
-        <span style="color: #4f97d7; font-weight: bold;">self</span>.analogy_c: analogy[:, <span style="color: #a45bad;">2</span>]
+  <span class="org-keyword">def</span> <span class="org-function-name">predict</span>(<span class="org-keyword">self</span>, sess, analogy):
+    <span class="org-doc">""" Predict the top 20 answers for analogy questions """</span>
+    idx, = sess.run([<span class="org-keyword">self</span>.pred_idx], {
+        <span class="org-keyword">self</span>.analogy_a: analogy[:, <span class="org-highlight-numbers-number">0</span>],
+        <span class="org-keyword">self</span>.analogy_b: analogy[:, <span class="org-highlight-numbers-number">1</span>],
+        <span class="org-keyword">self</span>.analogy_c: analogy[:, <span class="org-highlight-numbers-number">2</span>]
     })
-    <span style="color: #4f97d7; font-weight: bold;">return</span> idx
+    <span class="org-keyword">return</span> idx
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">_create_summaries</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #4f97d7; font-weight: bold;">with</span> tf.name_scope(<span style="color: #2d9574;">"summaries"</span>):
-      tf.summary.scalar(<span style="color: #2d9574;">"loss"</span>, <span style="color: #4f97d7; font-weight: bold;">self</span>.loss)
-      tf.summary.histogram(<span style="color: #2d9574;">"histogram_loss"</span>, <span style="color: #4f97d7; font-weight: bold;">self</span>.loss)
-      <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">because you have several summaries, we should merge them all</span>
-      <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">into one op to make it easier to manage</span>
-      <span style="color: #4f97d7; font-weight: bold;">self</span>.summary_op = tf.summary.merge_all()
+  <span class="org-keyword">def</span> <span class="org-function-name">_create_summaries</span>(<span class="org-keyword">self</span>):
+    <span class="org-keyword">with</span> tf.name_scope(<span class="org-string">"summaries"</span>):
+      tf.summary.scalar(<span class="org-string">"loss"</span>, <span class="org-keyword">self</span>.loss)
+      tf.summary.histogram(<span class="org-string">"histogram_loss"</span>, <span class="org-keyword">self</span>.loss)
+      <span class="org-comment-delimiter"># </span><span class="org-comment">because you have several summaries, we should merge them all</span>
+      <span class="org-comment-delimiter"># </span><span class="org-comment">into one op to make it easier to manage</span>
+      <span class="org-keyword">self</span>.summary_op = tf.summary.merge_all()
 
-  <span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">build_graph</span>(<span style="color: #4f97d7; font-weight: bold;">self</span>):
-    <span style="color: #9f8766;">""" Build the graph for our model """</span>
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._create_input()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._create_embedding()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._create_loss()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._create_optimizer()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._build_eval_graph()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._build_nearby_graph()
-    <span style="color: #4f97d7; font-weight: bold;">self</span>._create_summaries()
+  <span class="org-keyword">def</span> <span class="org-function-name">build_graph</span>(<span class="org-keyword">self</span>):
+    <span class="org-doc">""" Build the graph for our model """</span>
+    <span class="org-keyword">self</span>._create_input()
+    <span class="org-keyword">self</span>._create_embedding()
+    <span class="org-keyword">self</span>._create_loss()
+    <span class="org-keyword">self</span>._create_optimizer()
+    <span class="org-keyword">self</span>._build_eval_graph()
+    <span class="org-keyword">self</span>._build_nearby_graph()
+    <span class="org-keyword">self</span>._create_summaries()
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">train_model</span>(sess, model, batch_gen, index_words, num_train_steps):
-  <span style="color: #7590db;">saver</span> = tf.train.Saver()
-  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">defaults to saving all variables - in this case embed_matrix, nce_weight, nce_bias</span>
+<span class="org-keyword">def</span> <span class="org-function-name">train_model</span>(sess, model, batch_gen, index_words, num_train_steps):
+  <span class="org-variable-name">saver</span> = tf.train.Saver()
+  <span class="org-comment-delimiter"># </span><span class="org-comment">defaults to saving all variables - in this case embed_matrix, nce_weight, nce_bias</span>
 
-  <span style="color: #7590db;">initial_step</span> = <span style="color: #a45bad;">0</span>
-  make_dir(<span style="color: #2d9574;">'checkpoints'</span>) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">directory to store checkpoints</span>
+  <span class="org-variable-name">initial_step</span> = <span class="org-highlight-numbers-number">0</span>
+  make_dir(<span class="org-string">'checkpoints'</span>) <span class="org-comment-delimiter"># </span><span class="org-comment">directory to store checkpoints</span>
 
-  sess.run(tf.global_variables_initializer()) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">initialize all variables</span>
-  <span style="color: #7590db;">ckpt</span> = tf.train.get_checkpoint_state(os.path.dirname(<span style="color: #2d9574;">'checkpoints/checkpoint'</span>))
-  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">if that checkpoint exists, restore from checkpoint</span>
-  <span style="color: #4f97d7; font-weight: bold;">if</span> ckpt <span style="color: #4f97d7; font-weight: bold;">and</span> ckpt.model_checkpoint_path:
+  sess.run(tf.global_variables_initializer()) <span class="org-comment-delimiter"># </span><span class="org-comment">initialize all variables</span>
+  <span class="org-variable-name">ckpt</span> = tf.train.get_checkpoint_state(os.path.dirname(<span class="org-string">'checkpoints/checkpoint'</span>))
+  <span class="org-comment-delimiter"># </span><span class="org-comment">if that checkpoint exists, restore from checkpoint</span>
+  <span class="org-keyword">if</span> ckpt <span class="org-keyword">and</span> ckpt.model_checkpoint_path:
       saver.restore(sess, ckpt.model_checkpoint_path)
 
-  <span style="color: #7590db;">total_loss</span> = <span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">0</span> <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">use this to calculate late average loss in the last SKIP_STEP steps</span>
-  <span style="color: #7590db;">writer</span> = tf.summary.FileWriter(<span style="color: #2d9574;">'graph/lr'</span> + <span style="color: #4f97d7;">str</span>(model.hps.lr), sess.graph)
-  <span style="color: #7590db;">initial_step</span> = model.global_step.<span style="color: #4f97d7;">eval</span>()
-  <span style="color: #4f97d7; font-weight: bold;">for</span> index <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(initial_step, initial_step + num_train_steps):
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">feed in new dataset  </span>
-    <span style="color: #4f97d7; font-weight: bold;">if</span> index % model.hps.new_dataset_every == <span style="color: #a45bad;">0</span>:
-      <span style="color: #4f97d7; font-weight: bold;">try</span>:
-          <span style="color: #7590db;">centers</span>, <span style="color: #7590db;">targets</span> = <span style="color: #4f97d7;">next</span>(batch_gen)
-      <span style="color: #4f97d7; font-weight: bold;">except</span> <span style="color: #ce537a; font-weight: bold;">StopIteration</span>: <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">generator has nothing left to generate</span>
-          <span style="color: #7590db;">batch_gen</span> = get_batch_gen(index_words, 
+  <span class="org-variable-name">total_loss</span> = <span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">0</span> <span class="org-comment-delimiter"># </span><span class="org-comment">use this to calculate late average loss in the last SKIP_STEP steps</span>
+  <span class="org-variable-name">writer</span> = tf.summary.FileWriter(<span class="org-string">'graph/lr'</span> + <span class="org-builtin">str</span>(model.hps.lr), sess.graph)
+  <span class="org-variable-name">initial_step</span> = model.global_step.<span class="org-builtin">eval</span>()
+  <span class="org-keyword">for</span> index <span class="org-keyword">in</span> <span class="org-builtin">range</span>(initial_step, initial_step + num_train_steps):
+    <span class="org-comment-delimiter"># </span><span class="org-comment">feed in new dataset  </span>
+    <span class="org-keyword">if</span> index % model.hps.new_dataset_every == <span class="org-highlight-numbers-number">0</span>:
+      <span class="org-keyword">try</span>:
+          <span class="org-variable-name">centers</span>, <span class="org-variable-name">targets</span> = <span class="org-builtin">next</span>(batch_gen)
+      <span class="org-keyword">except</span> <span class="org-type">StopIteration</span>: <span class="org-comment-delimiter"># </span><span class="org-comment">generator has nothing left to generate</span>
+          <span class="org-variable-name">batch_gen</span> = get_batch_gen(index_words, 
                                     model.hps.skip_window, 
                                     model.hps.num_pairs)
-          <span style="color: #7590db;">centers</span>, <span style="color: #7590db;">targets</span> = <span style="color: #4f97d7;">next</span>(batch_gen)
-          <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">'Finished looking at the whole text'</span>)
+          <span class="org-variable-name">centers</span>, <span class="org-variable-name">targets</span> = <span class="org-builtin">next</span>(batch_gen)
+          <span class="org-keyword">print</span>(<span class="org-string">'Finished looking at the whole text'</span>)
 
-      <span style="color: #7590db;">feed</span> = {
+      <span class="org-variable-name">feed</span> = {
           model.centers: centers,
           model.targets: targets
       }
-      <span style="color: #7590db;">_</span> = sess.run(model.iterator.initializer, feed_dict = feed)
-      <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">'feeding in new dataset'</span>)
+      <span class="org-variable-name">_</span> = sess.run(model.iterator.initializer, feed_dict = feed)
+      <span class="org-keyword">print</span>(<span class="org-string">'feeding in new dataset'</span>)
 
 
-    <span style="color: #7590db;">loss_batch</span>, <span style="color: #7590db;">_</span>, <span style="color: #7590db;">summary</span> = sess.run([model.loss, model.optimizer, model.summary_op])
+    <span class="org-variable-name">loss_batch</span>, <span class="org-variable-name">_</span>, <span class="org-variable-name">summary</span> = sess.run([model.loss, model.optimizer, model.summary_op])
     writer.add_summary(summary, global_step=index)
-    <span style="color: #7590db;">total_loss</span> += loss_batch
-    <span style="color: #4f97d7; font-weight: bold;">if</span> (index + <span style="color: #a45bad;">1</span>) % model.hps.skip_step == <span style="color: #a45bad;">0</span>:
-        <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">'Average loss at step {}: {:5.1f}'</span>.<span style="color: #4f97d7;">format</span>(
+    <span class="org-variable-name">total_loss</span> += loss_batch
+    <span class="org-keyword">if</span> (index + <span class="org-highlight-numbers-number">1</span>) % model.hps.skip_step == <span class="org-highlight-numbers-number">0</span>:
+        <span class="org-keyword">print</span>(<span class="org-string">'Average loss at step {}: {:5.1f}'</span>.<span class="org-builtin">format</span>(
                                                   index,
                                                   total_loss/model.hps.skip_step))
-        <span style="color: #7590db;">total_loss</span> = <span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">0</span>
-        saver.save(sess, <span style="color: #2d9574;">'checkpoints/skip-gram'</span>, index)
+        <span class="org-variable-name">total_loss</span> = <span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">0</span>
+        saver.save(sess, <span class="org-string">'checkpoints/skip-gram'</span>, index)
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">get_default_hparams</span>():
-    <span style="color: #7590db;">hparams</span> = tf.contrib.training.HParams(
-        num_pairs = <span style="color: #a45bad;">10</span>**<span style="color: #a45bad;">6</span>,                <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">number of (center, target) pairs </span>
-                                          <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">in each dataset instance</span>
-        vocab_size = <span style="color: #a45bad;">10000</span>,
-        batch_size = <span style="color: #a45bad;">128</span>,
-        embed_size = <span style="color: #a45bad;">300</span>,                 <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">dimension of the word embedding vectors</span>
-        skip_window = <span style="color: #a45bad;">3</span>,                  <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">the context window</span>
-        num_sampled = <span style="color: #a45bad;">100</span>,                <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">number of negative examples to sample</span>
-        lr = <span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">005</span>,                       <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">learning rate</span>
-        new_dataset_every = <span style="color: #a45bad;">10</span>**<span style="color: #a45bad;">4</span>,        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">replace the original dataset every ? steps</span>
-        num_train_steps = <span style="color: #a45bad;">2</span>*<span style="color: #a45bad;">10</span>**<span style="color: #a45bad;">5</span>,        <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">number of training steps for each feed of dataset</span>
-        skip_step = <span style="color: #a45bad;">2000</span>
+<span class="org-keyword">def</span> <span class="org-function-name">get_default_hparams</span>():
+    <span class="org-variable-name">hparams</span> = tf.contrib.training.HParams(
+        num_pairs = <span class="org-highlight-numbers-number">10</span>**<span class="org-highlight-numbers-number">6</span>,                <span class="org-comment-delimiter"># </span><span class="org-comment">number of (center, target) pairs </span>
+                                          <span class="org-comment-delimiter"># </span><span class="org-comment">in each dataset instance</span>
+        vocab_size = <span class="org-highlight-numbers-number">10000</span>,
+        batch_size = <span class="org-highlight-numbers-number">128</span>,
+        embed_size = <span class="org-highlight-numbers-number">300</span>,                 <span class="org-comment-delimiter"># </span><span class="org-comment">dimension of the word embedding vectors</span>
+        skip_window = <span class="org-highlight-numbers-number">3</span>,                  <span class="org-comment-delimiter"># </span><span class="org-comment">the context window</span>
+        num_sampled = <span class="org-highlight-numbers-number">100</span>,                <span class="org-comment-delimiter"># </span><span class="org-comment">number of negative examples to sample</span>
+        lr = <span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">005</span>,                       <span class="org-comment-delimiter"># </span><span class="org-comment">learning rate</span>
+        new_dataset_every = <span class="org-highlight-numbers-number">10</span>**<span class="org-highlight-numbers-number">4</span>,        <span class="org-comment-delimiter"># </span><span class="org-comment">replace the original dataset every ? steps</span>
+        num_train_steps = <span class="org-highlight-numbers-number">2</span>*<span class="org-highlight-numbers-number">10</span>**<span class="org-highlight-numbers-number">5</span>,        <span class="org-comment-delimiter"># </span><span class="org-comment">number of training steps for each feed of dataset</span>
+        skip_step = <span class="org-highlight-numbers-number">2000</span>
     )
-    <span style="color: #4f97d7; font-weight: bold;">return</span> hparams
+    <span class="org-keyword">return</span> hparams
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">main</span>():
+<span class="org-keyword">def</span> <span class="org-function-name">main</span>():
 
-  <span style="color: #7590db;">hps</span> = get_default_hparams()
-  <span style="color: #7590db;">index_words</span>, <span style="color: #7590db;">dictionary</span>, <span style="color: #7590db;">index_dictionary</span> = process_data(hps.vocab_size)
-  <span style="color: #7590db;">batch_gen</span> = get_batch_gen(index_words, hps.skip_window, hps.num_pairs)
+  <span class="org-variable-name">hps</span> = get_default_hparams()
+  <span class="org-variable-name">index_words</span>, <span class="org-variable-name">dictionary</span>, <span class="org-variable-name">index_dictionary</span> = process_data(hps.vocab_size)
+  <span class="org-variable-name">batch_gen</span> = get_batch_gen(index_words, hps.skip_window, hps.num_pairs)
 
-  <span style="color: #7590db;">model</span> = SkipGramModel(hparams = hps)
+  <span class="org-variable-name">model</span> = SkipGramModel(hparams = hps)
   model.build_graph()
 
 
-  <span style="color: #4f97d7; font-weight: bold;">with</span> tf.Session() <span style="color: #4f97d7; font-weight: bold;">as</span> sess:
+  <span class="org-keyword">with</span> tf.Session() <span class="org-keyword">as</span> sess:
 
-    <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">feed the model with dataset</span>
-    <span style="color: #7590db;">centers</span>, <span style="color: #7590db;">targets</span> = <span style="color: #4f97d7;">next</span>(batch_gen)
-    <span style="color: #7590db;">feed</span> = {
+    <span class="org-comment-delimiter"># </span><span class="org-comment">feed the model with dataset</span>
+    <span class="org-variable-name">centers</span>, <span class="org-variable-name">targets</span> = <span class="org-builtin">next</span>(batch_gen)
+    <span class="org-variable-name">feed</span> = {
         model.centers: centers,
         model.targets: targets
     }
-    sess.run(model.iterator.initializer, feed_dict = feed) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">initialize the iterator</span>
+    sess.run(model.iterator.initializer, feed_dict = feed) <span class="org-comment-delimiter"># </span><span class="org-comment">initialize the iterator</span>
 
     train_model(sess, model, batch_gen, index_words, hps.num_train_steps)
 
-<span style="color: #4f97d7; font-weight: bold;">if</span> <span style="color: #4f97d7;">__name__</span> == <span style="color: #2d9574;">'__main__'</span>:
+<span class="org-keyword">if</span> <span class="org-builtin">__name__</span> == <span class="org-string">'__main__'</span>:
   main()
 </pre>
 </div>
@@ -2138,8 +2139,8 @@ Average loss at step 153999:   6.6
 </div>
 </div>
 
-<div id="org9aba369" class="outline-3">
-<h3 id="org9aba369"><span class="section-number-3">4.3</span> Evaluation</h3>
+<div id="org322b1ac" class="outline-3">
+<h3 id="org322b1ac"><span class="section-number-3">4.3</span> Evaluation</h3>
 <div class="outline-text-3" id="text-4-3">
 <p>
 A simple way to evaluate our embedding is to directly use them to predict
@@ -2176,26 +2177,26 @@ similarity, we expect <code>Paris</code> would be one of them.
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> os
-<span style="color: #4f97d7; font-weight: bold;">import</span> tensorflow <span style="color: #4f97d7; font-weight: bold;">as</span> tf
-<span style="color: #4f97d7; font-weight: bold;">from</span> process_data <span style="color: #4f97d7; font-weight: bold;">import</span> process_data
-<span style="color: #4f97d7; font-weight: bold;">from</span> train <span style="color: #4f97d7; font-weight: bold;">import</span> get_default_hparams, SkipGramModel
+<pre class="src src-ipython"><span class="org-keyword">import</span> os
+<span class="org-keyword">import</span> tensorflow <span class="org-keyword">as</span> tf
+<span class="org-keyword">from</span> process_data <span class="org-keyword">import</span> process_data
+<span class="org-keyword">from</span> train <span class="org-keyword">import</span> get_default_hparams, SkipGramModel
 
-<span style="color: #2aa1ae; background-color: #292e34;">#</span><span style="color: #2aa1ae; background-color: #292e34;">Clears the default graph stack and resets the global default graph</span>
+<span class="org-comment-delimiter">#</span><span class="org-comment">Clears the default graph stack and resets the global default graph</span>
 tf.reset_default_graph() 
-<span style="color: #7590db;">hps</span> = get_default_hparams()
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">get dictionary </span>
-<span style="color: #7590db;">index_words</span>, <span style="color: #7590db;">dictionary</span>, <span style="color: #7590db;">index_dictionary</span> = process_data(hps.vocab_size)
+<span class="org-variable-name">hps</span> = get_default_hparams()
+<span class="org-comment-delimiter"># </span><span class="org-comment">get dictionary </span>
+<span class="org-variable-name">index_words</span>, <span class="org-variable-name">dictionary</span>, <span class="org-variable-name">index_dictionary</span> = process_data(hps.vocab_size)
 
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">build model</span>
-<span style="color: #7590db;">model</span> = SkipGramModel(hps)
+<span class="org-comment-delimiter"># </span><span class="org-comment">build model</span>
+<span class="org-variable-name">model</span> = SkipGramModel(hps)
 model.build_graph()
 
-<span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">initialize variables and restore checkpoint</span>
-<span style="color: #7590db;">sess</span> = tf.InteractiveSession()
+<span class="org-comment-delimiter"># </span><span class="org-comment">initialize variables and restore checkpoint</span>
+<span class="org-variable-name">sess</span> = tf.InteractiveSession()
 sess.run(tf.global_variables_initializer())
-<span style="color: #7590db;">saver</span> = tf.train.Saver()
-<span style="color: #7590db;">ckpt</span> = tf.train.get_checkpoint_state(os.path.dirname(<span style="color: #2d9574;">'checkpoints/checkpoint'</span>))
+<span class="org-variable-name">saver</span> = tf.train.Saver()
+<span class="org-variable-name">ckpt</span> = tf.train.get_checkpoint_state(os.path.dirname(<span class="org-string">'checkpoints/checkpoint'</span>))
 saver.restore(sess, ckpt.model_checkpoint_path)
 </pre>
 </div>
@@ -2210,32 +2211,32 @@ To see the results, we can define a function that finds the nearest words.
 </p>
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">import</span> numpy <span style="color: #4f97d7; font-weight: bold;">as</span> np
+<pre class="src src-ipython"><span class="org-keyword">import</span> numpy <span class="org-keyword">as</span> np
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">nearby</span>(words, model, sess, dictionary, index_dictionary, num=<span style="color: #a45bad;">20</span>):
-    <span style="color: #9f8766;">"""Prints out nearby words given a list of words."""</span>
-    <span style="color: #7590db;">ids</span> = np.array([dictionary.get(x, <span style="color: #a45bad;">0</span>) <span style="color: #4f97d7; font-weight: bold;">for</span> x <span style="color: #4f97d7; font-weight: bold;">in</span> words])
-    <span style="color: #7590db;">vals</span>, <span style="color: #7590db;">idx</span> = sess.run(
+<span class="org-keyword">def</span> <span class="org-function-name">nearby</span>(words, model, sess, dictionary, index_dictionary, num=<span class="org-highlight-numbers-number">20</span>):
+    <span class="org-doc">"""Prints out nearby words given a list of words."""</span>
+    <span class="org-variable-name">ids</span> = np.array([dictionary.get(x, <span class="org-highlight-numbers-number">0</span>) <span class="org-keyword">for</span> x <span class="org-keyword">in</span> words])
+    <span class="org-variable-name">vals</span>, <span class="org-variable-name">idx</span> = sess.run(
         [model.nearby_val, model.nearby_idx], {model.nearby_word: ids})
-    <span style="color: #4f97d7; font-weight: bold;">for</span> i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(<span style="color: #4f97d7;">len</span>(words)):
-      <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">"\n%s\n====================================="</span> % (words[i]))
-      <span style="color: #4f97d7; font-weight: bold;">for</span> (neighbor, distance) <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">zip</span>(idx[i, :num], vals[i, :num]):
-        <span style="color: #4f97d7; font-weight: bold;">print</span>(<span style="color: #2d9574;">"%-20s %6.4f"</span> % (index_dictionary.get(neighbor), distance))
+    <span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(<span class="org-builtin">len</span>(words)):
+      <span class="org-keyword">print</span>(<span class="org-string">"\n%s\n====================================="</span> % (words[i]))
+      <span class="org-keyword">for</span> (neighbor, distance) <span class="org-keyword">in</span> <span class="org-builtin">zip</span>(idx[i, :num], vals[i, :num]):
+        <span class="org-keyword">print</span>(<span class="org-string">"%-20s %6.4f"</span> % (index_dictionary.get(neighbor), distance))
 
-<span style="color: #4f97d7; font-weight: bold;">def</span> <span style="color: #bc6ec5; font-weight: bold;">analogy</span>(line, model, sess, dictionary, index_dictionary):
-  <span style="color: #9f8766;">""" Prints the top k anologies for a given array which contain 3 words"""</span>
-  <span style="color: #7590db;">analogy</span> = np.array([dictionary.get(w, <span style="color: #a45bad;">0</span>) <span style="color: #4f97d7; font-weight: bold;">for</span> w <span style="color: #4f97d7; font-weight: bold;">in</span> line])[np.newaxis,:]
-  <span style="color: #7590db;">idx</span> = model.predict(sess, analogy)
-  <span style="color: #4f97d7; font-weight: bold;">print</span>(line)
-  <span style="color: #4f97d7; font-weight: bold;">for</span> i <span style="color: #4f97d7; font-weight: bold;">in</span> idx[<span style="color: #a45bad;">0</span>]:
-    <span style="color: #4f97d7; font-weight: bold;">print</span>(index_dictionary[i])
+<span class="org-keyword">def</span> <span class="org-function-name">analogy</span>(line, model, sess, dictionary, index_dictionary):
+  <span class="org-doc">""" Prints the top k anologies for a given array which contain 3 words"""</span>
+  <span class="org-variable-name">analogy</span> = np.array([dictionary.get(w, <span class="org-highlight-numbers-number">0</span>) <span class="org-keyword">for</span> w <span class="org-keyword">in</span> line])[np.newaxis,:]
+  <span class="org-variable-name">idx</span> = model.predict(sess, analogy)
+  <span class="org-keyword">print</span>(line)
+  <span class="org-keyword">for</span> i <span class="org-keyword">in</span> idx[<span class="org-highlight-numbers-number">0</span>]:
+    <span class="org-keyword">print</span>(index_dictionary[i])
 </pre>
 </div>
 
 
 <p>
 words = ['machine', 'learning']
-nearby(words, model, sess, dictionary, index<sub>dictionary</sub>)
+nearby(words, model, sess, dictionary, index_dictionary)
 </p>
 
 <p>
@@ -2290,7 +2291,7 @@ describing           0.3368
 
 
 <div class="org-src-container">
-<pre class="src src-ipython">analogy([<span style="color: #2d9574;">'london'</span>, <span style="color: #2d9574;">'england'</span>, <span style="color: #2d9574;">'berlin'</span>], model, sess, dictionary, index_dictionary)
+<pre class="src src-ipython">analogy([<span class="org-string">'london'</span>, <span class="org-string">'england'</span>, <span class="org-string">'berlin'</span>], model, sess, dictionary, index_dictionary)
 </pre>
 </div>
 
@@ -2320,8 +2321,8 @@ companion
 </div>
 </div>
 
-<div id="org7adbc4a" class="outline-3">
-<h3 id="org7adbc4a"><span class="section-number-3">4.4</span> Visualizing with t-SNE&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAVIEW">DATAVIEW</span></span></h3>
+<div id="org75f5208" class="outline-3">
+<h3 id="org75f5208"><span class="section-number-3">4.4</span> Visualizing with t-SNE&#xa0;&#xa0;&#xa0;<span class="tag"><span class="DATAVIEW">DATAVIEW</span></span></h3>
 <div class="outline-text-3" id="text-4-4">
 <p>
 <b>t-distributed stochastic neighbor embedding (t-SNE)</b> is a dimension reduction
@@ -2331,22 +2332,22 @@ the <a href="https://en.wikipedia.org/wiki/T-distributed_stochastic_neighbor_emb
 
 
 <div class="org-src-container">
-<pre class="src src-ipython"><span style="color: #4f97d7; font-weight: bold;">from</span> sklearn.manifold <span style="color: #4f97d7; font-weight: bold;">import</span> TSNE
-<span style="color: #4f97d7; font-weight: bold;">import</span> matplotlib.pyplot <span style="color: #4f97d7; font-weight: bold;">as</span> plt
+<pre class="src src-ipython"><span class="org-keyword">from</span> sklearn.manifold <span class="org-keyword">import</span> TSNE
+<span class="org-keyword">import</span> matplotlib.pyplot <span class="org-keyword">as</span> plt
 
-<span style="color: #7590db;">rng</span> = <span style="color: #a45bad;">300</span>
+<span class="org-variable-name">rng</span> = <span class="org-highlight-numbers-number">300</span>
 
-<span style="color: #7590db;">embed_matrix</span> = sess.run(model.embed_matrix) <span style="color: #2aa1ae; background-color: #292e34;"># </span><span style="color: #2aa1ae; background-color: #292e34;">get the embed matrix</span>
+<span class="org-variable-name">embed_matrix</span> = sess.run(model.embed_matrix) <span class="org-comment-delimiter"># </span><span class="org-comment">get the embed matrix</span>
 
-<span style="color: #7590db;">X_embedded</span> = TSNE(n_components=<span style="color: #a45bad;">2</span>).fit_transform(embed_matrix[:rng])
+<span class="org-variable-name">X_embedded</span> = TSNE(n_components=<span class="org-highlight-numbers-number">2</span>).fit_transform(embed_matrix[:rng])
 
-plt.figure(figsize=(<span style="color: #a45bad;">30</span>,<span style="color: #a45bad;">30</span>))
+plt.figure(figsize=(<span class="org-highlight-numbers-number">30</span>,<span class="org-highlight-numbers-number">30</span>))
 
-<span style="color: #4f97d7; font-weight: bold;">for</span> i <span style="color: #4f97d7; font-weight: bold;">in</span> <span style="color: #4f97d7;">range</span>(rng):
-  plt.scatter(X_embedded[i][<span style="color: #a45bad;">0</span>], X_embedded[i][<span style="color: #a45bad;">1</span>])
-  plt.text(X_embedded[i][<span style="color: #a45bad;">0</span>]+<span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">2</span>,
-           X_embedded[i][<span style="color: #a45bad;">1</span>]+<span style="color: #a45bad;">0</span>.<span style="color: #a45bad;">2</span>,
-           index_dictionary.get(i, <span style="color: #a45bad;">0</span>), fontsize=<span style="color: #a45bad;">18</span>)
+<span class="org-keyword">for</span> i <span class="org-keyword">in</span> <span class="org-builtin">range</span>(rng):
+  plt.scatter(X_embedded[i][<span class="org-highlight-numbers-number">0</span>], X_embedded[i][<span class="org-highlight-numbers-number">1</span>])
+  plt.text(X_embedded[i][<span class="org-highlight-numbers-number">0</span>]+<span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">2</span>,
+           X_embedded[i][<span class="org-highlight-numbers-number">1</span>]+<span class="org-highlight-numbers-number">0</span>.<span class="org-highlight-numbers-number">2</span>,
+           index_dictionary.get(i, <span class="org-highlight-numbers-number">0</span>), fontsize=<span class="org-highlight-numbers-number">18</span>)
 
 plt.show()
 </pre>
@@ -2355,8 +2356,8 @@ plt.show()
 </div>
 </div>
 
-<div id="org92a0279" class="outline-2">
-<h2 id="org92a0279"><span class="section-number-2">5</span> Assignment</h2>
+<div id="org9c10952" class="outline-2">
+<h2 id="org9c10952"><span class="section-number-2">5</span> Assignment</h2>
 <div class="outline-text-2" id="text-5">
 <p>
 Since we have already implemented Skip-Gram, the assignment for this week is to
@@ -2389,7 +2390,7 @@ The basic requirements of this assignment:
 <ol class="org-ol">
 <li>Implement CBOW.</li>
 <li>You are encouraged to try out any combinations of the
-hyperparameters, but window<sub>size</sub> is always equal to 1.</li>
+hyperparameters, but window_size is always equal to 1.</li>
 <li>Plot the the embeddings of the first 200 words in your dictionary
 using t-SNE in the notebook.</li>
 <li>When you hand in the assignment, please include:
@@ -2407,11 +2408,6 @@ your code.</li>
 </ol>
 </div>
 </div>
-</div>
-<div id="postamble" class="status">
-<p class="author">Author: yiddishkop</p>
-<p class="date">Created: 2018-08-06 一 07:55</p>
-<p class="validation"><a href="http://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
 </html>

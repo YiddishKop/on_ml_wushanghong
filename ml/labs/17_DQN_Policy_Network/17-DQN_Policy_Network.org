@@ -1,4 +1,19 @@
-* DQN & Policy Network
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+PROPERTY: header-args:python :session DQN and Policy Network
+#+PROPERTY: header-args:ipython :session DQN and Policy Network
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/home/yiddi/git_repos/YIDDI_org_export_theme/theme/org-nav-theme_cache.css" >
+#+HTML_HEAD: <script src="https://hypothes.is/embed.js" async></script>
+#+HTML_HEAD: <script type="application/json" class="js-hypothesis-config">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t
+#+OPTIONS: H:3 num:t ^:nil _:nil tags:not-in-toc
+#+TITLE: DQN and Policy Network
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
+
 
 In last lab, we use tabular method to train an agent to play game with features
 in environments. It is time-costly if more features are added to environment
@@ -7,7 +22,7 @@ were not seen before. Here what we want is *function approximation* for all
 unseen states such that given x, we can estimate y for it. We can use what we
 have learned in machine learning (e.g. regression, DNN) to achieve it.
 
-** Deep Q-Network
+* Deep Q-Network
 
 In lots of environment, it is difficult to get features such as distance to pipe
 in flappy bird. We may need to do some feature engineering on raw images to get
@@ -16,7 +31,7 @@ comes an idea using DNN to train an agent because DNN can learn from raw data.
 In the following, we use a DNN with convolution layer to train an agent with raw
 screen input.
 
-*** Network Architecture
+** Network Architecture
 
 In the following, we will use network architecture similar to this [[https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf][paper]].
 
@@ -50,7 +65,6 @@ In the following, we will use network architecture similar to this [[https://www
     Couldn't import doom
 #+END_SRC
 
-In [2]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # define input size
@@ -59,12 +73,11 @@ In [2]:
     num_stack = 4
 #+END_SRC
 
-*** Preprocessing
+** Preprocessing
 
 In the following, we write a function resize image to 84x84 and converted to
 grayscale.
 
-In [3]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     def preprocess(screen):
@@ -73,12 +86,8 @@ In [3]:
       return screen
 #+END_SRC
 
-*** Build Model
-    :PROPERTIES:
-    :CUSTOM_ID: Build-Model
-    :END:
+** Build Model
 
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import math
@@ -212,18 +221,15 @@ In [4]:
         self.exploring_rate = 0
 #+END_SRC
 
-*** Tricks
-    :PROPERTIES:
-    :CUSTOM_ID: Tricks
-    :END:
+** Tricks
 
 Different with tabular method, a update to DQN influence action value of other
 actions because they have common weights. If we train DQN directly, it is
-unstable, e.g. we may chase a correct $Q(s,a\_1)$ for a state $s$ and action
-$a\_1$ but damage $Q(s,a')$ for other action $a'$. in the following, we
-introduce *seperate target network* and *replay buffer* mentioned in the [[https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf][paper]].
+unstable, e.g. we may chase a correct $Q(s,a_1)$ for a state $s$ and action
+$a_1$ but damage $Q(s,a')$ for other action $a'$. in the following, we introduce
+*seperate target network* and *replay buffer* mentioned in the [[https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf][paper]].
 
-**** Seperate Target Network
+*** Seperate Target Network
 
 In training time, agent is frequently updated, this lead to unstable. To avoid
 problem mention above, We can create two agent, one is updated frequently,
@@ -231,7 +237,7 @@ another is fixed. When training, train frquently updated one by estimate $Q$
 from fixed one, and periodcally update weight of fixed one by frquently updated
 one.
 
-**** Replay Buffer
+*** Replay Buffer
 
 Because in most of environments, states in an episode are not i.i.d.
 samples, e.g. screen in last timesatamp and current timestamp are highly
@@ -240,11 +246,10 @@ agent. To avoid this, we create a buffer store experience in every
 episode, and sample different (s,a,r,s') pair from buffer to train
 agent.
 
-**** Algorithm
+*** Algorithm
 
 [[file:img/dqn_algo.png]]
 
-In [5]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     def get_update_ops():
@@ -260,7 +265,6 @@ In [5]:
       sess.run(update_ops)
 #+END_SRC
 
-In [6]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # init agent
@@ -275,7 +279,6 @@ In [6]:
     update_ops = get_update_ops()
 #+END_SRC
 
-In [7]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     class Replay_buffer():
@@ -502,36 +505,34 @@ In [19]:
 
 Sorry, seems like your browser doesn't support HTML5 audio/video
 
-** Policy Gradient
+* Policy Gradient
 
 All we have done until now are types of value-based method. That is, agent first
 estimate Q value and then select action according to Q value. There is another
 way called policy-based method, which directly learn policy. That is, agent
 first estimate action distribution and then sample action from distribution. The
 idea of policy gradient is that given a sequence $\tau
-~(s\_0,a\_0,s\_1,a\_1...)$, we want to maximize its total reward. To doing this,
+~(s_0,a_0,s_1,a_1...)$, we want to maximize its total reward. To doing this,
 we can give high probability to those action that has higher reward. We can
 define our objective as following:
 
-\begin{align} J(\theta)&=\mathbb{E}\_{\tau\sim
-\pi\_{\theta}(\tau)}[\sum\limits\_{t}r(s\_t,a\_t)] \\ &=\int
-\pi\_{\theta}(\tau)r(\tau)d\tau \\ \end{align} the gradient of objective
+\begin{align} J(\theta)&=\mathbb{E}_{\tau\sim
+\pi_{\theta}(\tau)}[\sum\limits_{t}r(s_t,a_t)] \\ &=\int
+\pi_{\theta}(\tau)r(\tau)d\tau \\ \end{align} the gradient of objective
 is:
 
-\begin{align} \triangledown\_\theta J(\theta)&= \int
-\triangledown\_\theta \pi\_{\theta}(\tau)r(\tau)d\tau \\ &= \int
-\pi\_{\theta}(\tau)\frac{\triangledown\_\theta
-\pi\_{\theta}(\tau)}{\pi\_\theta(\tau)}r(\tau)d\tau \\ &= \int
-\pi\_{\theta}(\tau)\triangledown\_\theta log\pi
-\_\theta(\tau)r(\tau)d\tau \\ &= \mathbb{E}\_{\tau\sim
-\pi\_{\theta}(\tau)}[\triangledown\_\theta log\pi \_\theta(\tau)r(\tau)]
+\begin{align} \triangledown_\theta J(\theta)&= \int
+\triangledown_\theta \pi_{\theta}(\tau)r(\tau)d\tau \\ &= \int
+\pi_{\theta}(\tau)\frac{\triangledown_\theta
+\pi_{\theta}(\tau)}{\pi_\theta(\tau)}r(\tau)d\tau \\ &= \int
+\pi_{\theta}(\tau)\triangledown_\theta log\pi
+_\theta(\tau)r(\tau)d\tau \\ &= \mathbb{E}_{\tau\sim
+\pi_{\theta}(\tau)}[\triangledown_\theta log\pi_\theta(\tau)r(\tau)]
 \end{align}
 
 In the following, we will train an agent using policy gradient.
 
-*** Build Model
-
-In [23]:
+** Build Model
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import math
@@ -635,7 +636,6 @@ In [23]:
         return loss
 #+END_SRC
 
-In [24]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # init agent
@@ -649,9 +649,7 @@ In [24]:
     sess.run(tf.global_variables_initializer())
 #+END_SRC
 
-*** Training
-
-In [28]:
+** Training
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from IPython.display import Image, display
@@ -775,8 +773,6 @@ In [28]:
     [MoviePy] >>>> Video ready: movie/pg_100.webm 
 #+END_SRC
 
-In [30]:
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from moviepy.editor import *
     clip = VideoFileClip("movie/pg_100.webm")
@@ -789,15 +785,15 @@ In [30]:
 
 Sorry, seems like your browser doesn't support HTML5 audio/video
 
-** Actor-Critic
+* Actor-Critic
 
 There is method combines both value-based method and policy-based method called
-actor-critic, where actor use policy to select action and use state-value to
+*actor-critic*, where actor use policy to select action and use state-value to
 tell if the action lead to a good state.
 
 [[file:img/ac.png]]
 
-*** algorithm
+** algorithm
 
 [[file:img/ac_algo.png]]
 
@@ -973,7 +969,6 @@ tell if the action lead to a good state.
         self.exploring_rate = 0
 #+END_SRC
 
-
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     # init agent
     tf.reset_default_graph()
@@ -985,7 +980,6 @@ tell if the action lead to a good state.
     sess = tf.InteractiveSession(config=config)
     sess.run(tf.global_variables_initializer())
 #+END_SRC
-
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     from IPython.display import Image, display

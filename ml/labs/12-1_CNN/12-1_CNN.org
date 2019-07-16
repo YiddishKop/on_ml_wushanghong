@@ -1,3 +1,19 @@
+# -*- org-export-babel-evaluate: nil -*-
+#+PROPERTY: header-args :eval never-export
+#+PROPERTY: header-args:python :session CNN
+#+PROPERTY: header-args:ipython :session CNN
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/home/yiddi/git_repos/YIDDI_org_export_theme/theme/org-nav-theme_cache.css" >
+#+HTML_HEAD: <script src="https://hypothes.is/embed.js" async></script>
+#+HTML_HEAD: <script type="application/json" class="js-hypothesis-config">
+#+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t
+#+OPTIONS: H:3 num:t ^:nil _:nil tags:not-in-toc
+#+TITLE: CNN
+#+AUTHOR: yiddishkop
+#+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
+#+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
+
 * Nuts and Bolts of Convolution Neural Networks
 
 In this lab, we introduce two datasets, *mnist* and *cifar*, then we will talk
@@ -23,7 +39,7 @@ The MNIST data is hosted on [[http://yann.lecun.com/exdb/mnist/][Yann LeCun's we
 dataset from Tensorflow.
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     from tensorflow.examples.tutorials.mnist import input_data
     import tensorflow as tf
     import os
@@ -36,7 +52,12 @@ dataset from Tensorflow.
     mnist = input_data.read_data_sets("dataset/mnist/", one_hot=True)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+RESULTS:
+:RESULTS:
+0 - dbf59f33-b70c-4005-9c6a-70f34e98d442
+:END:
+
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Extracting dataset/mnist/train-images-idx3-ubyte.gz
     Extracting dataset/mnist/train-labels-idx1-ubyte.gz
     Extracting dataset/mnist/t10k-images-idx3-ubyte.gz
@@ -44,9 +65,6 @@ dataset from Tensorflow.
 #+END_SRC
 
 *** Softmax Regression on MNIST[[Softmax-Regression-on-MNIST][¶]]
-    :PROPERTIES:
-    :CUSTOM_ID: Softmax-Regression-on-MNIST
-    :END:
 
 Before jumping to /Convolutional Neural Network/ model, we're going to start
 with a very simple model with a single layer and softmax regression.
@@ -60,31 +78,27 @@ This is a classic case where a softmax regression is a natural, simple model. If
 you want to assign probabilities to an object being one of several different
 things, softmax is the thing to do.
 
-In [2]:
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
+  # Create the model (Softmax Regression)
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
-    # Create the model (Softmax Regression)
+  x = tf.placeholder(tf.float32,[None, 784])  # flatten into vector of 28 x 28 = 784
+  y_true = tf.placeholder(tf.float32, [None, 10])  # true answers
+  W = tf.Variable(tf.zeros([784, 10]))  # Weights
+  b = tf.Variable(tf.zeros([10]))  # bias
+  y_pred = tf.matmul(x, W) + b  # y = Wx + b
 
-    x = tf.placeholder(tf.float32,[None, 784])  # flatten into vector of 28 x 28 = 784
-    y_true = tf.placeholder(tf.float32, [None, 10])  # true answers
-    W = tf.Variable(tf.zeros([784, 10]))  # Weights
-    b = tf.Variable(tf.zeros([10]))  # bias
-    y_pred = tf.matmul(x, W) + b  # y = Wx + b
-
-    # Define loss and optimizer
-    cross_entropy = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(labels=y_true, 
-                                                logits=y_pred))  # our loss
-    train_step = tf.train.GradientDescentOptimizer(0.5).minimize(
-        cross_entropy)  # our optimizer
+  # Define loss and optimizer
+  cross_entropy = tf.reduce_mean(
+      tf.nn.softmax_cross_entropy_with_logits(labels=y_true,
+                                              logits=y_pred))  # our loss
+  train_step = tf.train.GradientDescentOptimizer(0.5).minimize(
+      cross_entropy)  # our optimizer
 #+END_SRC
 
 After creating our model and defining the loss and optimizer, we can
 start training.
 
-In [3]:
-
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Training and Testing
 
     with tf.Session() as sess:
@@ -110,7 +124,7 @@ In [3]:
       print('Accuracy: %.1f%%' % (accuracy * 100))  
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Accuracy: 91.8%
 #+END_SRC
 
@@ -137,7 +151,7 @@ doing this repeatedly, let's create two handy functions to do it for us.
 
 In [4]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     def weight_variable(shape):
       initial = tf.truncated_normal(shape, stddev=0.1)
       return tf.Variable(initial)
@@ -154,7 +168,7 @@ abstract those operations into functions.
 
 In [5]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Our convolutions uses a stride of one and are zero padded so that the output is the same size as the input.
     # Our pooling is plain old max pooling over 2x2 blocks.
 
@@ -170,7 +184,7 @@ We can now implement our layers.
 
 In [6]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # [batch_size, height, width, channel]
     x_image = tf.reshape(x, [-1, 28, 28, 1])
 
@@ -186,7 +200,7 @@ In [6]:
 
 In [7]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Second Convolutional Layer
 
     W_conv2 = weight_variable([5, 5, 32, 64])
@@ -201,7 +215,7 @@ with 1024 neurons to allow processing on the entire image.
 
 In [8]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Densely Connected Layer
 
     W_fc1 = weight_variable([7 * 7 * 64, 1024]) 
@@ -229,7 +243,7 @@ off during testing.
 
 In [9]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Dropout
 
     keep_prob = tf.placeholder(tf.float32)
@@ -241,7 +255,7 @@ above.
 
 In [10]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Readout Layer
 
     W_fc2 = weight_variable([1024, 10])
@@ -254,7 +268,7 @@ After defining our model, we then define our loss and optimizer.
 
 In [11]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Define loss and optimizer
 
     cross_entropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_true, logits=y_conv)) # our loss
@@ -269,7 +283,7 @@ rate.
 
 In [16]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Training and Testing
 
     # Re-import data for initializing batch
@@ -301,7 +315,7 @@ In [16]:
       })))  # feed for testing
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Extracting dataset/mnist/train-images-idx3-ubyte.gz
     Extracting dataset/mnist/train-labels-idx1-ubyte.gz
     Extracting dataset/mnist/t10k-images-idx3-ubyte.gz
@@ -354,7 +368,7 @@ CIFAR-10 in Keras:
 
 In [17]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # Loading Data
     from keras.datasets import cifar10
     from keras.utils import np_utils
@@ -372,14 +386,14 @@ In [17]:
     print('Y_test shape:', Y_test.shape)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     X_train shape: (50000, 32, 32, 3)
     Y_train shape: (50000, 10)
     X_test shape: (10000, 32, 32, 3)
     Y_test shape: (10000, 10)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Using TensorFlow backend.
 #+END_SRC
 
@@ -388,7 +402,7 @@ in order to perform the division:
 
 In [18]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
   # Data Preprocessing
   # normalize inputs from 0-255 to 0.0-1.0
   X_train = X_train.astype('float32')
@@ -402,7 +416,7 @@ coding]] that is common in video systems:
 
 In [20]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     import matplotlib.pyplot as plt
     # transform an 3-channel image into one channel
     def grayscale(data, dtype='float32'):
@@ -450,7 +464,7 @@ read this [[https://www.learnopencv.com/histogram-of-oriented-gradients/][tutori
 
 In [21]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # The code is credit to: "http://www.itdadao.com/articles/c15a1243072p0.html"
     def getHOGfeat(image,
                    stride=8,
@@ -502,7 +516,7 @@ images.
 
 In [22]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     X_train_hog = []
     X_test_hog = []
 
@@ -525,7 +539,7 @@ SVM classifiers, we can just import from scikit-learn to use.
 
 In [23]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # KNN
     from sklearn.neighbors import KNeighborsClassifier 
     from sklearn.metrics import accuracy_score
@@ -540,7 +554,7 @@ In [23]:
     print('Accuracy: %.2f' % accuracy_score(y_test, y_pred))
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     [KNN]
     Misclassified samples: 5334
     Accuracy: 0.47
@@ -551,7 +565,7 @@ bad.
 
 *** Support Vector Machine (SVM) on CIFAR-10
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # SVM
     from sklearn.svm import SVC 
 
@@ -566,7 +580,7 @@ bad.
     print('Accuracy: %.2f' % accuracy_score(y_test.ravel(), y_pred))
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     [Linear SVC]
     Misclassified samples: 4940
     Accuracy: 0.51
@@ -614,7 +628,7 @@ input pipeline in the followng codes.
 
 In [1]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     import os
     import sys
     from six.moves import urllib
@@ -633,7 +647,7 @@ based on the above:
 
 In [2]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # the url to download CIFAR-10 dataset (binary version)
     # see format and details here: http://www.cs.toronto.edu/~kriz/cifar.html
     DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
@@ -652,7 +666,7 @@ In [2]:
 
 In [3]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     def maybe_download_and_extract(dest_directory, url):
       if not os.path.exists(dest_directory):
         os.makedirs(dest_directory)
@@ -679,7 +693,7 @@ In [3]:
     maybe_download_and_extract(DEST_DIRECTORY, DATA_URL)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     >> Downloading cifar-10-binary.tar.gz ...
     >> Total 170052171 bytes
     >> Done
@@ -696,7 +710,7 @@ After downloading the dataset, we create functions
 
 In [4]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # the folder store the dataset
     DATA_DIRECTORY = DEST_DIRECTORY + '/cifar-10-batches-bin'
     # (1) a list of training/testing filenames
@@ -706,7 +720,7 @@ In [4]:
 
 In [5]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # (5) + (6)
     def read_cifar10(filename_queue):
       """ Reads and parses examples from CIFAR10 data files.
@@ -764,7 +778,7 @@ In [5]:
 
 In [6]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     def distort_input(training_files, batch_size):
       """ Construct distorted input for CIFAR training using the Reader ops.
         -----
@@ -821,7 +835,7 @@ specify the order of input pipeline in the following code block.
 
 In [7]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     def eval_input(testing_files, batch_size):
       for f in testing_files:
         if not tf.gfile.Exists(f):
@@ -855,7 +869,7 @@ queues.
 
 In [8]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # test function distort_input
     with tf.Session() as sess:
       coord = tf.train.Coordinator()
@@ -874,7 +888,7 @@ In [8]:
       print('Shape of label:', label.shape)
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Shape of cropped image: (128, 24, 24, 3)
     Shape of label: (128,)
 #+END_SRC
@@ -927,7 +941,7 @@ So far, we have prepared input queues. Let's start designing our cnn model!
 
 In [9]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     class CNN_Model(object):
       def __init__(self, batch_size, num_classes, num_training_example,
                    num_epoch_per_decay, init_lr, moving_average_decay):
@@ -1074,7 +1088,7 @@ into it.
 
 In [10]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     tf.reset_default_graph()
     # CNN model
     model = CNN_Model(batch_size=BATCH_SIZE, 
@@ -1090,7 +1104,7 @@ training.
 
 In [11]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     # op for training
     global_step = tf.contrib.framework.get_or_create_global_step()
     with tf.device('/cpu:0'):
@@ -1105,7 +1119,7 @@ Next, we train our model 180 epochs and save it.
 
 In [12]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     NUM_EPOCH = 180
     NUM_BATCH_PER_EPOCH = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN // BATCH_SIZE
     ckpt_dir = './model/'
@@ -1141,7 +1155,7 @@ In [12]:
     print('Done')
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     Done
 #+END_SRC
 
@@ -1149,7 +1163,7 @@ We have done our training! Let's see whether our model is great or not.
 
 In [13]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     with tf.device('/cpu:0'):
         # build testing example queue
         images, labels = eval_input(testing_files, BATCH_SIZE)
@@ -1162,7 +1176,7 @@ In [13]:
 Because now the weights are not moving average weights, we need to
 manually change this.
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     tf.train.ExponentialMovingAverage(decay).variables_to_restore()
 #+END_SRC
 
@@ -1172,7 +1186,7 @@ original weights by moving average shadow weights.
 
 In [14]:
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     variables_to_restore = model.ema.variables_to_restore()
     saver = tf.train.Saver(variables_to_restore)
     with tf.Session() as sess:
@@ -1196,7 +1210,7 @@ In [14]:
         print('train first')
 #+END_SRC
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     INFO:tensorflow:Restoring parameters from ./model/model.ckpt-70200
     Accurarcy: 8584/9984 = 0.859776
 #+END_SRC
@@ -1220,7 +1234,7 @@ The notebook should include
 Good luck!
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     from lab12_util import *
 
     DATA_URL = 'http://www.cs.toronto.edu/~kriz/cifar-10-binary.tar.gz'
@@ -1242,7 +1256,7 @@ Good luck!
 #+END_SRC
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     from tensorflow.contrib.data import FixedLengthRecordDataset, Iterator
 
     def cifar10_record_distort_parser(record):
@@ -1302,7 +1316,7 @@ Good luck!
 #+END_SRC
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     tf.reset_default_graph()
 
     training_files = [
@@ -1347,7 +1361,7 @@ Good luck!
 #+END_SRC
 
 
-#+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
+#+BEGIN_SRC ipython :tangle yes :session CNN :exports code :async t :results raw drawer
     %%time
 
     # TODO4:

@@ -1,14 +1,19 @@
 # -*- org-export-babel-evaluate: nil -*-
 #+PROPERTY: header-args :eval never-export
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="path to your .css file" >
-#+HTML_HEAD: <script src="path to your .js file"></script>
-#+HTML_HEAD: <script type="text/javascript">
+#+PROPERTY: header-args:python :session wushanhong
+#+PROPERTY: header-args:ipython :session wushanhong
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/home/yiddi/git_repos/YIDDI_org_export_theme/theme/org-nav-theme_cache.css" >
+#+HTML_HEAD: <script src="https://hypothes.is/embed.js" async></script>
+#+HTML_HEAD: <script type="application/json" class="js-hypothesis-config">
 #+HTML_HEAD: <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
-#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto html-preamble:t
-#+TITLE: TensorFlow 101 & Word2Vec
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:nil html-preamble:t
+#+OPTIONS: H:3 num:t ^:nil _:nil tags:not-in-toc
+#+TITLE: wushanhong
 #+AUTHOR: yiddishkop
 #+EMAIL: [[mailto:yiddishkop@163.com][yiddi's email]]
 #+TAGS: {PKGIMPT(i) DATAVIEW(v) DATAPREP(p) GRAPHBUILD(b) GRAPHCOMPT(c)} LINAGAPI(a) PROBAPI(b) MATHFORM(f) MLALGO(m)
+
+
 
 
 * TensorFlow 101
@@ -540,7 +545,6 @@ TensorFlow. We will then look at the word2vec model and the =Dataset= API.
  :RESULTS:
  # Out[2]:
  :END:
-
 
 * Word2Vec
 

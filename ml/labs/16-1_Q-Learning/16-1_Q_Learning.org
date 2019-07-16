@@ -6,42 +6,39 @@ Q-learning to train an agent to play "Flappy Bird" game.
 [[file:img/flappybird.gif]]
 
 ** Temporal-Difference learning
-   :PROPERTIES:
-   :CUSTOM_ID: Temporal-Difference-learning
-   :END:
 
 In value-based method, a state-value $V\_\pi(s)$ is expected cumulated
 rewards $G$ when started at state s, that's:
 
 $$ \begin{align}
-V\_{\pi}(s)~ &= ~\mathbb{E}\_{\pi, P}[G\^{(t)}~|~S\^{(t)}~=~s] \\ &=
-~\mathbb{E}\_{\pi, P}[\sum\limits\_{k=0}\^{\infty}
-\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s] \end{align} $$ We can divide it
+V_{\pi}(s)~ &= ~\mathbb{E}_{\pi, P}[G^{(t)}~|~S^{(t)}~=~s] \\ &=
+~\mathbb{E}_{\pi, P}[\sum\limits_{k=0}^{\infty}
+\gamma^{k}R^{(t+k+1)}~|~S^{(t)}~=~s] \end{align} $$ We can divide it
 into sum of reward and state-value of next state: $$ \begin{align}
-V\_{\pi}(s)~ &= ~\mathbb{E}\_{\pi, P}[\sum\limits\_{k=0}\^{\infty}
-\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s] \\ &= ~\mathbb{E}\_{\pi,
-P}[R\^{(t+1)}+\gamma\sum\limits\_{k=0}\^{\infty}
-\gamma\^{k}R\^{(t+k+2)}~|~S\^{(t)}~=~s] \\ &= ~\mathbb{E}\_{\pi,
-P}[R\^{(t+1)}+\gamma V\_{\pi}(S\^{(t+1)})~|~S\^{(t)}~=~s] \end{align} $$
+V_{\pi}(s)~ &= ~\mathbb{E}_{\pi, P}[\sum\limits_{k=0}^{\infty}
+\gamma^{k}R^{(t+k+1)}~|~S^{(t)}~=~s] \\ &= ~\mathbb{E}_{\pi,
+P}[R^{(t+1)}+\gamma\sum\limits_{k=0}^{\infty}
+\gamma^{k}R^{(t+k+2)}~|~S^{(t)}~=~s] \\ &= ~\mathbb{E}_{\pi,
+P}[R^{(t+1)}+\gamma V_{\pi}(S^{(t+1)})~|~S^{(t)}~=~s] \end{align} $$
 
 Recall in the class, a state-value can be approached by:
-$$V(S\^{(t)})\leftarrow V(S\^{(t)})+\eta[G\^{(t)}-V(S\^{(t)})]$$ Replace
-$G\_{t}$ by $R\_{t+1}+\gamma V\_{\pi}(S\_{t+1})$, we get:
-$$V(S\^{(t)})\leftarrow V(S\^{(t)})+\eta[R\^{(t+1)}+\gamma
-V\_{\pi}(S\^{(t+1)})-V(S\^{(t)})]$$
+$$V(S^{(t)})\leftarrow V(S^{(t)})+\eta[G^{(t)}-V(S^{(t)})]$$ Replace
+$G_{t}$ by $R_{t+1}+\gamma V_{\pi}(S_{t+1})$, we get:
+$$V(S^{(t)})\leftarrow V(S^{(t)})+\eta[R^{(t+1)}+\gamma
+V_{\pi}(S^{(t+1)})-V(S^{(t)})]$$
 
 These can also be apply to action-value function: $$ \begin{align}
-Q\_{\pi}(s,a)~ &= ~\mathbb{E}\_{\pi,
-P}[G\^{(t)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &= ~\mathbb{E}\_{\pi,
-P}[\sum\limits\_{k=0}\^{\infty}
-\gamma\^{k}R\^{(t+k+1)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &=
-~\mathbb{E}\_{\pi, P}[R\_{t+1}+\gamma\sum\limits\_{k=0}\^{\infty}
-\gamma\^{k}R\^{(t+k+2)}~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \\ &=
-~\mathbb{E}\_{\pi, P}[R\_{t+1}+\gamma
-Q\_{\pi}(S\^{(t+1)},A\^{(t+1)})~|~S\^{(t)}~=~s,~A\^{(t)}=~a] \end{align}
-$$ $$Q(S\^{(t)},A\^{(t)})\leftarrow
-Q(S\^{(t)},A\^{(t)})+\eta[R\^{(t+1)}+\gamma
-Q(S\^{(t+1)},A\^{(t+1)})-Q(S\^{(t)},A\^{(t)})]$$ This becomes update
+Q_{\pi}(s,a)~ &= ~\mathbb{E}_{\pi,
+P}[G^{(t)}~|~S^{(t)}~=~s,~A^{(t)}=~a] \\ &= ~\mathbb{E}_{\pi,
+P}[\sum\limits_{k=0}^{\infty}
+\gamma^{k}R^{(t+k+1)}~|~S^{(t)}~=~s,~A^{(t)}=~a] \\ &=
+~\mathbb{E}_{\pi, P}[R_{t+1}+\gamma\sum\limits_{k=0}^{\infty}
+\gamma^{k}R^{(t+k+2)}~|~S^{(t)}~=~s,~A^{(t)}=~a] \\ &=
+~\mathbb{E}_{\pi, P}[R_{t+1}+\gamma
+Q_{\pi}(S^{(t+1)},A^{(t+1)})~|~S^{(t)}~=~s,~A^{(t)}=~a] \end{align}
+$$ $$Q(S^{(t)},A^{(t)})\leftarrow
+Q(S^{(t)},A^{(t)})+\eta[R^{(t+1)}+\gamma
+Q(S^{(t+1)},A^{(t+1)})-Q(S^{(t)},A^{(t)})]$$ This becomes update
 rule of SARSA.
 
 
@@ -52,11 +49,11 @@ image come from [[http://ufal.mff.cuni.cz/~straka/courses/npfl114/2016/sutton-bo
 *** Q-learning
 
 like SARSA, but in a greedy way, the update rule become:
-$$Q(S\^{(t)},A\^{(t)})\leftarrow
-Q(S\^{(t)},A\^{(t)})+\eta[R\^{(t+1)}+\gamma
-~maxQ(S',A')-Q(S\^{(t)},A\^{(t)})]$$ The difference is that SARSA use
-expectation of $Q$ value of next state to chase $Q\_{\pi\^{*}}$, while
-Q-learning use best $Q$ value of next state to chase $Q\_{\pi\^{*}}$. In
+$$Q(S^{(t)},A^{(t)})\leftarrow
+Q(S^{(t)},A^{(t)})+\eta[R^{(t+1)}+\gamma
+~maxQ(S',A')-Q(S^{(t)},A^{(t)})]$$ The difference is that SARSA use
+expectation of $Q$ value of next state to chase $Q_{\pi^{*}}$, while
+Q-learning use best $Q$ value of next state to chase $Q_{\pi^{*}}$. In
 fact, if policy of SARSA is greedy, it become Q-learning.
 
 [[file:img/q_learning.png]]
@@ -135,7 +132,6 @@ next pipe, etc. We will use these features to train an agent to play game.
 
 In the following, we define functions for agent.
 
-In [4]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     import math
@@ -961,6 +957,6 @@ games.
 * Assignment
 
 -  change update rule from Q-learning to SARSA and discuss the result.
--  Submit notebook on iLMS (ex: Lab15-1\_studentID.ipynb)
+-  Submit notebook on iLMS (ex: Lab15-1_studentID.ipynb)
 -  deadline: 2018/1/4 23:59
 

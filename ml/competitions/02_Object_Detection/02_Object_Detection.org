@@ -197,7 +197,6 @@ In [7]:
 
 *** Hyperparameters
 
-In [3]:
 
 #+BEGIN_SRC ipython :tangle yes :session :exports code :async t :results raw drawer
     #hyperparameters
@@ -314,7 +313,6 @@ In [13]:
 #+END_SRC
 
 ** Simplified Object detection model
-
 *** Define single layers[[Define-single-layers][¶]]
 
 In [7]:
